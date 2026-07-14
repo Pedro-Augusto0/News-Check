@@ -42,8 +42,16 @@
   --color-crop-5: #ec4899;
   --color-crop-finalized: #059669;
   --color-crop-finalized-hover: #047857;
-  --color-crop-finalized-overlay: rgba(17, 24, 39, 0.28);
-  --color-crop-finalized-overlay-hover: rgba(17, 24, 39, 0.38);
+  --color-crop-finalized-overlay: rgba(17, 24, 39, 0.24);
+  --color-crop-finalized-overlay-hover: rgba(17, 24, 39, 0.34);
+  --crop-finalized-blur: 6px;
+
+  /* Client match */
+  --color-client: #0369a1;
+  --color-client-strong: #0284c7;
+  --color-client-bg: #e0f2fe;
+  --color-client-border: rgba(2, 132, 199, 0.42);
+  --color-client-ring: rgba(14, 165, 233, 0.28);
 
   /* Layout */
   --header-height: 48px;

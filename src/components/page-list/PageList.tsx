@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Filter, Search } from 'lucide-react'
+import { FileText, Filter, Search, UserRound } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
@@ -162,13 +162,27 @@ export function PageList() {
                   aria-label={pageFinalized ? 'Página finalizada' : 'Página pendente'}
                 />
                 <span className="page-list__page-name">Página {page.pageNumber}</span>
-                <span className="page-list__meta">
-                  {clientCount} {clientCount === 1 ? 'cliente' : 'clientes'}
-                  <span className="page-list__sep" aria-hidden>
-                    {' '}
-                    ·{' '}
+                <span
+                  className="page-list__meta"
+                  aria-label={`${clientCount} ${clientCount === 1 ? 'cliente' : 'clientes'}, ${cropCount} ${cropCount === 1 ? 'corte' : 'cortes'}`}
+                >
+                  <span
+                    className="page-list__stat"
+                    title={`${clientCount} ${clientCount === 1 ? 'cliente' : 'clientes'}`}
+                  >
+                    <UserRound size={12} strokeWidth={2.25} aria-hidden />
+                    {clientCount}
                   </span>
-                  {cropCount} {cropCount === 1 ? 'corte' : 'cortes'}
+                  <span className="page-list__sep" aria-hidden>
+                    ·
+                  </span>
+                  <span
+                    className="page-list__stat"
+                    title={`${cropCount} ${cropCount === 1 ? 'corte' : 'cortes'}`}
+                  >
+                    <FileText size={12} strokeWidth={2} aria-hidden />
+                    {cropCount}
+                  </span>
                 </span>
               </button>
             </li>

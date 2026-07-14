@@ -65,10 +65,14 @@
 .crop-page-preview__box--finalized {
   border: none;
   box-shadow: none;
-  border-radius: 0;
+  border-radius: var(--radius-xs);
   background-color: var(--color-crop-finalized-overlay);
+  backdrop-filter: blur(var(--crop-finalized-blur)) saturate(0.9);
+  -webkit-backdrop-filter: blur(var(--crop-finalized-blur)) saturate(0.9);
 }
 
 .crop-page-preview__box--finalized-active {
   background-color: var(--color-crop-finalized-overlay-hover);
+  backdrop-filter: blur(calc(var(--crop-finalized-blur) + 1px)) saturate(0.94);
+  -webkit-backdrop-filter: blur(calc(var(--crop-finalized-blur) + 1px)) saturate(0.94);
 }

@@ -40,12 +40,6 @@
   transition: color var(--transition), background var(--transition);
 }
 
-.viewer-toolbar__tool--labeled {
-  height: 30px;
-  padding: 0 10px;
-  white-space: nowrap;
-}
-
 .viewer-toolbar__tool--icon {
   width: 30px;
   height: 30px;
@@ -58,26 +52,9 @@
   color: var(--color-text);
 }
 
-.viewer-toolbar__tool--active {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-}
-
-.viewer-toolbar__tool--active:hover:not(:disabled) {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-}
-
 .viewer-toolbar__tool:disabled {
   opacity: 0.35;
   cursor: not-allowed;
-}
-
-.viewer-toolbar__divider {
-  width: 1px;
-  height: 20px;
-  background: #e2e8f0;
-  flex-shrink: 0;
 }
 
 .viewer-toolbar__actions {

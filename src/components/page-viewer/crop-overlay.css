@@ -60,18 +60,22 @@
 .crop-box--finalized {
   border: none;
   box-shadow: none;
-  border-radius: 0;
+  border-radius: var(--radius-xs);
   background-color: var(--color-crop-finalized-overlay);
-  backdrop-filter: blur(var(--crop-finalized-blur)) saturate(0.88);
-  -webkit-backdrop-filter: blur(var(--crop-finalized-blur)) saturate(0.88);
+  backdrop-filter: blur(var(--crop-finalized-blur)) saturate(0.9);
+  -webkit-backdrop-filter: blur(var(--crop-finalized-blur)) saturate(0.9);
   cursor: pointer;
+  transition:
+    background-color var(--transition-slow),
+    backdrop-filter var(--transition-slow),
+    -webkit-backdrop-filter var(--transition-slow);
 }
 
 .crop-box--finalized-selected {
   z-index: 2;
   background-color: var(--color-crop-finalized-overlay-hover);
-  backdrop-filter: blur(calc(var(--crop-finalized-blur) - 2px)) saturate(0.92);
-  -webkit-backdrop-filter: blur(calc(var(--crop-finalized-blur) - 2px)) saturate(0.92);
+  backdrop-filter: blur(calc(var(--crop-finalized-blur) + 1px)) saturate(0.94);
+  -webkit-backdrop-filter: blur(calc(var(--crop-finalized-blur) + 1px)) saturate(0.94);
 }
 
 .crop-box--draft {
@@ -307,25 +311,32 @@
   position: absolute;
   top: 4px;
   right: 4px;
-  z-index: 2;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 25px;
-  height: 25px;
-  color: #0369a1;
-  background: rgba(224, 242, 254, 0.96);
-  border: 1px solid rgba(3, 105, 161, 0.18);
+  width: 22px;
+  height: 22px;
+  color: var(--color-client-strong);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1.5px solid var(--color-client-strong);
   border-radius: var(--radius-full);
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 1px 5px rgba(2, 132, 199, 0.28);
   pointer-events: none;
 }
 
 .crop-box--selected .crop-box__client-badge {
+  top: 4px;
+  bottom: auto;
+  right: 4px;
+}
+
+.crop-box:hover .crop-box__client-badge {
   top: auto;
   bottom: 4px;
   right: 4px;
 }
+
 
 .crop-box__badge {
   position: absolute;
@@ -348,36 +359,50 @@
 
 .crop-box__actions {
   position: absolute;
-  top: -1px;
-  right: -1px;
+  top: 4px;
+  right: 4px;
   display: flex;
-  gap: 0;
+  gap: 2px;
   z-index: 3;
-  overflow: hidden;
-  border-radius: 0 calc(var(--radius-xs) - 1px) 0 var(--radius-sm);
+  padding: 2px;
+  border-radius: 4px;
   background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(10px) saturate(1.15);
   box-shadow:
     0 2px 6px rgba(26, 29, 38, 0.07),
     0 0 0 1px rgba(26, 29, 38, 0.05);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition:
+    opacity var(--transition),
+    transform var(--transition);
+}
+
+.crop-box:hover .crop-box__actions,
+.crop-box__actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.crop-box--dragging .crop-box__actions {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .crop-box__action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  height: 23px;
-  padding: 0 9px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.015em;
-  line-height: 1;
+  width: 26px;
+  height: 26px;
+  padding: 0;
   color: var(--color-text-secondary);
   background: transparent;
   border: none;
+  border-radius: 4px;
   cursor: pointer;
-  white-space: nowrap;
   transition:
     background var(--transition),
     color var(--transition),
@@ -386,7 +411,7 @@
 
 .crop-box__action svg {
   flex-shrink: 0;
-  opacity: 0.72;
+  opacity: 0.82;
   transition: opacity var(--transition);
 }
 
@@ -395,11 +420,7 @@
 }
 
 .crop-box__action:active {
-  transform: scale(0.97);
-}
-
-.crop-box__action + .crop-box__action {
-  box-shadow: inset 1px 0 0 rgba(26, 29, 38, 0.07);
+  transform: scale(0.94);
 }
 
 .crop-box__action--view-text:hover {
@@ -414,10 +435,18 @@
 
 .crop-box__action--finalize {
   color: var(--color-crop-finalized);
-  background: color-mix(in srgb, var(--color-crop-finalized) 14%, #fff);
 }
 
 .crop-box__action--finalize:hover {
   background: color-mix(in srgb, var(--color-crop-finalized) 24%, #fff);
   color: var(--color-crop-finalized-hover);
+}
+
+.crop-box__action--delete {
+  color: var(--color-danger);
+}
+
+.crop-box__action--delete:hover {
+  background: color-mix(in srgb, var(--color-danger) 12%, #fff);
+  color: var(--color-danger);
 }

@@ -71,7 +71,7 @@ export function CropPagePreview({
                     top: px.y,
                     width: px.width,
                     height: px.height,
-                    ...(!finalized && { ['--crop-accent' as string]: cropColor(info?.colorIndex ?? 0) }),
+                    ...{ ['--crop-accent' as string]: cropColor(info?.colorIndex ?? 0) },
                   }}
                   title={crop.title}
                 />

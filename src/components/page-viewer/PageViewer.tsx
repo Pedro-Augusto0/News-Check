@@ -29,6 +29,7 @@ export function PageViewer() {
   const cancelEditCrop = useCropsStore((s) => s.cancelEditCrop)
   const commitEditCrop = useCropsStore((s) => s.commitEditCrop)
   const finalizeCrop = useCropsStore((s) => s.finalizeCrop)
+  const deleteCrop = useCropsStore((s) => s.deleteCrop)
   const openTextModal = useCropsStore((s) => s.openTextModal)
   const cropsMap = useCropsStore((s) => s.crops)
 
@@ -123,6 +124,13 @@ export function PageViewer() {
     [openTextModal, selectCrop, cropsMap],
   )
 
+  const handleDeleteCrop = useCallback(
+    (cropId: string) => {
+      deleteCrop(cropId)
+    },
+    [deleteCrop],
+  )
+
   const handleSaveEdit = useCallback(
     (rect: Parameters<typeof commitEditCrop>[1]) => {
       if (!editingCropId || !currentPdf) return
@@ -156,6 +164,12 @@ export function PageViewer() {
             }}
             onPointerDown={(e) => {
               if (isEditing) return
+
+              const target = e.target as HTMLElement
+              if (!target.closest('.crop-box')) {
+                selectCrop(null)
+              }
+
               if (panMode) handlePanStart(e)
               else handlePointerDown(e)
             }}
@@ -188,6 +202,7 @@ export function PageViewer() {
               onViewText={handleViewText}
               onEditCrop={handleEditCrop}
               onFinalizeCrop={handleFinalizeCrop}
+              onDeleteCrop={handleDeleteCrop}
             />
             {editingCrop && (
               <CropEditOverlay

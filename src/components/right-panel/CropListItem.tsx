@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Eye, FileText, MoreVertical, UserRound } from 'lucide-react'
+import { ChevronDown, ChevronRight, Eye, FileText, MoreVertical, UserRound } from 'lucide-react'
 import type { Crop, CropGroup } from '@/types/session'
 import { cn } from '@/utils/cn'
 import { cropHasClient, formatClientKeywords, mergeClientKeywords } from '@/utils/cropClientStats'
@@ -18,14 +18,6 @@ function formatPageCount(count: number): string {
   return count === 1 ? '1 página' : `${count} páginas`
 }
 
-function FinalizedBadge() {
-  return (
-    <span className="crop-list-item__finalized-badge" title="Finalizado" aria-label="Finalizado">
-      <Check size={9} strokeWidth={3} aria-hidden />
-    </span>
-  )
-}
-
 function ClientBadge({ keywords }: { keywords: string[] }) {
   const label = formatClientKeywords(keywords)
   return (
@@ -34,7 +26,7 @@ function ClientBadge({ keywords }: { keywords: string[] }) {
       title={`Palavra-chave do cliente encontrada: ${label}`}
       aria-label={`Cliente: ${label}`}
     >
-      <UserRound size={10} strokeWidth={2.25} aria-hidden />
+      <UserRound size={11} strokeWidth={2.3} aria-hidden />
     </span>
   )
 }
@@ -120,6 +112,7 @@ export function CropListItem({
         'crop-list-item',
         compact && 'crop-list-item--compact',
         isChild && 'crop-list-item--child',
+        finalized && 'crop-list-item--finalized',
         isDragging && 'crop-list-item--dragging',
         isDropTarget && 'crop-list-item--drop-target',
         isSelected && 'crop-list-item--selected',
@@ -131,6 +124,7 @@ export function CropListItem({
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, crop.id)}
       onClick={() => onSelect(crop.id)}
+      aria-label={finalized ? `${crop.title || 'Sem título'} — Finalizado` : undefined}
     >
       {label && (
         <span className="crop-list-item__index" aria-hidden>
@@ -162,7 +156,6 @@ export function CropListItem({
               {crop.title || 'Sem título'}
             </span>
           )}
-          {finalized && <FinalizedBadge />}
           {hasClient && <ClientBadge keywords={clientKeywords} />}
         </div>
 
@@ -341,18 +334,20 @@ export function CropGroupItem({
     <div
       className={cn(
         'crop-group-item',
+        finalized && 'crop-group-item--finalized',
         isDropTarget && 'crop-group-item--drop-target',
         menuOpen && 'crop-group-item--menu-open',
       )}
       style={{ ['--crop-accent' as string]: accentColor }}
     >
       <div
-        className="crop-group-item__header"
+        className={cn('crop-group-item__header', finalized && 'crop-group-item__header--finalized')}
         draggable
         onDragStart={handleHeaderDragStart}
         onDragOver={onDragOver}
         onDrop={(e) => onDrop(e, rootCrop.id)}
         onClick={() => onSelect(rootCrop.id)}
+        aria-label={finalized ? `${group.title || 'Sem título'} — Finalizado` : undefined}
       >
         {index !== undefined && (
           <span className="crop-list-item__index" aria-hidden>
@@ -384,7 +379,6 @@ export function CropGroupItem({
                 {group.title || 'Sem título'}
               </span>
             )}
-            {finalized && <FinalizedBadge />}
             {hasClient && <ClientBadge keywords={clientKeywords} />}
           </div>
 

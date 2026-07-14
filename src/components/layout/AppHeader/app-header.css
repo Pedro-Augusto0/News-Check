@@ -44,6 +44,58 @@
   flex-shrink: 0;
 }
 
+.app-header__session .combobox,
+.app-header__controls .combobox {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.app-header__session .combobox__control,
+.app-header__controls .combobox__control {
+  position: relative;
+}
+
+.app-header__session .combobox__trigger,
+.app-header__controls .combobox__trigger {
+  height: auto;
+  min-height: 28px;
+  padding: 4px 31px 4px 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--font-size-md);
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+.app-header__session .combobox__trigger:hover,
+.app-header__controls .combobox__trigger:hover {
+  color: var(--color-primary);
+}
+
+.app-header__session .combobox__trigger:hover .combobox__chevron,
+.app-header__controls .combobox__trigger:hover .combobox__chevron {
+  color: var(--color-primary);
+}
+
+.app-header__session .combobox--open .combobox__trigger,
+.app-header__session .combobox__trigger:focus-visible,
+.app-header__controls .combobox--open .combobox__trigger,
+.app-header__controls .combobox__trigger:focus-visible {
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--color-primary);
+}
+
+.app-header__session .combobox__chevron,
+.app-header__controls .combobox__chevron {
+  position: absolute;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-muted);
+}
+
 .app-header__controls {
   display: flex;
   align-items: center;

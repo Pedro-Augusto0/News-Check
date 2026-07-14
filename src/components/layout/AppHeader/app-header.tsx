@@ -4,15 +4,15 @@ import { ComboBox } from '@/components/ui/ComboBox/combobox'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
 import { useViewerStore } from '@/stores/viewerStore'
-import { useCurrentEdition, useCurrentPdf } from '@/hooks/useSessionSelectors'
+import { useCurrentPdf } from '@/hooks/useSessionSelectors'
 import type { VehicleEdition, NewsViewFilter } from '@/types/session'
 import './app-header.css'
 
 const ZOOM_PRESETS = [50, 75, 100, 125, 150, 200, 300, 400]
 
 const NEWS_VIEW_OPTIONS: { value: NewsViewFilter; label: string }[] = [
-  { value: 'all', label: 'Ver tudo' },
-  { value: 'withClient', label: 'Com cliente' },
+  { value: 'all', label: 'Todas as notícias' },
+  { value: 'withClient', label: 'Notícias com cliente' },
 ]
 
 function formatEditionLabel(edition: VehicleEdition): string {
@@ -23,10 +23,8 @@ function formatEditionLabel(edition: VehicleEdition): string {
 export function AppHeader() {
   const editions = useSessionStore((s) => s.editions)
   const selectedEditionId = useSessionStore((s) => s.selectedEditionId)
-  const selectedPdfId = useSessionStore((s) => s.selectedPdfId)
   const selectedPageNumber = useSessionStore((s) => s.selectedPageNumber)
   const selectEdition = useSessionStore((s) => s.selectEdition)
-  const selectPdf = useSessionStore((s) => s.selectPdf)
   const newsViewFilter = useSessionStore((s) => s.newsViewFilter)
   const setNewsViewFilter = useSessionStore((s) => s.setNewsViewFilter)
   const nextPage = useSessionStore((s) => s.nextPage)
@@ -37,9 +35,7 @@ export function AppHeader() {
   const setZoom = useViewerStore((s) => s.setZoom)
   const resetView = useViewerStore((s) => s.resetView)
 
-  const currentEdition = useCurrentEdition()
   const currentPdf = useCurrentPdf()
-  const pdfs = currentEdition?.pdfs ?? []
 
   const zoomPercent = Math.round(zoom * 100)
   const zoomOptions = useMemo(() => {
@@ -69,8 +65,10 @@ export function AppHeader() {
         <ComboBox
           id="edition-select"
           label="Veículo"
-          compact
-          className="combobox--inline combobox--edition"
+          hideLabel
+          searchable
+          searchPlaceholder="Buscar veículo..."
+          className="combobox--edition"
           value={selectedEditionId ?? ''}
           options={editions.map((e) => ({
             value: e.id,
@@ -80,20 +78,10 @@ export function AppHeader() {
         />
         <span className="app-header__session-divider" aria-hidden />
         <ComboBox
-          id="pdf-select"
-          label="Local"
-          compact
-          className="combobox--inline combobox--location"
-          value={selectedPdfId ?? ''}
-          options={pdfs.map((p) => ({ value: p.id, label: p.name }))}
-          onChange={selectPdf}
-        />
-        <span className="app-header__session-divider" aria-hidden />
-        <ComboBox
           id="news-view-select"
           label="Notícias"
-          compact
-          className="combobox--inline combobox--news"
+          hideLabel
+          className="combobox--news"
           value={newsViewFilter}
           options={NEWS_VIEW_OPTIONS}
           onChange={(value) => setNewsViewFilter(value as NewsViewFilter)}
@@ -132,8 +120,8 @@ export function AppHeader() {
         <ComboBox
           id="zoom-select"
           label="Zoom"
-          compact
-          className="combobox--inline combobox--zoom"
+          hideLabel
+          className="combobox--zoom"
           value={String(zoomPercent)}
           options={zoomOptions}
           onChange={(value) => setZoom(Number(value) / 100)}

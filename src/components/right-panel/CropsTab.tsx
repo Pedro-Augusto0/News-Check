@@ -267,10 +267,6 @@ export function CropsTab() {
           </button>
         </div>
 
-        <button type="button" className="crops-tab__new-btn" onClick={exitPanMode}>
-          <Plus size={15} aria-hidden />
-          Novo corte
-        </button>
       </div>
 
       <div className="crops-tab__filters" role="group" aria-label="Filtrar cortes">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Check, FileText, GripVertical, Link2, Pencil, Unlink, UserRound } from 'lucide-react'
+import { Check, FileText, GripVertical, Link2, Pencil, Trash2, Unlink, UserRound } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import type { Crop } from '@/types/session'
 import type { CropRect } from '@/utils/cropGeometry'
@@ -23,6 +23,7 @@ interface CropOverlayProps {
   onViewText: (cropId: string) => void
   onEditCrop: (cropId: string) => void
   onFinalizeCrop: (cropId: string) => void
+  onDeleteCrop: (cropId: string) => void
 }
 
 interface CropBoxInnerProps {
@@ -44,6 +45,7 @@ interface CropBoxInnerProps {
   onViewText?: () => void
   onEdit?: () => void
   onFinalize?: () => void
+  onDelete?: () => void
   onMergeDragStart?: (e: React.DragEvent, cropId: string) => void
   onMergeDragOver?: (e: React.DragEvent) => void
   onMergeDrop?: (e: React.DragEvent, cropId: string) => void
@@ -70,6 +72,7 @@ function CropBoxInner({
   onViewText,
   onEdit,
   onFinalize,
+  onDelete,
   onMergeDragStart,
   onMergeDragOver,
   onMergeDrop,
@@ -128,7 +131,7 @@ function CropBoxInner({
           title={`Palavra-chave do cliente: ${formatClientKeywords(clientKeywords)}`}
           aria-label={`Cliente: ${formatClientKeywords(clientKeywords)}`}
         >
-          <UserRound size={10} strokeWidth={2.25} aria-hidden />
+          <UserRound size={11} strokeWidth={2.3} aria-hidden />
         </span>
       )}
 
@@ -155,7 +158,7 @@ function CropBoxInner({
         </span>
       )}
 
-      {selected && !draft && (onViewText || onEdit || onFinalize) && (
+      {!draft && (onViewText || onEdit || onFinalize || onDelete) && (
         <div
           className="crop-box__actions"
           onPointerDown={(e) => e.stopPropagation()}
@@ -166,9 +169,10 @@ function CropBoxInner({
               type="button"
               className="crop-box__action crop-box__action--view-text"
               onClick={onViewText}
+              aria-label="Ver detalhes"
+              title="Ver detalhes"
             >
-              <FileText size={11} strokeWidth={2} />
-              Ver detalhes
+              <FileText size={13} strokeWidth={2} aria-hidden />
             </button>
           )}
           {onEdit && (
@@ -176,9 +180,10 @@ function CropBoxInner({
               type="button"
               className="crop-box__action crop-box__action--edit"
               onClick={onEdit}
+              aria-label="Editar corte"
+              title="Editar corte"
             >
-              <Pencil size={11} strokeWidth={2} />
-              Editar
+              <Pencil size={13} strokeWidth={2} aria-hidden />
             </button>
           )}
           {!finalized && onFinalize && (
@@ -186,9 +191,21 @@ function CropBoxInner({
               type="button"
               className="crop-box__action crop-box__action--finalize"
               onClick={onFinalize}
+              aria-label="Finalizar"
+              title="Finalizar"
             >
-              <Check size={11} strokeWidth={2.25} />
-              Finalizar
+              <Check size={13} strokeWidth={2.25} aria-hidden />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              className="crop-box__action crop-box__action--delete"
+              onClick={onDelete}
+              aria-label="Excluir"
+              title="Excluir"
+            >
+              <Trash2 size={13} strokeWidth={2} aria-hidden />
             </button>
           )}
         </div>
@@ -224,6 +241,7 @@ export function CropOverlay({
   onViewText,
   onEditCrop,
   onFinalizeCrop,
+  onDeleteCrop,
 }: CropOverlayProps) {
   const isNewsItemFinalized = useCropsStore((s) => s.isNewsItemFinalized)
   const cropsMap = useCropsStore((s) => s.crops)
@@ -385,6 +403,7 @@ export function CropOverlay({
             onViewText={() => onViewText(crop.id)}
             onEdit={() => onEditCrop(crop.id)}
             onFinalize={() => onFinalizeCrop(crop.id)}
+            onDelete={() => onDeleteCrop(crop.id)}
             onMergeDragStart={handleDragStart}
             onMergeDragOver={handleDragOver}
             onMergeDrop={handleDrop}

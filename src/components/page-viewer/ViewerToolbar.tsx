@@ -1,16 +1,4 @@
-import {
-  Check,
-  Hand,
-  Maximize2,
-  Minus,
-  Plus,
-  Redo2,
-  RotateCcw,
-  SquareDashed,
-  Undo2,
-  ZoomIn,
-  ZoomOut,
-} from 'lucide-react'
+import { Check, Maximize2, Minus, Plus, RotateCcw } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
@@ -26,12 +14,9 @@ export function ViewerToolbar() {
   const finalizedPages = useCropsStore((s) => s.finalizedPages)
   const finalizePage = useCropsStore((s) => s.finalizePage)
   const reopenPage = useCropsStore((s) => s.reopenPage)
-  const panMode = useViewerStore((s) => s.panMode)
   const zoomIn = useViewerStore((s) => s.zoomIn)
   const zoomOut = useViewerStore((s) => s.zoomOut)
   const resetView = useViewerStore((s) => s.resetView)
-  const enterPanMode = useViewerStore((s) => s.enterPanMode)
-  const exitPanMode = useViewerStore((s) => s.exitPanMode)
   const isRendering = useViewerStore((s) => s.isRendering)
 
   const pageFinalized =
@@ -49,115 +34,35 @@ export function ViewerToolbar() {
   return (
     <div className="viewer-toolbar">
       <div className="viewer-toolbar__tools">
-        <div className="viewer-toolbar__group">
-          <button
-            type="button"
-            className={cn(
-              'viewer-toolbar__tool',
-              'viewer-toolbar__tool--labeled',
-              !panMode && 'viewer-toolbar__tool--active',
-            )}
-            onClick={exitPanMode}
-            aria-pressed={!panMode}
-            title="Criar corte"
-          >
-            <SquareDashed size={16} strokeWidth={1.75} aria-hidden />
-            <span>Criar corte</span>
-          </button>
+        <button
+          type="button"
+          className="viewer-toolbar__tool viewer-toolbar__tool--icon"
+          onClick={zoomOut}
+          aria-label="Diminuir zoom"
+          title="Diminuir zoom"
+        >
+          <Minus size={16} strokeWidth={1.75} aria-hidden />
+        </button>
 
-          <button
-            type="button"
-            className={cn(
-              'viewer-toolbar__tool',
-              'viewer-toolbar__tool--labeled',
-              panMode && 'viewer-toolbar__tool--active',
-            )}
-            onClick={enterPanMode}
-            aria-pressed={panMode}
-            title="Mover (M)"
-          >
-            <Hand size={16} strokeWidth={1.75} aria-hidden />
-            <span>Mover</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          className="viewer-toolbar__tool viewer-toolbar__tool--icon"
+          onClick={zoomIn}
+          aria-label="Aumentar zoom"
+          title="Aumentar zoom"
+        >
+          <Plus size={16} strokeWidth={1.75} aria-hidden />
+        </button>
 
-        <span className="viewer-toolbar__divider" aria-hidden />
-
-        <div className="viewer-toolbar__group">
-          <button
-            type="button"
-            className="viewer-toolbar__tool viewer-toolbar__tool--icon"
-            disabled
-            aria-label="Desfazer"
-            title="Desfazer"
-          >
-            <Undo2 size={16} strokeWidth={1.75} aria-hidden />
-          </button>
-
-          <button
-            type="button"
-            className="viewer-toolbar__tool viewer-toolbar__tool--icon"
-            disabled
-            aria-label="Refazer"
-            title="Refazer"
-          >
-            <Redo2 size={16} strokeWidth={1.75} aria-hidden />
-          </button>
-
-          <button
-            type="button"
-            className="viewer-toolbar__tool viewer-toolbar__tool--icon"
-            onClick={zoomOut}
-            aria-label="Diminuir zoom"
-            title="Diminuir zoom"
-          >
-            <Minus size={16} strokeWidth={1.75} aria-hidden />
-          </button>
-
-          <button
-            type="button"
-            className="viewer-toolbar__tool viewer-toolbar__tool--icon"
-            onClick={zoomOut}
-            aria-label="Zoom out"
-            title="Zoom out"
-          >
-            <ZoomOut size={16} strokeWidth={1.75} aria-hidden />
-          </button>
-        </div>
-
-        <span className="viewer-toolbar__divider" aria-hidden />
-
-        <div className="viewer-toolbar__group">
-          <button
-            type="button"
-            className="viewer-toolbar__tool viewer-toolbar__tool--icon"
-            onClick={zoomIn}
-            aria-label="Zoom in"
-            title="Zoom in"
-          >
-            <ZoomIn size={16} strokeWidth={1.75} aria-hidden />
-          </button>
-
-          <button
-            type="button"
-            className="viewer-toolbar__tool viewer-toolbar__tool--icon"
-            onClick={zoomIn}
-            aria-label="Aumentar zoom"
-            title="Aumentar zoom"
-          >
-            <Plus size={16} strokeWidth={1.75} aria-hidden />
-          </button>
-
-          <button
-            type="button"
-            className="viewer-toolbar__tool viewer-toolbar__tool--icon"
-            onClick={resetView}
-            aria-label="Ajustar à tela"
-            title="Ajustar à tela"
-          >
-            <Maximize2 size={16} strokeWidth={1.75} aria-hidden />
-          </button>
-        </div>
+        <button
+          type="button"
+          className="viewer-toolbar__tool viewer-toolbar__tool--icon"
+          onClick={resetView}
+          aria-label="Ajustar à tela"
+          title="Ajustar à tela"
+        >
+          <Maximize2 size={16} strokeWidth={1.75} aria-hidden />
+        </button>
       </div>
 
       <div className="viewer-toolbar__actions">

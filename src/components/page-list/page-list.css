@@ -278,9 +278,12 @@
 }
 
 .page-list__meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
   flex: 1;
   min-width: 0;
-  text-align: right;
   font-size: var(--font-size-xs);
   font-weight: 400;
   color: var(--color-text-muted);
@@ -289,12 +292,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+.page-list__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.page-list__stat svg {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
 .page-list__sep {
   color: var(--color-text-muted);
 }
 
 .page-list__item--active .page-list__meta,
-.page-list__item--active .page-list__sep {
+.page-list__item--active .page-list__sep,
+.page-list__item--active .page-list__stat svg {
   color: var(--color-primary);
 }
 
