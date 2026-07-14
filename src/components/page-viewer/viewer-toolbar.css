@@ -1,0 +1,125 @@
+.viewer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: var(--toolbar-height);
+  padding: 0 var(--space-4);
+  background: var(--color-bg-app);
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+
+.viewer-toolbar__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.viewer-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.viewer-toolbar__tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: #334155;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  border-radius:  4px;
+  cursor: pointer;
+  transition: color var(--transition), background var(--transition);
+}
+
+.viewer-toolbar__tool--labeled {
+  height: 30px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.viewer-toolbar__tool--icon {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.viewer-toolbar__tool:hover:not(:disabled) {
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+}
+
+.viewer-toolbar__tool--active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.viewer-toolbar__tool--active:hover:not(:disabled) {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.viewer-toolbar__tool:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.viewer-toolbar__divider {
+  width: 1px;
+  height: 20px;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.viewer-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.viewer-toolbar__status {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.viewer-toolbar__finalize-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--color-crop-finalized);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition), background var(--transition);
+}
+
+.viewer-toolbar__finalize-btn:hover {
+  background: color-mix(in srgb, var(--color-crop-finalized) 8%, transparent);
+}
+
+.viewer-toolbar__finalize-btn--done {
+  color: var(--color-text-secondary);
+}
+
+.viewer-toolbar__finalize-btn--done:hover {
+  color: var(--color-text);
+  background: var(--color-bg-subtle);
+}

@@ -1,0 +1,281 @@
+.news-clipping-thumbnail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.news-clipping-thumbnail__frame {
+  position: relative;
+  flex: 1;
+  min-height: 148px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 0;
+  width: 100%;
+  cursor: default;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition);
+}
+
+.news-clipping-thumbnail__frame--interactive {
+  cursor: zoom-in;
+}
+
+.news-clipping-thumbnail__frame--interactive:hover {
+  border-color: color-mix(in srgb, var(--clip-accent, var(--color-primary)) 55%, var(--color-border));
+  box-shadow:
+    0 4px 14px rgba(15, 23, 42, 0.08),
+    0 0 0 1px color-mix(in srgb, var(--clip-accent, var(--color-primary)) 12%, transparent);
+}
+
+.news-clipping-thumbnail__frame--interactive:hover .news-clipping-thumbnail__zoom-hint {
+  opacity: 1;
+}
+
+.news-clipping-thumbnail__canvas-wrap {
+  position: absolute;
+  inset: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.news-clipping-thumbnail__canvas-wrap--hidden {
+  visibility: hidden;
+}
+
+.news-clipping-thumbnail__canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  border-radius: 2px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.news-clipping-thumbnail__skeleton {
+  position: absolute;
+  inset: 8px;
+  border-radius: var(--radius-sm);
+  background: #e8edf3;
+  overflow: hidden;
+}
+
+.news-clipping-thumbnail__skeleton-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.65) 50%,
+    transparent 100%
+  );
+  animation: news-clipping-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes news-clipping-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.news-clipping-thumbnail__error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.news-clipping-thumbnail__zoom-hint {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity var(--transition);
+  pointer-events: none;
+  box-shadow: var(--shadow-xs);
+}
+
+.news-clipping-thumbnail__badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--color-primary);
+  border-radius: var(--radius-xs);
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+  z-index: 1;
+}
+
+.news-clipping-thumbnail__caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.news-clipping-thumbnail__page-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.news-clipping-thumbnail__page-label strong {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* Lightbox */
+.news-clipping-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+.news-clipping-lightbox__panel {
+  display: flex;
+  flex-direction: column;
+  width: min(92vw, 820px);
+  max-height: min(88vh, 900px);
+  background: var(--color-bg-app);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.news-clipping-lightbox__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-chrome);
+  flex-shrink: 0;
+}
+
+.news-clipping-lightbox__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.news-clipping-lightbox__meta strong {
+  color: var(--color-text);
+}
+
+.news-clipping-lightbox__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--color-primary);
+  border-radius: var(--radius-xs);
+}
+
+.news-clipping-lightbox__close {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-app);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition:
+    color var(--transition),
+    border-color var(--transition),
+    background var(--transition);
+}
+
+.news-clipping-lightbox__close:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-subtle);
+}
+
+.news-clipping-lightbox__body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-5);
+  background: #f4f6f9;
+  overflow: auto;
+}
+
+.news-clipping-lightbox__loading {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.news-clipping-lightbox__canvas {
+  display: block;
+  max-width: 100%;
+  max-height: min(72vh, 760px);
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-sm);
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.08),
+    0 12px 32px rgba(15, 23, 42, 0.12);
+}
+
+.news-clipping-lightbox__canvas--hidden {
+  display: none;
+}

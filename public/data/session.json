@@ -1,0 +1,711 @@
+{
+  "editions": [
+    {
+      "id": "campineiro-campinas-2025-05-24",
+      "vehicleName": "Diário Campineiro",
+      "editionDate": "2025-05-24",
+      "label": "Diário Campineiro - Campinas - 24/05",
+      "clientKeywords": [
+        "Educação",
+        "Saúde municipal",
+        "política",
+        "justiça",
+        "campinas",
+        "economia",
+        "empreendedorismo"
+      ],
+      "pdfs": [
+        {
+          "id": "pdf-campineiro-campinas",
+          "name": "Campinas",
+          "url": "/pdfs/diario-campineiro-campinas.pdf",
+          "pages": [
+            {
+              "pageNumber": 1,
+              "hasClient": true,
+              "keywordsFound": [
+                "Prefeitura"
+              ],
+              "keywordsMissing": [
+                "Unimed",
+                "Campinas"
+              ],
+              "keywordOccurrences": [
+                {
+                  "keyword": "Prefeitura",
+                  "rect": {
+                    "x": 10,
+                    "y": 16,
+                    "width": 15,
+                    "height": 2.5
+                  }
+                }
+              ],
+              "crops": []
+            },
+            {
+              "pageNumber": 2,
+              "hasClient": false,
+              "keywordsFound": [
+                "Educação",
+                "Saúde municipal",
+                "política",
+                "justiça"
+              ],
+              "keywordsMissing": [
+                "campinas",
+                "economia",
+                "empreendedorismo"
+              ],
+              "keywordOccurrences": [
+                {
+                  "keyword": "Educação",
+                  "rect": {
+                    "x": 8,
+                    "y": 22,
+                    "width": 10,
+                    "height": 1.8
+                  }
+                },
+                {
+                  "keyword": "Educação",
+                  "rect": {
+                    "x": 52,
+                    "y": 38,
+                    "width": 10,
+                    "height": 1.8
+                  }
+                },
+                {
+                  "keyword": "Educação",
+                  "rect": {
+                    "x": 12,
+                    "y": 55,
+                    "width": 10,
+                    "height": 1.8
+                  }
+                },
+                {
+                  "keyword": "Saúde municipal",
+                  "rect": {
+                    "x": 55,
+                    "y": 28,
+                    "width": 18,
+                    "height": 1.8
+                  }
+                },
+                {
+                  "keyword": "Saúde municipal",
+                  "rect": {
+                    "x": 55,
+                    "y": 62,
+                    "width": 18,
+                    "height": 1.8
+                  }
+                },
+                {
+                  "keyword": "política",
+                  "rect": {
+                    "x": 10,
+                    "y": 32,
+                    "width": 8,
+                    "height": 1.8
+                  }
+                },
+                {
+                  "keyword": "justiça",
+                  "rect": {
+                    "x": 14,
+                    "y": 48,
+                    "width": 7,
+                    "height": 1.8
+                  }
+                }
+              ],
+              "crops": []
+            },
+            {
+              "pageNumber": 3,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": [
+                {
+                  "id": "camp-crop-p3-group",
+                  "rect": {
+                    "x": 3,
+                    "y": 8,
+                    "width": 94,
+                    "height": 22
+                  },
+                  "title": "Política local (cont.)",
+                  "text": "Continuação da reportagem de política local.",
+                  "groupId": "group-politica-local"
+                },
+                {
+                  "id": "camp-crop-p3-1",
+                  "rect": {
+                    "x": 3,
+                    "y": 35,
+                    "width": 94,
+                    "height": 30
+                  },
+                  "title": "Início: Saúde municipal (continua p.10)",
+                  "text": "Continua na página 10\\n\\nReportagem sobre saúde pública em Campinas.",
+                  "groupId": null
+                }
+              ]
+            },
+            {
+              "pageNumber": 4,
+              "hasClient": true,
+              "keywordsFound": [
+                "Prefeitura"
+              ],
+              "keywordsMissing": [
+                "Unimed",
+                "Campinas"
+              ],
+              "keywordOccurrences": [
+                {
+                  "keyword": "Prefeitura",
+                  "rect": {
+                    "x": 10,
+                    "y": 19,
+                    "width": 15,
+                    "height": 2.5
+                  }
+                }
+              ],
+              "crops": []
+            },
+            {
+              "pageNumber": 5,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": [
+                {
+                  "id": "camp-crop-p5-group",
+                  "rect": {
+                    "x": 3,
+                    "y": 12,
+                    "width": 94,
+                    "height": 18
+                  },
+                  "title": "Política local (cont.)",
+                  "text": "Terceira parte da reportagem agrupada.",
+                  "groupId": "group-politica-local"
+                }
+              ]
+            },
+            {
+              "pageNumber": 6,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 7,
+              "hasClient": true,
+              "keywordsFound": [
+                "Prefeitura"
+              ],
+              "keywordsMissing": [
+                "Unimed",
+                "Campinas"
+              ],
+              "keywordOccurrences": [
+                {
+                  "keyword": "Prefeitura",
+                  "rect": {
+                    "x": 10,
+                    "y": 17,
+                    "width": 15,
+                    "height": 2.5
+                  }
+                }
+              ],
+              "crops": []
+            },
+            {
+              "pageNumber": 8,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 9,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 10,
+              "hasClient": true,
+              "keywordsFound": [
+                "Prefeitura"
+              ],
+              "keywordsMissing": [
+                "Unimed",
+                "Campinas"
+              ],
+              "keywordOccurrences": [
+                {
+                  "keyword": "Prefeitura",
+                  "rect": {
+                    "x": 10,
+                    "y": 15,
+                    "width": 15,
+                    "height": 2.5
+                  }
+                }
+              ],
+              "crops": [
+                {
+                  "id": "camp-crop-p10-1",
+                  "rect": {
+                    "x": 3,
+                    "y": 8,
+                    "width": 94,
+                    "height": 28
+                  },
+                  "title": "Continuação: Saúde municipal",
+                  "text": "Continuação da matéria iniciada na página 3.",
+                  "groupId": null
+                }
+              ]
+            },
+            {
+              "pageNumber": 11,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 12,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 13,
+              "hasClient": true,
+              "keywordsFound": [
+                "Prefeitura"
+              ],
+              "keywordsMissing": [
+                "Unimed",
+                "Campinas"
+              ],
+              "keywordOccurrences": [
+                {
+                  "keyword": "Prefeitura",
+                  "rect": {
+                    "x": 10,
+                    "y": 18,
+                    "width": 15,
+                    "height": 2.5
+                  }
+                }
+              ],
+              "crops": []
+            },
+            {
+              "pageNumber": 14,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 15,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 16,
+              "hasClient": true,
+              "keywordsFound": [
+                "Prefeitura"
+              ],
+              "keywordsMissing": [
+                "Unimed",
+                "Campinas"
+              ],
+              "keywordOccurrences": [
+                {
+                  "keyword": "Prefeitura",
+                  "rect": {
+                    "x": 10,
+                    "y": 16,
+                    "width": 15,
+                    "height": 2.5
+                  }
+                }
+              ],
+              "crops": []
+            },
+            {
+              "pageNumber": 17,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 18,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 19,
+              "hasClient": true,
+              "keywordsFound": [
+                "Prefeitura"
+              ],
+              "keywordsMissing": [
+                "Unimed",
+                "Campinas"
+              ],
+              "keywordOccurrences": [
+                {
+                  "keyword": "Prefeitura",
+                  "rect": {
+                    "x": 10,
+                    "y": 19,
+                    "width": 15,
+                    "height": 2.5
+                  }
+                }
+              ],
+              "crops": []
+            },
+            {
+              "pageNumber": 20,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Unimed",
+                "Prefeitura",
+                "Campinas"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gazete-sul-santa-cruz-2025-05-24",
+      "vehicleName": "Gazete do Sul",
+      "editionDate": "2025-05-24",
+      "label": "Gazete do Sul - Santa Cruz do Sul - 24/05",
+      "clientKeywords": [
+        "Santa Cruz do Sul",
+        "Unimed",
+        "Prefeitura",
+        "economia",
+        "saude"
+      ],
+      "pdfs": [
+        {
+          "id": "pdf-gazete-sul-santa-cruz",
+          "name": "Santa Cruz do Sul",
+          "url": "/pdfs/gazete-do-sul-santa-cruz.pdf",
+          "pages": [
+            {
+              "pageNumber": 1,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 2,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 3,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 4,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 5,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 6,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 7,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 8,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 9,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 10,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 11,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 12,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 13,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 14,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 15,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            },
+            {
+              "pageNumber": 16,
+              "hasClient": false,
+              "keywordsFound": [],
+              "keywordsMissing": [
+                "Santa Cruz do Sul",
+                "Unimed",
+                "Prefeitura",
+                "economia",
+                "saude"
+              ],
+              "keywordOccurrences": [],
+              "crops": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
