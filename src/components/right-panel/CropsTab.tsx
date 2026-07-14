@@ -1,9 +1,8 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
-import { ChevronDown, ChevronRight, Filter, Info, Plus, Search, Unlink } from 'lucide-react'
+import { ChevronDown, ChevronRight, Filter, Info, Search, Unlink } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
-import { useViewerStore } from '@/stores/viewerStore'
 import { useCurrentPdf } from '@/hooks/useSessionSelectors'
 import { useCropDisplayTree, useCropDisplayIndexMap } from '@/hooks/useCropSelectors'
 import { buildCropsByPageSections } from '@/utils/cropDisplayTree'
@@ -28,7 +27,6 @@ export function CropsTab() {
   const selectPage = useSessionStore((s) => s.selectPage)
   const newsViewFilter = useSessionStore((s) => s.newsViewFilter)
   const currentPdf = useCurrentPdf()
-  const exitPanMode = useViewerStore((s) => s.exitPanMode)
 
   const displayTree = useCropDisplayTree(selectedEditionId, currentPdf?.id)
   const cropDisplayIndex = useCropDisplayIndexMap(selectedEditionId, currentPdf?.id)
