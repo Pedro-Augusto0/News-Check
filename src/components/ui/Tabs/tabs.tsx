@@ -33,7 +33,7 @@ export function Tabs({ items, defaultTab }: TabsProps) {
             className={cn('tabs__tab', activeTab === item.id && 'tabs__tab--active')}
             onClick={() => handleTabChange(item.id)}
           >
-            {item.icon && <span className="tabs__tab-icon">{item.icon}</span>}
+            {item.icon && <span className="tabs__tab-icon"></span>}
             <span>{item.label}</span>
           </button>
         ))}

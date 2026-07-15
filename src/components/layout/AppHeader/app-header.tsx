@@ -58,7 +58,7 @@ export function AppHeader() {
   return (
     <header className="app-header">
       <div className="app-header__brand">
-        <span className="app-header__title">Validador de Cortes</span>
+        <span className="app-header__title"></span>
       </div>
 
       <div className="app-header__session">

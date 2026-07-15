@@ -12,15 +12,6 @@ import type { CropDisplayNode } from '@/types/session'
 import { CropListItem, CropGroupItem } from './CropListItem'
 import './crops-tab.css'
 
-type CropFilter = 'all' | 'pending' | 'grouped' | 'ungrouped'
-
-const FILTER_OPTIONS: { value: CropFilter; label: string }[] = [
-  { value: 'all', label: 'Todas' },
-  { value: 'pending', label: 'Pendentes' },
-  { value: 'grouped', label: 'Agrupadas' },
-  { value: 'ungrouped', label: 'Sem grupo' },
-]
-
 export function CropsTab() {
   const selectedEditionId = useSessionStore((s) => s.selectedEditionId)
   const selectedPageNumber = useSessionStore((s) => s.selectedPageNumber)
@@ -44,7 +35,6 @@ export function CropsTab() {
   const selectCrop = useCropsStore((s) => s.selectCrop)
 
   const [search, setSearch] = useState('')
-  const [cropFilter, setCropFilter] = useState<CropFilter>('all')
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
   const [ungroupZoneActive, setUngroupZoneActive] = useState(false)
@@ -100,18 +90,13 @@ export function CropsTab() {
       nodes = nodes.filter((node) => newsDisplayNodeHasClient(node, crops))
     }
 
-    if (cropFilter === 'all') return nodes
-
     return nodes.filter((node) => {
       const cropId = node.crop?.id
       if (!cropId) return false
 
-      if (cropFilter === 'pending') return !isNewsItemFinalized(cropId)
-      if (cropFilter === 'grouped') return node.type === 'group'
-      if (cropFilter === 'ungrouped') return node.type === 'crop'
-      return true
+      return !isNewsItemFinalized(cropId)
     })
-  }, [displayTree, search, newsViewFilter, crops, cropFilter, isNewsItemFinalized])
+  }, [displayTree, search, newsViewFilter, crops, isNewsItemFinalized])
 
   const pageSections = useMemo(
     () => buildCropsByPageSections(filteredTree),
@@ -186,6 +171,7 @@ export function CropsTab() {
             group={node.group}
             rootCrop={node.crop}
             childCrops={childCrops}
+            pdfUrl={currentPdf?.url}
             index={cropIndex}
             accentColor={accent}
             expanded={expandedGroups[node.group.id] ?? true}
@@ -216,6 +202,7 @@ export function CropsTab() {
         <div key={node.id} onDragEnter={() => setDropTargetId(node.crop!.id)}>
           <CropListItem
             crop={crop}
+            pdfUrl={currentPdf?.url}
             index={cropIndex}
             accentColor={accent}
             isDragging={dragId === node.crop.id}
@@ -267,21 +254,6 @@ export function CropsTab() {
 
       </div>
 
-      <div className="crops-tab__filters" role="group" aria-label="Filtrar cortes">
-        {FILTER_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            className={cn(
-              'crops-tab__filter-chip',
-              cropFilter === opt.value && 'crops-tab__filter-chip--active',
-            )}
-            onClick={() => setCropFilter(opt.value)}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
 
       <p className="crops-tab__hint">
         <Info size={13} aria-hidden />

@@ -16,7 +16,7 @@ import { mergeClientKeywords } from '@/utils/cropClientStats'
 import { cn } from '@/utils/cn'
 import { cropColor } from '@/utils/cropColors'
 import type { Crop } from '@/types/session'
-import { ClippingLightbox, NewsClippingThumbnail } from './NewsClippingThumbnail'
+import { ClippingLightbox, DETAIL_THUMBNAIL_WIDTH_LARGE, NewsClippingThumbnail } from './NewsClippingThumbnail'
 import './crop-text-modal.css'
 
 interface CropPreviewItem {
@@ -238,7 +238,12 @@ export function CropTextModal() {
           </article>
 
           <aside className="news-detail-modal__aside">
-            <section className="news-detail-modal__card news-detail-modal__card--clippings">
+            <section
+              className={cn(
+                'news-detail-modal__card news-detail-modal__card--clippings',
+                modalCrops.length === 1 && 'news-detail-modal__card--clippings-single',
+              )}
+            >
               <header className="news-detail-modal__card-header">
                 <div className="news-detail-modal__card-title-row">
                   <h2 className="news-detail-modal__card-title">Cortes da notícia</h2>
@@ -274,6 +279,7 @@ export function CropTextModal() {
                       crop={preview.crop}
                       displayIndex={displayInfo?.displayIndex}
                       accentColor={cropColor(displayInfo?.colorIndex ?? 0)}
+                      renderWidth={modalCrops.length === 1 ? DETAIL_THUMBNAIL_WIDTH_LARGE : undefined}
                       onExpand={() => setExpandedCropId(preview.crop.id)}
                     />
                   )

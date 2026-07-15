@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
-import { Check, Circle, Eye } from 'lucide-react'
-import { Button } from '@/components/ui/Button/button'
+import { Check, Circle } from 'lucide-react'
 import { useCurrentPage } from '@/hooks/useSessionSelectors'
 import './keywords-tab.css'
 
@@ -82,10 +81,6 @@ export function KeywordsTab() {
           <span className="keywords-tab__summary-value">{totalOccurrences}</span>
           <span className="keywords-tab__summary-sub">Total de ocorrências</span>
         </div>
-        <Button variant="secondary" size="sm" className="keywords-tab__highlights-btn">
-          <Eye size={14} />
-          Ver destaques
-        </Button>
       </section>
 
     </div>

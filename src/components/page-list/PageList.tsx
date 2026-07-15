@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, Filter, Search, UserRound } from 'lucide-react'
+import { CircleDashed, FileText, Filter, LayoutGrid, Search, UserRound } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
@@ -13,11 +13,13 @@ import './page-list.css'
 const FILTER_OPTIONS: {
   value: PageFilter
   label: string
+  shortLabel: string
   tone: 'all' | 'withClient' | 'withoutClient'
+  icon: typeof LayoutGrid
 }[] = [
-  { value: 'all', label: 'Todas', tone: 'all' },
-  { value: 'withClient', label: 'Com cliente', tone: 'withClient' },
-  { value: 'withoutClient', label: 'Sem cliente', tone: 'withoutClient' },
+  { value: 'all', label: 'Todas as páginas', shortLabel: 'Todas', tone: 'all', icon: LayoutGrid },
+  { value: 'withClient', label: 'Páginas com cliente', shortLabel: 'Cliente', tone: 'withClient', icon: UserRound },
+  { value: 'withoutClient', label: 'Páginas sem cliente', shortLabel: 'Sem', tone: 'withoutClient', icon: CircleDashed },
 ]
 
 const isMac =
@@ -113,11 +115,15 @@ export function PageList() {
           {FILTER_OPTIONS.map((opt) => {
             const count = filterCounts[opt.value]
             const isActive = pageFilter === opt.value
+            const Icon = opt.icon
 
             return (
               <button
                 key={opt.value}
                 type="button"
+                aria-pressed={isActive}
+                aria-label={`${opt.label} (${count})`}
+                title={`${opt.label} (${count})`}
                 className={cn(
                   'page-list__filter-btn',
                   `page-list__filter-btn--${opt.tone}`,
@@ -125,7 +131,10 @@ export function PageList() {
                 )}
                 onClick={() => setPageFilter(opt.value)}
               >
-                <span className="page-list__filter-label">{opt.label}</span>
+                <span className="page-list__filter-main">
+                  <Icon size={11} strokeWidth={2.25} aria-hidden />
+                  <span className="page-list__filter-label">{opt.shortLabel}</span>
+                </span>
                 <span className="page-list__filter-badge">{count}</span>
               </button>
             )
@@ -148,6 +157,11 @@ export function PageList() {
                 type="button"
                 role="option"
                 aria-selected={isActive}
+                aria-label={
+                  pageFinalized
+                    ? `Página ${page.pageNumber} — finalizada`
+                    : `Página ${page.pageNumber} — pendente`
+                }
                 className={cn('page-list__item', isActive && 'page-list__item--active')}
                 onClick={() => selectPage(page.pageNumber)}
               >
@@ -159,7 +173,7 @@ export function PageList() {
                       : 'page-list__status-dot--without-client',
                   )}
                   title={pageFinalized ? 'Página finalizada' : 'Página pendente'}
-                  aria-label={pageFinalized ? 'Página finalizada' : 'Página pendente'}
+                  aria-hidden
                 />
                 <span className="page-list__page-name">Página {page.pageNumber}</span>
                 <span

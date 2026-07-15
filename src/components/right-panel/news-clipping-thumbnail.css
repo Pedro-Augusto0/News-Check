@@ -4,19 +4,17 @@
   gap: var(--space-2);
   margin: 0;
   min-width: 0;
-  height: 100%;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
 }
 
 .news-clipping-thumbnail__frame {
   position: relative;
-  flex: 1;
+  flex: 0 0 auto;
+  height: 148px;
   min-height: 148px;
-  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  background:
-    linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   padding: 0;
   width: 100%;
   cursor: default;
@@ -32,9 +30,6 @@
 
 .news-clipping-thumbnail__frame--interactive:hover {
   border-color: color-mix(in srgb, var(--clip-accent, var(--color-primary)) 55%, var(--color-border));
-  box-shadow:
-    0 4px 14px rgba(15, 23, 42, 0.08),
-    0 0 0 1px color-mix(in srgb, var(--clip-accent, var(--color-primary)) 12%, transparent);
 }
 
 .news-clipping-thumbnail__frame--interactive:hover .news-clipping-thumbnail__zoom-hint {
@@ -151,18 +146,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  line-height: 1.2;
+  flex: 0 0 auto;
+  min-height: 20px;
+  padding: 0 2px 2px;
+  line-height: 1.4;
+  overflow: visible;
 }
 
 .news-clipping-thumbnail__page-label {
-  font-size: var(--font-size-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--color-text-secondary);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
 }
 
 .news-clipping-thumbnail__page-label strong {
   font-weight: 700;
   color: var(--color-text);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Lightbox */
@@ -255,7 +264,6 @@
   flex: 1;
   min-height: 0;
   padding: var(--space-5);
-  background: #f4f6f9;
   overflow: auto;
 }
 
@@ -271,9 +279,6 @@
   width: auto;
   height: auto;
   border-radius: var(--radius-sm);
-  box-shadow:
-    0 2px 8px rgba(15, 23, 42, 0.08),
-    0 12px 32px rgba(15, 23, 42, 0.12);
 }
 
 .news-clipping-lightbox__canvas--hidden {

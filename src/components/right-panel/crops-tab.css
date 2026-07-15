@@ -95,13 +95,6 @@
   border-color: var(--color-border-strong);
 }
 
-.crops-tab__filters {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
 
 .crops-tab__filter-chip {
   height: 24px;

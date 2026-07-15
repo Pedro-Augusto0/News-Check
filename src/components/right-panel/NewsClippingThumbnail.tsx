@@ -6,6 +6,7 @@ import { cn } from '@/utils/cn'
 import './news-clipping-thumbnail.css'
 
 const DETAIL_THUMBNAIL_WIDTH = 360
+export const DETAIL_THUMBNAIL_WIDTH_LARGE = 520
 const LIGHTBOX_WIDTH = 720
 
 interface NewsClippingThumbnailProps {
@@ -14,6 +15,7 @@ interface NewsClippingThumbnailProps {
   displayIndex?: number
   accentColor?: string
   onExpand?: () => void
+  renderWidth?: number
 }
 
 export function NewsClippingThumbnail({
@@ -22,6 +24,7 @@ export function NewsClippingThumbnail({
   displayIndex,
   accentColor,
   onExpand,
+  renderWidth = DETAIL_THUMBNAIL_WIDTH,
 }: NewsClippingThumbnailProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -38,7 +41,7 @@ export function NewsClippingThumbnail({
       crop.pageNumber,
       crop.rect,
       canvas,
-      DETAIL_THUMBNAIL_WIDTH,
+      renderWidth,
     )
       .then((dims) => {
         if (cancelled) return
@@ -51,7 +54,7 @@ export function NewsClippingThumbnail({
     return () => {
       cancelled = true
     }
-  }, [pdfUrl, crop.pageNumber, crop.rect])
+  }, [pdfUrl, crop.pageNumber, crop.rect, renderWidth])
 
   const handleExpand = useCallback(() => {
     if (status === 'ready') onExpand?.()

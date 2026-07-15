@@ -9,7 +9,6 @@ import { useCropDrawing } from '@/hooks/useCropDrawing'
 import { extractAndSaveCropText } from '@/services/cropTextExtraction'
 import { CropOverlay } from './CropOverlay'
 import { CropEditOverlay } from './CropEditOverlay'
-import { KeywordLayer } from './KeywordLayer'
 import { ViewerToolbar } from './ViewerToolbar'
 import './page-viewer.css'
 
@@ -185,11 +184,6 @@ export function PageViewer() {
             }}
           >
             <canvas ref={canvasRef} className="page-viewer__canvas" />
-            <KeywordLayer
-              occurrences={currentPage.keywordOccurrences}
-              width={dimensions.width}
-              height={dimensions.height}
-            />
             <CropOverlay
               crops={crops}
               cropDisplayIndex={cropDisplayIndex}

@@ -4,6 +4,7 @@ import type { Crop, CropGroup } from '@/types/session'
 import { cn } from '@/utils/cn'
 import { cropHasClient, formatClientKeywords, mergeClientKeywords } from '@/utils/cropClientStats'
 import { CropItemMenu } from './CropItemMenu'
+import { ListCropThumbnail } from '@/components/shared/ListCropThumbnail'
 import { useCropsStore } from '@/stores/cropsStore'
 import './crop-list-item.css'
 
@@ -33,6 +34,7 @@ function ClientBadge({ keywords }: { keywords: string[] }) {
 
 interface CropListItemProps {
   crop: Crop
+  pdfUrl?: string
   index?: number
   subLabel?: string
   accentColor?: string
@@ -53,6 +55,7 @@ interface CropListItemProps {
 
 export function CropListItem({
   crop,
+  pdfUrl,
   index,
   subLabel,
   accentColor,
@@ -126,11 +129,12 @@ export function CropListItem({
       onClick={() => onSelect(crop.id)}
       aria-label={finalized ? `${crop.title || 'Sem título'} — Finalizado` : undefined}
     >
-      {label && (
-        <span className="crop-list-item__index" aria-hidden>
-          {label}
-        </span>
-      )}
+      <ListCropThumbnail
+        pdfUrl={pdfUrl}
+        crop={crop}
+        displayIndex={label}
+        accentColor={accentColor}
+      />
 
       <div className="crop-list-item__body">
         <div className="crop-list-item__title-row">
@@ -217,6 +221,7 @@ interface CropGroupItemProps {
   group: CropGroup
   rootCrop: Crop
   childCrops: Crop[]
+  pdfUrl?: string
   index?: number
   accentColor?: string
   expanded: boolean
@@ -238,6 +243,7 @@ export function CropGroupItem({
   group,
   rootCrop,
   childCrops,
+  pdfUrl,
   index,
   accentColor,
   expanded,
@@ -313,6 +319,7 @@ export function CropGroupItem({
       <CropListItem
         key={crop.id}
         crop={{ ...crop, title: group.title }}
+        pdfUrl={pdfUrl}
         subLabel={subLabel}
         accentColor={accentColor}
         isChild
@@ -349,11 +356,12 @@ export function CropGroupItem({
         onClick={() => onSelect(rootCrop.id)}
         aria-label={finalized ? `${group.title || 'Sem título'} — Finalizado` : undefined}
       >
-        {index !== undefined && (
-          <span className="crop-list-item__index" aria-hidden>
-            {index}
-          </span>
-        )}
+        <ListCropThumbnail
+          pdfUrl={pdfUrl}
+          crop={rootCrop}
+          displayIndex={index}
+          accentColor={accentColor}
+        />
 
         <div className="crop-list-item__body">
           <div className="crop-list-item__title-row">
