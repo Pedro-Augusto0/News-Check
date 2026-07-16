@@ -25,12 +25,8 @@ export function buildCropDisplayTree(
   for (const crop of pdfCrops) {
     if (crop.groupId && groups[crop.groupId]) {
       const group = groups[crop.groupId]
-      const rootCrop = crops[group.cropIds[0]]
 
       if (seenGroups.has(crop.groupId)) {
-        if (rootCrop && crop.pageNumber !== rootCrop.pageNumber) {
-          nodes.push({ type: 'crop', id: crop.id, crop, group })
-        }
         continue
       }
 
@@ -86,12 +82,33 @@ export interface CropPageSection {
   nodes: CropDisplayNode[]
 }
 
-export function buildCropsByPageSections(tree: CropDisplayNode[]): CropPageSection[] {
+export interface CropListPageNewsRef {
+  id: string
+  pageNumber: number
+}
+
+export function resolveCropListPageNumber(
+  crop: Crop,
+  newsById: Map<string, CropListPageNewsRef>,
+): number {
+  if (crop.newsItemId) {
+    const news = newsById.get(crop.newsItemId)
+    if (news) return news.pageNumber
+  }
+  return crop.pageNumber
+}
+
+export function buildCropsByPageSections(
+  tree: CropDisplayNode[],
+  newsItems: CropListPageNewsRef[] = [],
+): CropPageSection[] {
+  const newsById = new Map(newsItems.map((item) => [item.id, item]))
   const byPage = new Map<number, CropDisplayNode[]>()
 
   for (const node of tree) {
-    const pageNumber = node.crop?.pageNumber
-    if (pageNumber === undefined) continue
+    const crop = node.crop
+    if (!crop) continue
+    const pageNumber = resolveCropListPageNumber(crop, newsById)
     const section = byPage.get(pageNumber) ?? []
     section.push(node)
     byPage.set(pageNumber, section)

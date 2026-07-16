@@ -137,14 +137,8 @@ export function CropTextModal() {
   const text = useCropsStore((s) => {
     const id = s.textModalCropId
     if (!id) return ''
-    const modalGroup = s.groups[id]
-    if (modalGroup) {
-      return modalGroup.cropIds
-        .map((cropId) => s.crops[cropId]?.text ?? '')
-        .filter(Boolean)
-        .join('\n\n')
-    }
-    return s.crops[id]?.text ?? ''
+    if (s.groups[id]) return s.getGroupText(id)
+    return s.getCropText(id)
   })
 
   const extracting = useCropsStore((s) =>

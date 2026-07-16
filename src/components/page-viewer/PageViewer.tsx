@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
+import { useNewsStore } from '@/stores/newsStore'
 import { useViewerStore } from '@/stores/viewerStore'
 import { useCurrentPdf, useCurrentPage } from '@/hooks/useSessionSelectors'
 import { usePageCrops, useCropDisplayIndexMap } from '@/hooks/useCropSelectors'
@@ -23,7 +24,7 @@ export function PageViewer() {
   const selectedCropId = useCropsStore((s) => s.selectedCropId)
   const editingCropId = useCropsStore((s) => s.editingCropId)
   const selectCrop = useCropsStore((s) => s.selectCrop)
-  const addCrop = useCropsStore((s) => s.addCrop)
+  const addCropToNews = useCropsStore((s) => s.addCropToNews)
   const startEditCrop = useCropsStore((s) => s.startEditCrop)
   const cancelEditCrop = useCropsStore((s) => s.cancelEditCrop)
   const commitEditCrop = useCropsStore((s) => s.commitEditCrop)
@@ -31,6 +32,10 @@ export function PageViewer() {
   const deleteCrop = useCropsStore((s) => s.deleteCrop)
   const openTextModal = useCropsStore((s) => s.openTextModal)
   const cropsMap = useCropsStore((s) => s.crops)
+  const selectedNewsItemId = useNewsStore((s) => s.selectedNewsItemId)
+  const getNewsItem = useNewsStore((s) => s.getNewsItem)
+  const selectNewsItem = useNewsStore((s) => s.selectNewsItem)
+  const ensureNewsForCrop = useNewsStore((s) => s.ensureNewsForCrop)
 
   const panMode = useViewerStore((s) => s.panMode)
   const panOffset = useViewerStore((s) => s.panOffset)
@@ -45,6 +50,7 @@ export function PageViewer() {
 
   const isEditing = !!editingCropId
   const editingCrop = editingCropId ? cropsMap[editingCropId] : undefined
+  const canDrawCrop = !!selectedNewsItemId && !panMode && !isEditing
 
   useEffect(() => {
     if (!editingCropId) return
@@ -55,27 +61,54 @@ export function PageViewer() {
   }, [editingCropId, cropsMap, selectedPageNumber, cancelEditCrop])
 
   const handleCropComplete = useCallback(
-    (rect: Parameters<typeof addCrop>[0]['rect']) => {
-      if (!selectedEditionId || !currentPdf || isEditing) return
-      const cropId = addCrop({
+    (rect: Parameters<typeof addCropToNews>[0]['rect']) => {
+      if (!selectedEditionId || !currentPdf || isEditing || !selectedNewsItemId) return
+
+      const newsItem = getNewsItem(selectedNewsItemId)
+      if (!newsItem) return
+
+      const cropId = addCropToNews({
         editionId: selectedEditionId,
         pdfId: currentPdf.id,
         pageNumber: selectedPageNumber,
         rect,
-        text: '',
+        newsItem,
       })
+
+      if (!cropId) return
       const crop = useCropsStore.getState().crops[cropId]
       if (crop) void extractAndSaveCropText(crop, currentPdf.url)
     },
-    [addCrop, selectedEditionId, currentPdf, selectedPageNumber, isEditing],
+    [
+      addCropToNews,
+      selectedEditionId,
+      currentPdf,
+      selectedPageNumber,
+      isEditing,
+      selectedNewsItemId,
+      getNewsItem,
+    ],
   )
 
   const { draftRect, handlePointerDown, handlePointerMove, handlePointerUp } = useCropDrawing({
-    enabled: !panMode && !isEditing,
+    enabled: canDrawCrop,
     containerWidth: dimensions.width,
     containerHeight: dimensions.height,
     onComplete: handleCropComplete,
   })
+
+  const handleSelectCrop = useCallback(
+    (cropId: string | null) => {
+      if (!cropId) {
+        selectCrop(null)
+        return
+      }
+      selectCrop(cropId)
+      const newsId = ensureNewsForCrop(cropId)
+      selectNewsItem(newsId)
+    },
+    [selectCrop, ensureNewsForCrop, selectNewsItem],
+  )
 
   const handlePanStart = (e: React.PointerEvent) => {
     if (!panMode || isEditing) return
@@ -109,18 +142,18 @@ export function PageViewer() {
   const handleFinalizeCrop = useCallback(
     (cropId: string) => {
       finalizeCrop(cropId)
-      selectCrop(cropId)
+      handleSelectCrop(cropId)
     },
-    [finalizeCrop, selectCrop],
+    [finalizeCrop, handleSelectCrop],
   )
 
   const handleViewText = useCallback(
     (cropId: string) => {
       const crop = cropsMap[cropId]
       openTextModal(crop?.groupId ?? cropId)
-      selectCrop(cropId)
+      handleSelectCrop(cropId)
     },
-    [openTextModal, selectCrop, cropsMap],
+    [openTextModal, handleSelectCrop, cropsMap],
   )
 
   const handleDeleteCrop = useCallback(
@@ -140,6 +173,14 @@ export function PageViewer() {
     [editingCropId, commitEditCrop, currentPdf],
   )
 
+  const canvasCursor = isEditing
+    ? 'default'
+    : panMode
+      ? 'grab'
+      : canDrawCrop
+        ? 'crosshair'
+        : 'not-allowed'
+
   if (!currentPdf || !currentPage) {
     return (
       <div className="page-viewer page-viewer--empty">
@@ -158,9 +199,7 @@ export function PageViewer() {
         >
           <div
             className="page-viewer__canvas-wrap"
-            style={{
-              cursor: isEditing ? 'default' : panMode ? 'grab' : 'crosshair',
-            }}
+            style={{ cursor: canvasCursor }}
             onPointerDown={(e) => {
               if (isEditing) return
 
@@ -192,7 +231,7 @@ export function PageViewer() {
               draftRect={draftRect}
               width={dimensions.width}
               height={dimensions.height}
-              onSelectCrop={selectCrop}
+              onSelectCrop={handleSelectCrop}
               onViewText={handleViewText}
               onEditCrop={handleEditCrop}
               onFinalizeCrop={handleFinalizeCrop}

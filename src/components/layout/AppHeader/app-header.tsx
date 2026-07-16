@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Scan } from 'lucide-react'
 import { ComboBox } from '@/components/ui/ComboBox/combobox'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
+import { useNewsStore } from '@/stores/newsStore'
 import { useViewerStore } from '@/stores/viewerStore'
 import { useCurrentPdf } from '@/hooks/useSessionSelectors'
 import type { VehicleEdition, NewsViewFilter } from '@/types/session'
@@ -30,6 +31,7 @@ export function AppHeader() {
   const nextPage = useSessionStore((s) => s.nextPage)
   const prevPage = useSessionStore((s) => s.prevPage)
   const hydrateFromEdition = useCropsStore((s) => s.hydrateFromEdition)
+  const hydrateNewsFromEdition = useNewsStore((s) => s.hydrateFromEdition)
 
   const zoom = useViewerStore((s) => s.zoom)
   const setZoom = useViewerStore((s) => s.setZoom)
@@ -49,7 +51,10 @@ export function AppHeader() {
   const handleEditionChange = (id: string) => {
     selectEdition(id)
     const edition = editions.find((e) => e.id === id)
-    if (edition) hydrateFromEdition(edition)
+    if (edition) {
+      hydrateFromEdition(edition)
+      hydrateNewsFromEdition(edition)
+    }
   }
 
   const isFirstPage = selectedPageNumber <= 1

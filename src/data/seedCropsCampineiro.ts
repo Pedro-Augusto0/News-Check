@@ -94,5 +94,6 @@ export function normalizeSeedCrop(crop: Crop): Crop {
     finalized: crop.finalized ?? false,
     displayIndex: crop.displayIndex ?? 0,
     clientKeywordsFound: crop.clientKeywordsFound ?? [],
+    newsItemId: crop.newsItemId ?? null,
   }
 }

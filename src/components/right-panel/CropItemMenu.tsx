@@ -22,6 +22,7 @@ interface CropItemMenuProps {
   onDelete: () => void
   onUngroup?: () => void
   canUngroup?: boolean
+  canViewText?: boolean
   isFinalized?: boolean
 }
 
@@ -78,6 +79,7 @@ export function CropItemMenu({
   onDelete,
   onUngroup,
   canUngroup,
+  canViewText = true,
   isFinalized,
 }: CropItemMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -101,7 +103,7 @@ export function CropItemMenu({
       window.removeEventListener('resize', updatePosition)
       window.removeEventListener('scroll', updatePosition, true)
     }
-  }, [open, anchorRef, canUngroup, isFinalized])
+  }, [open, anchorRef, canUngroup, canViewText, isFinalized])
 
   useEffect(() => {
     if (!open) return
@@ -136,11 +138,13 @@ export function CropItemMenu({
       style={position ?? undefined}
       role="menu"
     >
-      <MenuItem
-        icon={<FileText size={13} strokeWidth={2} />}
-        label="Ver detalhes"
-        onClick={() => closeAnd(onViewText)}
-      />
+      {canViewText && (
+        <MenuItem
+          icon={<FileText size={13} strokeWidth={2} />}
+          label="Ver detalhes"
+          onClick={() => closeAnd(onViewText)}
+        />
+      )}
       <MenuItem
         icon={<Crop size={13} strokeWidth={2} />}
         iconVariant="edit"

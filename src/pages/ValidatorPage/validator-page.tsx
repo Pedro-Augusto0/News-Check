@@ -8,6 +8,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { loadSession } from '@/services/loadSession'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
+import { useNewsStore } from '@/stores/newsStore'
 import './validator-page.css'
 
 export function ValidatorPage() {
@@ -17,6 +18,7 @@ export function ValidatorPage() {
   const setLoading = useSessionStore((s) => s.setLoading)
   const setError = useSessionStore((s) => s.setError)
   const hydrateFromEdition = useCropsStore((s) => s.hydrateFromEdition)
+  const hydrateNewsFromEdition = useNewsStore((s) => s.hydrateFromEdition)
 
   useKeyboardShortcuts()
 
@@ -26,12 +28,15 @@ export function ValidatorPage() {
       .then((payload) => {
         setEditions(payload.editions)
         const first = payload.editions[0]
-        if (first) hydrateFromEdition(first)
+        if (first) {
+          hydrateFromEdition(first)
+          hydrateNewsFromEdition(first)
+        }
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : 'Erro ao carregar dados')
       })
-  }, [setEditions, setLoading, setError, hydrateFromEdition])
+  }, [setEditions, setLoading, setError, hydrateFromEdition, hydrateNewsFromEdition])
 
   if (isLoading) {
     return (

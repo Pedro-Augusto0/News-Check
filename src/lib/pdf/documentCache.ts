@@ -2,6 +2,12 @@ import * as pdfjsLib from 'pdfjs-dist'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import type { CropRect } from '@/utils/cropGeometry'
 import { percentToPx } from '@/utils/cropGeometry'
+import {
+  detectColumnBoundaries,
+  isSameTextLine,
+  sortLinesByColumnReadingOrder,
+  type PositionedTextLine,
+} from '@/utils/columnTextOrder'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -101,11 +107,7 @@ export async function extractTextInRect(
   return lines.map((line) => line.text).join(' ').trim()
 }
 
-export interface PdfTextLine {
-  text: string
-  y: number
-  fontSize: number
-}
+export interface PdfTextLine extends PositionedTextLine {}
 
 export async function extractTextLinesInRect(
   url: string,
@@ -118,7 +120,13 @@ export async function extractTextLinesInRect(
   const viewport = page.getViewport({ scale: 1 })
   const pxRect = percentToPx(rect, viewport.width, viewport.height)
 
-  const items: { str: string; x: number; y: number; fontSize: number }[] = []
+  const items: {
+    str: string
+    x: number
+    y: number
+    fontSize: number
+    width: number
+  }[] = []
   for (const item of content.items) {
     if (!('str' in item) || !item.str.trim()) continue
     const tx = pdfjsLib.Util.transform(viewport.transform, item.transform)
@@ -126,13 +134,14 @@ export async function extractTextLinesInRect(
     const y = tx[5]
     const fontSize = Math.hypot(tx[2], tx[3])
     const topY = y - fontSize
+    const width = item.width > 0 ? item.width : fontSize * item.str.length * 0.55
     if (
       x >= pxRect.x &&
       x <= pxRect.x + pxRect.width &&
       topY >= pxRect.y &&
       y <= pxRect.y + pxRect.height
     ) {
-      items.push({ str: item.str, x, y, fontSize })
+      items.push({ str: item.str, x, y, fontSize, width })
     }
   }
 
@@ -142,17 +151,34 @@ export async function extractTextLinesInRect(
     return a.x - b.x
   })
 
+  const positionedItems: PositionedTextLine[] = items.map((item) => ({
+    text: item.str,
+    x: item.x,
+    y: item.y - item.fontSize,
+    fontSize: item.fontSize,
+    width: item.width,
+  }))
+  const columnBoundaries = detectColumnBoundaries(positionedItems)
+
   const lines: PdfTextLine[] = []
   for (const item of items) {
     const topY = item.y - item.fontSize
+    const candidate: PdfTextLine = {
+      text: item.str,
+      x: item.x,
+      y: topY,
+      fontSize: item.fontSize,
+      width: item.width,
+    }
     const last = lines[lines.length - 1]
-    if (last && Math.abs(last.y - topY) <= item.fontSize * 0.6) {
+    if (last && isSameTextLine(last, candidate, columnBoundaries)) {
       last.text += (last.text.endsWith('-') ? '' : ' ') + item.str
       last.fontSize = Math.max(last.fontSize, item.fontSize)
+      last.width = item.x + item.width - last.x
     } else {
-      lines.push({ text: item.str, y: topY, fontSize: item.fontSize })
+      lines.push(candidate)
     }
   }
 
-  return lines
+  return sortLinesByColumnReadingOrder(lines)
 }

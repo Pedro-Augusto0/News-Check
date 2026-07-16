@@ -1,10 +1,18 @@
 import { useCropsStore } from '@/stores/cropsStore'
 import { extractCropContent, type CropExtractionResult } from '@/services/textExtractor'
 import { isDefaultCropTitle } from '@/utils/detectTitle'
-import type { Crop } from '@/types/session'
+import type { Crop, VehicleEdition } from '@/types/session'
 
 function setExtracting(id: string, extracting: boolean) {
   useCropsStore.getState().setTextExtracting(id, extracting)
+}
+
+export function resolveCropPdfUrl(
+  crop: Crop,
+  editions: VehicleEdition[],
+): string | undefined {
+  const edition = editions.find((item) => item.id === crop.editionId)
+  return edition?.pdfs.find((pdf) => pdf.id === crop.pdfId)?.url
 }
 
 function applyCropExtraction(crop: Crop, result: CropExtractionResult) {
@@ -62,4 +70,23 @@ export async function extractAndSaveModalText(
   } finally {
     setExtracting(modalId, false)
   }
+}
+
+export async function extractAndSaveGroupText(
+  groupId: string,
+  resolvePdfUrl: (crop: Crop) => string | undefined,
+): Promise<void> {
+  const store = useCropsStore.getState()
+  const group = store.groups[groupId]
+  if (!group) return
+
+  const modalCrops = group.cropIds
+    .map((id) => store.crops[id])
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.pageNumber !== b.pageNumber) return a.pageNumber - b.pageNumber
+      return a.rect.y - b.rect.y
+    })
+
+  await extractAndSaveModalText(groupId, modalCrops, resolvePdfUrl)
 }

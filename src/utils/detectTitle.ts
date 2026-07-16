@@ -1,8 +1,9 @@
-export interface TextLineInfo {
-  text: string
-  y: number
-  fontSize: number
-}
+import {
+  sortLinesByColumnReadingOrder,
+  type PositionedTextLine,
+} from '@/utils/columnTextOrder'
+
+export interface TextLineInfo extends PositionedTextLine {}
 
 function median(values: number[]): number {
   if (values.length === 0) return 0
@@ -13,66 +14,89 @@ function median(values: number[]): number {
     : sorted[mid]
 }
 
+function sortByVerticalPosition(lines: TextLineInfo[]): TextLineInfo[] {
+  return [...lines].sort((a, b) => {
+    const yDiff = a.y - b.y
+    if (Math.abs(yDiff) > 2) return yDiff
+    return a.x - b.x
+  })
+}
+
+function lineKey(line: TextLineInfo): string {
+  return `${line.x}:${line.y}:${line.text}`
+}
+
 export function detectTitleFromLines(
   lines: TextLineInfo[],
-): { title: string; bodyText: string } {
+): { title: string; bodyText: string; fullText: string } {
   const nonEmpty = lines.filter((line) => line.text.trim())
-  if (nonEmpty.length === 0) return { title: '', bodyText: '' }
+  if (nonEmpty.length === 0) return { title: '', bodyText: '', fullText: '' }
 
-  const sorted = [...nonEmpty].sort((a, b) => a.y - b.y)
-  const maxFont = Math.max(...sorted.map((line) => line.fontSize))
-  const medianFont = median(sorted.map((line) => line.fontSize))
+  const forTitle = sortByVerticalPosition(nonEmpty)
+  const columnOrdered = sortLinesByColumnReadingOrder(nonEmpty)
+  const fullText = columnOrdered.map((line) => line.text).join('\n').trim()
+
+  const maxFont = Math.max(...forTitle.map((line) => line.fontSize))
+  const medianFont = median(forTitle.map((line) => line.fontSize))
+
+  // Trecho de corpo com fonte uniforme — não separar título do texto
+  if (maxFont / (medianFont || maxFont) < 1.15) {
+    return { title: '', bodyText: fullText, fullText }
+  }
+
   const titleThreshold = Math.max(maxFont * 0.85, medianFont * 1.15)
 
-  const minY = sorted[0].y
-  const maxY = sorted[sorted.length - 1].y
+  const minY = forTitle[0].y
+  const maxY = forTitle[forTitle.length - 1].y
   const span = maxY - minY || 1
   const topZone = minY + span * 0.35
 
-  const titleIndices = new Set<number>()
+  const titleLines = new Set<string>()
 
-  for (let i = 0; i < sorted.length; i++) {
+  for (let i = 0; i < forTitle.length; i++) {
     if (i >= 4) break
 
-    const line = sorted[i]
+    const line = forTitle[i]
     const inTopZone = line.y <= topZone
     const isLarge = line.fontSize >= titleThreshold
     const continuesHeadline =
-      titleIndices.size > 0 && line.fontSize >= maxFont * 0.75
+      titleLines.size > 0 && line.fontSize >= maxFont * 0.75
 
-    if (isLarge && (inTopZone || titleIndices.size === 0)) {
-      titleIndices.add(i)
+    if (isLarge && (inTopZone || titleLines.size === 0)) {
+      titleLines.add(lineKey(line))
     } else if (continuesHeadline && inTopZone) {
-      titleIndices.add(i)
-    } else if (titleIndices.size > 0) {
+      titleLines.add(lineKey(line))
+    } else if (titleLines.size > 0) {
       break
     }
   }
 
-  if (titleIndices.size === 0) {
-    const first = sorted[0]
-    if (first.text.length <= 120 && first.fontSize >= medianFont) {
-      titleIndices.add(0)
+  if (titleLines.size === 0) {
+    const first = forTitle[0]
+    if (
+      first.text.length <= 120 &&
+      first.fontSize >= medianFont * 1.25
+    ) {
+      titleLines.add(lineKey(first))
     }
   }
 
-  const title = [...titleIndices]
-    .sort((a, b) => a - b)
-    .map((index) => sorted[index].text)
+  const title = forTitle
+    .filter((line) => titleLines.has(lineKey(line)))
+    .map((line) => line.text)
     .join(' ')
     .trim()
 
-  const bodyText = sorted
-    .filter((_, index) => !titleIndices.has(index))
+  const bodyText = columnOrdered
+    .filter((line) => !titleLines.has(lineKey(line)))
     .map((line) => line.text)
     .join('\n')
     .trim()
 
-  const fullText = sorted.map((line) => line.text).join('\n').trim()
-
   return {
     title,
     bodyText: bodyText || fullText,
+    fullText,
   }
 }
 

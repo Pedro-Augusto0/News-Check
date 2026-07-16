@@ -53,6 +53,14 @@
   --color-client-border: rgba(2, 132, 199, 0.42);
   --color-client-ring: rgba(14, 165, 233, 0.28);
 
+  /* Notícia sem corte / pendente */
+  --color-pending: #6366f1;
+  --color-pending-strong: #4f46e5;
+  --color-pending-bg: #f8fafc;
+  --color-pending-surface: #f1f5f9;
+  --color-pending-border: #cbd5e1;
+  --color-pending-muted: #64748b;
+
   /* Layout */
   --header-height: 48px;
   --toolbar-height: 40px;

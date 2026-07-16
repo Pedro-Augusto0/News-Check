@@ -10,7 +10,7 @@ import './crop-list-item.css'
 
 function isBlockedDragTarget(target: EventTarget | null, editingTitle = false): boolean {
   if (!(target instanceof HTMLElement)) return false
-  if (target.closest('button, .crop-list-item__actions, .crop-group-item__toggle')) return true
+  if (target.closest('button, .crop-list-item__actions, .crop-list-item__action-btn--toggle')) return true
   if (editingTitle && target.closest('input')) return true
   return false
 }
@@ -43,6 +43,9 @@ interface CropListItemProps {
   isDropTarget?: boolean
   isSelected?: boolean
   compact?: boolean
+  expanded?: boolean
+  onToggle?: () => void
+  metaContent?: React.ReactNode
   onDragStart: (e: React.DragEvent, cropId: string) => void
   onDragOver: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent, targetId: string) => void
@@ -51,6 +54,7 @@ interface CropListItemProps {
   onSelect: (cropId: string) => void
   onDelete: (cropId: string) => void
   onUngroup?: (cropId: string) => void
+  showViewText?: boolean
 }
 
 export function CropListItem({
@@ -64,6 +68,9 @@ export function CropListItem({
   isDropTarget,
   isSelected,
   compact = false,
+  expanded,
+  onToggle,
+  metaContent,
   onDragStart,
   onDragOver,
   onDrop,
@@ -72,6 +79,7 @@ export function CropListItem({
   onSelect,
   onDelete,
   onUngroup,
+  showViewText = true,
 }: CropListItemProps) {
   const isNewsItemFinalized = useCropsStore((s) => s.isNewsItemFinalized)
   const startEditCrop = useCropsStore((s) => s.startEditCrop)
@@ -163,10 +171,11 @@ export function CropListItem({
           {hasClient && <ClientBadge keywords={clientKeywords} />}
         </div>
 
-        {(isChild || !compact) && (
+        {(isChild || !compact || metaContent) && (
           <span className={cn('crop-list-item__meta', isChild && 'crop-list-item__meta--subtitle')}>
-            {isChild && <>Página {crop.pageNumber}</>}
-            {!isChild && !compact && (
+            {metaContent}
+            {!metaContent && isChild && <>Página {crop.pageNumber}</>}
+            {!metaContent && !isChild && !compact && (
               <>1 corte · {formatPageCount(1)} · Página {crop.pageNumber}</>
             )}
           </span>
@@ -174,17 +183,19 @@ export function CropListItem({
       </div>
 
       <div className="crop-list-item__actions">
-        <button
-          type="button"
-          className="crop-list-item__action-btn crop-list-item__action-btn--view"
-          aria-label="Ver detalhes"
-          onClick={(e) => {
-            e.stopPropagation()
-            onViewText(crop.id)
-          }}
-        >
-          <Eye size={14} />
-        </button>
+        {showViewText && (
+          <button
+            type="button"
+            className="crop-list-item__action-btn crop-list-item__action-btn--view"
+            aria-label="Ver detalhes"
+            onClick={(e) => {
+              e.stopPropagation()
+              onViewText(crop.id)
+            }}
+          >
+            <Eye size={14} />
+          </button>
+        )}
 
         <button
           type="button"
@@ -200,11 +211,27 @@ export function CropListItem({
           <MoreVertical size={14} />
         </button>
 
+        {onToggle && (
+          <button
+            type="button"
+            className="crop-list-item__action-btn crop-list-item__action-btn--toggle"
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Recolher grupo' : 'Expandir grupo'}
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggle()
+            }}
+          >
+            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+        )}
+
         <CropItemMenu
           open={menuOpen}
           anchorRef={menuBtnRef}
           onClose={() => setMenuOpen(false)}
           onViewText={() => onViewText(crop.id)}
+          canViewText={showViewText}
           onEditCrop={handleEditCrop}
           onFinalize={handleFinalize}
           isFinalized={finalized}
@@ -227,6 +254,7 @@ interface CropGroupItemProps {
   expanded: boolean
   isDropTarget?: boolean
   selectedCropId?: string | null
+  isNewsSelected?: boolean
   compact?: boolean
   onToggle: (groupId: string) => void
   onDragStart: (e: React.DragEvent, cropId: string) => void
@@ -249,6 +277,7 @@ export function CropGroupItem({
   expanded,
   isDropTarget,
   selectedCropId,
+  isNewsSelected,
   compact = false,
   onToggle,
   onDragStart,
@@ -260,60 +289,42 @@ export function CropGroupItem({
   onDelete,
   onUngroup,
 }: CropGroupItemProps) {
-  const isNewsItemFinalized = useCropsStore((s) => s.isNewsItemFinalized)
-  const startEditCrop = useCropsStore((s) => s.startEditCrop)
-  const finalizeCrop = useCropsStore((s) => s.finalizeCrop)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [editingTitle, setEditingTitle] = useState(false)
-  const titleRef = useRef<HTMLInputElement>(null)
-  const menuBtnRef = useRef<HTMLButtonElement>(null)
   const allCrops = [rootCrop, ...childCrops]
-  const totalItems = allCrops.length
   const pageNumbers = [...new Set(allCrops.map((c) => c.pageNumber))].sort((a, b) => a - b)
   const spansPages = pageNumbers.length > 1
-  const finalized = isNewsItemFinalized(rootCrop.id)
   const clientKeywords = mergeClientKeywords(allCrops)
   const hasClient = clientKeywords.length > 0
 
   const cropsByPage = useMemo(() => {
     const map = new Map<number, Crop[]>()
-    for (const crop of allCrops) {
+    for (const crop of childCrops) {
       const list = map.get(crop.pageNumber) ?? []
       list.push(crop)
       map.set(crop.pageNumber, list)
     }
     return [...map.entries()].sort(([a], [b]) => a - b)
-  }, [rootCrop, childCrops])
+  }, [childCrops])
 
-  const handleEditTitle = () => {
-    setEditingTitle(true)
-    requestAnimationFrame(() => titleRef.current?.focus())
-  }
-
-  const handleEditCrop = () => {
-    onSelect(rootCrop.id)
-    startEditCrop(rootCrop.id)
-  }
-
-  const handleFinalize = () => {
-    finalizeCrop(rootCrop.id)
-    onSelect(rootCrop.id)
-  }
-
-  const handleHeaderDragStart = (e: React.DragEvent) => {
-    if (isBlockedDragTarget(e.target, editingTitle)) {
-      e.preventDefault()
-      return
+  const parentMeta = useMemo(() => {
+    if (!compact) {
+      return (
+        <>
+          {allCrops.length} {allCrops.length === 1 ? 'corte' : 'cortes'}
+          {' · '}
+          {formatPageCount(pageNumbers.length)}
+          {' · '}
+          Página {rootCrop.pageNumber}
+        </>
+      )
     }
-    onDragStart(e, rootCrop.id)
-  }
+    if (spansPages) {
+      return <span className="crop-list-item__cross-page">várias páginas</span>
+    }
+    return null
+  }, [allCrops.length, compact, pageNumbers.length, rootCrop.pageNumber, spansPages])
 
-  const renderChildCrop = (crop: Crop) => {
-    const cropIndexInGroup = allCrops.findIndex((c) => c.id === crop.id)
-    const subLabel =
-      index !== undefined
-        ? `${index}.${cropIndexInGroup + 1}`
-        : String(cropIndexInGroup + 1)
+  const renderChildCrop = (crop: Crop, childIndex: number) => {
+    const subLabel = index !== undefined ? `${index}.${childIndex + 1}` : String(childIndex + 2)
 
     return (
       <CropListItem
@@ -324,6 +335,7 @@ export function CropGroupItem({
         accentColor={accentColor}
         isChild
         compact={compact}
+        showViewText={false}
         isSelected={selectedCropId === crop.id}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
@@ -341,123 +353,34 @@ export function CropGroupItem({
     <div
       className={cn(
         'crop-group-item',
-        finalized && 'crop-group-item--finalized',
         isDropTarget && 'crop-group-item--drop-target',
-        menuOpen && 'crop-group-item--menu-open',
       )}
       style={{ ['--crop-accent' as string]: accentColor }}
     >
-      <div
-        className={cn('crop-group-item__header', finalized && 'crop-group-item__header--finalized')}
-        draggable
-        onDragStart={handleHeaderDragStart}
+      <CropListItem
+        crop={{ ...rootCrop, title: group.title, clientKeywordsFound: hasClient ? clientKeywords : rootCrop.clientKeywordsFound }}
+        pdfUrl={pdfUrl}
+        index={index}
+        accentColor={accentColor}
+        compact={compact}
+        expanded={expanded}
+        onToggle={childCrops.length > 0 ? () => onToggle(group.id) : undefined}
+        metaContent={parentMeta}
+        isDropTarget={isDropTarget}
+        isSelected={selectedCropId === rootCrop.id || isNewsSelected}
+        onDragStart={onDragStart}
         onDragOver={onDragOver}
-        onDrop={(e) => onDrop(e, rootCrop.id)}
-        onClick={() => onSelect(rootCrop.id)}
-        aria-label={finalized ? `${group.title || 'Sem título'} — Finalizado` : undefined}
-      >
-        <ListCropThumbnail
-          pdfUrl={pdfUrl}
-          crop={rootCrop}
-          displayIndex={index}
-          accentColor={accentColor}
-        />
+        onDrop={onDrop}
+        onTitleChange={(_, title) => onGroupTitleChange(group.id, title)}
+        onViewText={() => onViewText(group.id)}
+        onSelect={onSelect}
+        onDelete={onDelete}
+      />
 
-        <div className="crop-list-item__body">
-          <div className="crop-list-item__title-row">
-            {editingTitle ? (
-              <input
-                ref={titleRef}
-                className="crop-list-item__title"
-                value={group.title}
-                onChange={(e) => onGroupTitleChange(group.id, e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                onBlur={() => setEditingTitle(false)}
-                onKeyDown={(e) => e.key === 'Enter' && setEditingTitle(false)}
-                aria-label="Título do grupo"
-              />
-            ) : (
-              <span
-                className="crop-list-item__title crop-list-item__title--readonly"
-                onDoubleClick={(e) => {
-                  e.stopPropagation()
-                  handleEditTitle()
-                }}
-              >
-                {group.title || 'Sem título'}
-              </span>
-            )}
-            {hasClient && <ClientBadge keywords={clientKeywords} />}
-          </div>
-
-          <span className="crop-list-item__meta">
-            {totalItems} {totalItems === 1 ? 'corte' : 'cortes'}
-            {!compact && (
-              <> · {formatPageCount(pageNumbers.length)} · Página {rootCrop.pageNumber}</>
-            )}
-            {compact && spansPages && (
-              <span className="crop-list-item__cross-page"> · várias páginas</span>
-            )}
-          </span>
-        </div>
-
-        <div className="crop-list-item__actions">
-          <button
-            type="button"
-            className="crop-list-item__action-btn crop-list-item__action-btn--view"
-            aria-label="Ver detalhes"
-            onClick={(e) => {
-              e.stopPropagation()
-              onViewText(group.id)
-            }}
-          >
-            <Eye size={14} />
-          </button>
-
-          <button
-            type="button"
-            ref={menuBtnRef}
-            className="crop-list-item__action-btn crop-list-item__action-btn--menu"
-            aria-label="Mais opções"
-            aria-expanded={menuOpen}
-            onClick={(e) => {
-              e.stopPropagation()
-              setMenuOpen((v) => !v)
-            }}
-          >
-            <MoreVertical size={14} />
-          </button>
-
-          <button
-            type="button"
-            className="crop-list-item__action-btn crop-list-item__action-btn--toggle crop-group-item__toggle"
-            aria-expanded={expanded}
-            aria-label={expanded ? 'Recolher grupo' : 'Expandir grupo'}
-            onClick={(e) => {
-              e.stopPropagation()
-              onToggle(group.id)
-            }}
-          >
-            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </button>
-
-          <CropItemMenu
-            open={menuOpen}
-            anchorRef={menuBtnRef}
-            onClose={() => setMenuOpen(false)}
-            onViewText={() => onViewText(group.id)}
-            onEditCrop={handleEditCrop}
-            onFinalize={handleFinalize}
-            isFinalized={finalized}
-            onDelete={() => onDelete(rootCrop.id)}
-          />
-        </div>
-      </div>
-
-      {expanded && (
+      {expanded && childCrops.length > 0 && (
         <div className="crop-group-item__children">
           {compact || pageNumbers.length <= 1
-            ? allCrops.map((crop) => renderChildCrop(crop))
+            ? childCrops.map((crop, childIndex) => renderChildCrop(crop, childIndex))
             : cropsByPage.map(([pageNumber, pageCrops]) => (
                 <div key={pageNumber} className="crop-group-item__page-block">
                   <div className="crop-group-item__page-header">
@@ -467,7 +390,9 @@ export function CropGroupItem({
                       {pageCrops.length} {pageCrops.length === 1 ? 'corte' : 'cortes'}
                     </span>
                   </div>
-                  {pageCrops.map((crop) => renderChildCrop(crop))}
+                  {pageCrops.map((crop) =>
+                    renderChildCrop(crop, childCrops.findIndex((c) => c.id === crop.id)),
+                  )}
                 </div>
               ))}
         </div>

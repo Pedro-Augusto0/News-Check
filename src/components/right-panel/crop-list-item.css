@@ -192,11 +192,66 @@
   padding: 0 8px;
   font-size: 10px;
   font-weight: 700;
-  color: #b45309;
-  background: #fffbeb;
+  color: var(--color-pending-strong);
+  background: var(--color-pending-surface);
   border-radius: var(--radius-full);
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+.crop-list-item__needs-crop-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-pending-strong);
+  background: #ffffff;
+  border: 1.5px solid color-mix(in srgb, var(--color-pending) 35%, var(--color-pending-border));
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-xs);
+}
+
+.crop-list-item__needs-crop-badge svg {
+  flex-shrink: 0;
+}
+
+.crop-list-item--pending {
+  cursor: pointer;
+  border: 1px dashed var(--color-pending-border);
+  background: var(--color-pending-bg);
+  --crop-accent: var(--color-pending);
+}
+
+.crop-list-item--pending::before {
+  background: var(--color-pending);
+}
+
+.crop-list-item--pending:hover {
+  border-color: color-mix(in srgb, var(--color-pending) 40%, var(--color-pending-border));
+  background: var(--color-pending-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.crop-list-item--pending-current {
+  background: color-mix(in srgb, var(--color-pending) 6%, var(--color-pending-bg));
+}
+
+.crop-list-item--pending.crop-list-item--selected {
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-pending-bg));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-pending-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.crop-list-item--pending.crop-list-item--selected::before {
+  background: var(--color-primary);
+}
+
+.crop-list-item__meta--pending {
+  color: var(--color-pending-muted);
+  font-style: normal;
 }
 
 .crop-list-item__meta {
@@ -328,7 +383,7 @@
   z-index: 10;
 }
 
-.crop-group-item--drop-target .crop-group-item__header {
+.crop-group-item--drop-target > .crop-list-item {
   background: var(--color-primary-light);
   border-color: var(--color-primary);
 }
@@ -360,6 +415,10 @@
 .crop-group-item__header:hover {
   border-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 58%, #0f172a);
   box-shadow: var(--shadow-xs);
+}
+
+.crop-group-item__header--selected {
+  background: rgb(195 195 195 / 47%);
 }
 
 .crop-group-item__header--finalized {

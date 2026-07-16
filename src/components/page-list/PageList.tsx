@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CircleDashed, FileText, Filter, LayoutGrid, Search, UserRound } from 'lucide-react'
+import { Check, CircleDashed, FileText, Filter, LayoutGrid, Search, UserRound } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
@@ -167,34 +167,41 @@ export function PageList() {
               >
                 <span
                   className={cn(
-                    'page-list__status-dot',
+                    'page-list__status',
                     pageFinalized
-                      ? 'page-list__status-dot--with-client'
-                      : 'page-list__status-dot--without-client',
+                      ? 'page-list__status--finalized'
+                      : 'page-list__status--pending',
                   )}
                   title={pageFinalized ? 'Página finalizada' : 'Página pendente'}
                   aria-hidden
-                />
+                >
+                  {pageFinalized && <Check size={11} strokeWidth={2.75} />}
+                </span>
                 <span className="page-list__page-name">Página {page.pageNumber}</span>
                 <span
                   className="page-list__meta"
                   aria-label={`${clientCount} ${clientCount === 1 ? 'cliente' : 'clientes'}, ${cropCount} ${cropCount === 1 ? 'corte' : 'cortes'}`}
                 >
                   <span
-                    className="page-list__stat"
+                    className={cn(
+                      'page-list__stat',
+                      'page-list__stat--client',
+                      clientCount > 0 && 'page-list__stat--has-value',
+                    )}
                     title={`${clientCount} ${clientCount === 1 ? 'cliente' : 'clientes'}`}
                   >
-                    <UserRound size={12} strokeWidth={2.25} aria-hidden />
+                    <UserRound size={11} strokeWidth={2.5} aria-hidden />
                     {clientCount}
                   </span>
-                  <span className="page-list__sep" aria-hidden>
-                    ·
-                  </span>
                   <span
-                    className="page-list__stat"
+                    className={cn(
+                      'page-list__stat',
+                      'page-list__stat--crop',
+                      cropCount > 0 && 'page-list__stat--has-value',
+                    )}
                     title={`${cropCount} ${cropCount === 1 ? 'corte' : 'cortes'}`}
                   >
-                    <FileText size={12} strokeWidth={2} aria-hidden />
+                    <FileText size={11} strokeWidth={2.25} aria-hidden />
                     {cropCount}
                   </span>
                 </span>

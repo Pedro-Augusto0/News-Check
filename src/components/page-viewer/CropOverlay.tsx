@@ -9,6 +9,11 @@ import type { CropDisplayInfo } from '@/utils/cropDisplayTree'
 import { cropHasClient, formatClientKeywords } from '@/utils/cropClientStats'
 import { useCropsStore } from '@/stores/cropsStore'
 import { useViewerStore } from '@/stores/viewerStore'
+import { useSessionStore } from '@/stores/sessionStore'
+import {
+  extractAndSaveGroupText,
+  resolveCropPdfUrl,
+} from '@/services/cropTextExtraction'
 import './crop-overlay.css'
 
 interface CropOverlayProps {
@@ -247,7 +252,13 @@ export function CropOverlay({
   const cropsMap = useCropsStore((s) => s.crops)
   const mergeCrops = useCropsStore((s) => s.mergeCrops)
   const ungroupCrop = useCropsStore((s) => s.ungroupCrop)
+  const editions = useSessionStore((s) => s.editions)
   const panMode = useViewerStore((s) => s.panMode)
+
+  const resolvePdfUrl = useCallback(
+    (crop: Crop) => resolveCropPdfUrl(crop, editions),
+    [editions],
+  )
 
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
@@ -298,15 +309,16 @@ export function CropOverlay({
       const source = sourceId ? cropsMap[sourceId] : undefined
       const target = cropsMap[targetId]
       if (sourceId && canMergeInto(source, target)) {
-        mergeCrops(sourceId, targetId)
+        const groupId = mergeCrops(sourceId, targetId)
         onSelectCrop(targetId)
         setMergeFlashId(targetId)
+        if (groupId) void extractAndSaveGroupText(groupId, resolvePdfUrl)
       }
       setDragId(null)
       setDropTargetId(null)
       setUngroupZoneActive(false)
     },
-    [dragId, cropsMap, mergeCrops, onSelectCrop],
+    [dragId, cropsMap, mergeCrops, onSelectCrop, resolvePdfUrl],
   )
 
   const handleDragEnter = useCallback(

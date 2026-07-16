@@ -16,6 +16,25 @@ export interface CropData {
   displayIndex: number
   /** Palavras-chave do cliente encontradas nesta notícia (virá da API). */
   clientKeywordsFound?: string[]
+  /** Vínculo com notícia detectada pela API ou criada manualmente. */
+  newsItemId?: string | null
+}
+
+/** Notícia detectada automaticamente; pode ou não ter corte associado. */
+export interface NewsItem {
+  id: string
+  title: string
+  /** ID do corte associado; null = ainda precisa de corte manual. */
+  cropId: string | null
+  clientKeywordsFound?: string[]
+}
+
+/** Notícia persistida na sessão (API + manuais). */
+export interface StoredNewsItem extends NewsItem {
+  pdfId: string
+  pageNumber: number
+  editionId: string
+  manual?: boolean
 }
 
 export interface PageData {
@@ -25,6 +44,8 @@ export interface PageData {
   keywordsMissing: string[]
   keywordOccurrences: KeywordOccurrence[]
   crops: CropData[]
+  /** Notícias detectadas na página (virão da API). */
+  newsItems?: NewsItem[]
 }
 
 export interface PdfFile {

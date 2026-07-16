@@ -159,6 +159,14 @@
                   "text": "Continua na página 10\\n\\nReportagem sobre saúde pública em Campinas.",
                   "groupId": null
                 }
+              ],
+              "newsItems": [
+                {
+                  "id": "news-camp-p3-pending-1",
+                  "title": "Indústria de Campinas revisa projeções para o segundo semestre",
+                  "cropId": null,
+                  "clientKeywordsFound": ["campinas", "economia"]
+                }
               ]
             },
             {
@@ -242,7 +250,20 @@
                   }
                 }
               ],
-              "crops": []
+              "crops": [],
+              "newsItems": [
+                {
+                  "id": "news-camp-p7-1",
+                  "title": "Prefeitura anuncia pacote de obras em Campinas",
+                  "cropId": null,
+                  "clientKeywordsFound": ["Prefeitura", "campinas"]
+                },
+                {
+                  "id": "news-camp-p7-2",
+                  "title": "Câmara aprova novo regulamento do transporte público",
+                  "cropId": null
+                }
+              ]
             },
             {
               "pageNumber": 8,
@@ -301,6 +322,14 @@
                   "title": "Continuação: Saúde municipal",
                   "text": "Continuação da matéria iniciada na página 3.",
                   "groupId": null
+                }
+              ],
+              "newsItems": [
+                {
+                  "id": "news-camp-p10-1",
+                  "title": "Saúde municipal: prefeitura amplia atendimento nos bairros",
+                  "cropId": null,
+                  "clientKeywordsFound": ["Prefeitura"]
                 }
               ]
             },
