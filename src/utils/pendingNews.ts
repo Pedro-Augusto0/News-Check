@@ -1,14 +1,26 @@
-import type { Crop, NewsItem, StoredNewsItem } from '@/types/session'
+import type { Crop, CropDisplayNode, StoredNewsItem } from '@/types/session'
 import type { CropPageSection } from '@/utils/cropDisplayTree'
+
+export type NewsPageEntry =
+  | { kind: 'crop'; node: CropDisplayNode; newsId: string | null }
+  | { kind: 'pending'; item: StoredNewsItem }
 
 export interface NewsPageSection {
   pageNumber: number
-  cropNodes: CropPageSection['nodes']
-  pendingNews: NewsItem[]
+  entries: NewsPageEntry[]
+}
+
+export function sortNewsForPage(items: StoredNewsItem[]): StoredNewsItem[] {
+  return [...items].sort((a, b) => {
+    const orderA = a.listOrder ?? Number.MAX_SAFE_INTEGER
+    const orderB = b.listOrder ?? Number.MAX_SAFE_INTEGER
+    if (orderA !== orderB) return orderA - orderB
+    return a.id.localeCompare(b.id)
+  })
 }
 
 export function isNewsItemPending(
-  item: NewsItem,
+  item: StoredNewsItem,
   crops: Record<string, Crop>,
   pdfId: string,
 ): boolean {
@@ -25,19 +37,65 @@ export function isNewsItemPending(
   return true
 }
 
-export function getPendingNewsForPage(
-  pageNumber: number,
-  allNews: StoredNewsItem[],
-  crops: Record<string, Crop>,
-  pdfId: string,
-): NewsItem[] {
-  return allNews
-    .filter((item) => item.pdfId === pdfId && item.pageNumber === pageNumber)
-    .filter((item) => isNewsItemPending(item, crops, pdfId))
+export function newsItemHasClient(item: Pick<StoredNewsItem, 'clientKeywordsFound'>): boolean {
+  return (item.clientKeywordsFound?.length ?? 0) > 0
 }
 
-export function newsItemHasClient(item: NewsItem): boolean {
-  return (item.clientKeywordsFound?.length ?? 0) > 0
+function findCropNodeForNews(
+  news: StoredNewsItem,
+  cropNodes: CropDisplayNode[],
+  crops: Record<string, Crop>,
+): CropDisplayNode | undefined {
+  for (const node of cropNodes) {
+    const rootCrop = node.crop
+    if (!rootCrop) continue
+
+    if (rootCrop.newsItemId === news.id) return node
+
+    if (news.cropId) {
+      if (rootCrop.id === news.cropId) return node
+      if (node.group?.cropIds.includes(news.cropId)) return node
+    }
+
+    if (node.group) {
+      const linked = node.group.cropIds.some((id) => crops[id]?.newsItemId === news.id)
+      if (linked) return node
+    }
+  }
+
+  return undefined
+}
+
+function buildPageEntries(
+  cropNodes: CropDisplayNode[],
+  pageNews: StoredNewsItem[],
+  crops: Record<string, Crop>,
+  pdfId: string,
+): NewsPageEntry[] {
+  const entries: NewsPageEntry[] = []
+  const matchedNodeIds = new Set<string>()
+  const sortedNews = sortNewsForPage(pageNews)
+
+  for (const news of sortedNews) {
+    if (isNewsItemPending(news, crops, pdfId)) {
+      entries.push({ kind: 'pending', item: news })
+      continue
+    }
+
+    const node = findCropNodeForNews(news, cropNodes, crops)
+    if (node) {
+      matchedNodeIds.add(node.id)
+      entries.push({ kind: 'crop', node, newsId: news.id })
+    }
+  }
+
+  for (const node of cropNodes) {
+    if (matchedNodeIds.has(node.id)) continue
+    const newsId = node.crop?.newsItemId ?? null
+    entries.push({ kind: 'crop', node, newsId })
+  }
+
+  return entries
 }
 
 export function buildNewsPageSections(
@@ -47,17 +105,30 @@ export function buildNewsPageSections(
   crops: Record<string, Crop>,
 ): NewsPageSection[] {
   const cropByPage = new Map(cropSections.map((s) => [s.pageNumber, s.nodes]))
+  const newsByPage = new Map<number, StoredNewsItem[]>()
+
+  for (const news of allNews) {
+    if (news.pdfId !== pdfId) continue
+    const list = newsByPage.get(news.pageNumber) ?? []
+    list.push(news)
+    newsByPage.set(news.pageNumber, list)
+  }
+
   const pageNumbers = new Set([
     ...cropSections.map((s) => s.pageNumber),
-    ...allNews.filter((n) => n.pdfId === pdfId).map((n) => n.pageNumber),
+    ...newsByPage.keys(),
   ])
 
   return [...pageNumbers]
     .sort((a, b) => a - b)
     .map((pageNumber) => ({
       pageNumber,
-      cropNodes: cropByPage.get(pageNumber) ?? [],
-      pendingNews: getPendingNewsForPage(pageNumber, allNews, crops, pdfId),
+      entries: buildPageEntries(
+        cropByPage.get(pageNumber) ?? [],
+        newsByPage.get(pageNumber) ?? [],
+        crops,
+        pdfId,
+      ),
     }))
-    .filter((section) => section.cropNodes.length > 0 || section.pendingNews.length > 0)
+    .filter((section) => section.entries.length > 0)
 }

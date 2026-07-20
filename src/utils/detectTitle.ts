@@ -100,6 +100,11 @@ export function detectTitleFromLines(
   }
 }
 
+const PLACEHOLDER_TITLES = new Set(['Nova notícia', 'Sem título'])
+
 export function isDefaultCropTitle(title: string): boolean {
-  return !title.trim() || /^Novo corte \d+$/.test(title.trim())
+  const normalized = title.trim()
+  if (!normalized) return true
+  if (PLACEHOLDER_TITLES.has(normalized)) return true
+  return /^Novo corte \d+$/.test(normalized)
 }

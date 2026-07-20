@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { StoredNewsItem, VehicleEdition } from '@/types/session'
 import { generateId } from '@/utils/cn'
+import { isManualNewsItem } from '@/utils/newsItem'
 import { useCropsStore } from '@/stores/cropsStore'
 
 interface PersistedNewsState {
@@ -23,6 +24,8 @@ interface NewsState {
   unlinkNewsCrop: (newsId: string) => void
   syncNewsCropLink: (newsId: string) => void
   getNewsItem: (newsId: string) => StoredNewsItem | undefined
+  updateNewsItemTitle: (newsId: string, title: string) => void
+  deleteManualNewsItem: (newsId: string) => boolean
   getNewsForPdf: (pdfId: string) => StoredNewsItem[]
   findNewsByCropId: (cropId: string) => StoredNewsItem | undefined
   ensureNewsForCrop: (cropId: string) => string | null
@@ -50,6 +53,19 @@ function savePersisted(editionId: string, items: Record<string, StoredNewsItem>)
   localStorage.setItem(storageKey(editionId), JSON.stringify({ items: editionItems }))
 }
 
+function nextListOrderForPage(
+  items: Record<string, StoredNewsItem>,
+  pdfId: string,
+  pageNumber: number,
+): number {
+  let max = -1
+  for (const item of Object.values(items)) {
+    if (item.pdfId !== pdfId || item.pageNumber !== pageNumber) continue
+    if (item.listOrder !== undefined) max = Math.max(max, item.listOrder)
+  }
+  return max + 1
+}
+
 function buildItemsFromEdition(
   edition: VehicleEdition,
   persisted: PersistedNewsState | null,
@@ -58,7 +74,7 @@ function buildItemsFromEdition(
 
   for (const pdf of edition.pdfs) {
     for (const page of pdf.pages) {
-      for (const news of page.newsItems ?? []) {
+      for (const [index, news] of (page.newsItems ?? []).entries()) {
         const persistedItem = persisted?.items[news.id]
         items[news.id] = {
           ...news,
@@ -66,6 +82,7 @@ function buildItemsFromEdition(
           pageNumber: page.pageNumber,
           editionId: edition.id,
           cropId: persistedItem?.cropId ?? news.cropId,
+          listOrder: index,
         }
       }
     }
@@ -98,6 +115,7 @@ export const useNewsStore = create<NewsState>((set, get) => ({
 
   addManualNewsItem: ({ editionId, pdfId, pageNumber, title }) => {
     const id = generateId('news')
+    const { items } = get()
     const item: StoredNewsItem = {
       id,
       title: title ?? 'Nova notícia',
@@ -106,6 +124,7 @@ export const useNewsStore = create<NewsState>((set, get) => ({
       pageNumber,
       editionId,
       manual: true,
+      listOrder: nextListOrderForPage(items, pdfId, pageNumber),
     }
     set((state) => {
       const items = { ...state.items, [id]: item }
@@ -169,6 +188,49 @@ export const useNewsStore = create<NewsState>((set, get) => ({
 
   getNewsItem: (newsId) => get().items[newsId],
 
+  updateNewsItemTitle: (newsId, title) => {
+    const item = get().items[newsId]
+    if (!item) return
+    set((state) => {
+      const items = {
+        ...state.items,
+        [newsId]: { ...item, title },
+      }
+      savePersisted(item.editionId, items)
+      return { items }
+    })
+  },
+
+  deleteManualNewsItem: (newsId) => {
+    const item = get().items[newsId]
+    if (!isManualNewsItem(item)) return false
+
+    const cropsState = useCropsStore.getState()
+    const cropIds = new Set<string>()
+    for (const crop of Object.values(cropsState.crops)) {
+      if (crop.newsItemId === newsId) cropIds.add(crop.id)
+    }
+    if (item.cropId) cropIds.add(item.cropId)
+
+    for (const cropId of cropIds) {
+      if (useCropsStore.getState().crops[cropId]) {
+        useCropsStore.getState().deleteCrop(cropId)
+      }
+    }
+
+    set((state) => {
+      const items = { ...state.items }
+      delete items[newsId]
+      savePersisted(item.editionId, items)
+      return {
+        items,
+        selectedNewsItemId: state.selectedNewsItemId === newsId ? null : state.selectedNewsItemId,
+      }
+    })
+
+    return true
+  },
+
   getNewsForPdf: (pdfId) =>
     Object.values(get().items).filter((item) => item.pdfId === pdfId),
 
@@ -220,6 +282,7 @@ export const useNewsStore = create<NewsState>((set, get) => ({
     const rootCrop = crops[rootCropId] ?? crop
 
     const id = generateId('news')
+    const { items } = get()
     const item: StoredNewsItem = {
       id,
       title: rootCrop.title || 'Sem título',
@@ -229,6 +292,7 @@ export const useNewsStore = create<NewsState>((set, get) => ({
       editionId: rootCrop.editionId,
       manual: true,
       clientKeywordsFound: rootCrop.clientKeywordsFound,
+      listOrder: nextListOrderForPage(items, rootCrop.pdfId, rootCrop.pageNumber),
     }
 
     set((state) => {

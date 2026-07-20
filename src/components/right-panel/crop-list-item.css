@@ -67,13 +67,46 @@
 }
 
 .crop-list-item--selected {
-  background: rgb(195 195 195 / 47%);
-  border-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 52%, #0f172a);
+  background: color-mix(in srgb, var(--color-primary) 9%, var(--color-bg-app));
+  border-color: color-mix(in srgb, var(--color-primary) 34%, var(--crop-accent, var(--color-primary)));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 14%, transparent),
+    var(--shadow-xs);
+}
+
+.crop-list-item--selected::before {
+  background: var(--color-primary);
+  width: 5px;
+}
+
+.crop-list-item--active-news {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-bg-app));
+  border-color: color-mix(in srgb, var(--color-primary) 42%, var(--crop-accent, var(--color-primary)));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-primary) 16%, transparent),
+    var(--shadow-xs);
+}
+
+.crop-list-item--active-news::before {
+  background: var(--color-primary);
+  width: 5px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .crop-list-item--child.crop-list-item--selected {
-  background: rgb(195 195 195 / 47%);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg-app));
   border-radius: var(--radius-sm);
+}
+
+.crop-list-item--child.crop-list-item--active-news {
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg-app));
+  border-radius: var(--radius-sm);
+}
+
+.crop-list-item--child.crop-list-item--active-news::before {
+  background: var(--color-primary);
+  width: 6px;
+  height: 6px;
 }
 
 .crop-list-item--dragging {
@@ -252,6 +285,16 @@
 .crop-list-item__meta--pending {
   color: var(--color-pending-muted);
   font-style: normal;
+}
+
+.crop-list-item__action-btn--pending-delete {
+  opacity: 1;
+  color: var(--color-text-muted);
+}
+
+.crop-list-item__action-btn--pending-delete:hover {
+  color: var(--color-danger, #dc2626);
+  background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, transparent);
 }
 
 .crop-list-item__meta {

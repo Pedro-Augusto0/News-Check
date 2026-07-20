@@ -35,6 +35,8 @@ export interface StoredNewsItem extends NewsItem {
   pageNumber: number
   editionId: string
   manual?: boolean
+  /** Ordem fixa na lista da página — não muda ao vincular cortes. */
+  listOrder?: number
 }
 
 export interface PageData {

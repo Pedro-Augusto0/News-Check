@@ -42,6 +42,7 @@ interface CropListItemProps {
   isDragging?: boolean
   isDropTarget?: boolean
   isSelected?: boolean
+  isActiveNews?: boolean
   compact?: boolean
   expanded?: boolean
   onToggle?: () => void
@@ -67,6 +68,7 @@ export function CropListItem({
   isDragging,
   isDropTarget,
   isSelected,
+  isActiveNews = false,
   compact = false,
   expanded,
   onToggle,
@@ -127,9 +129,12 @@ export function CropListItem({
         isDragging && 'crop-list-item--dragging',
         isDropTarget && 'crop-list-item--drop-target',
         isSelected && 'crop-list-item--selected',
+        isActiveNews && 'crop-list-item--active-news',
         menuOpen && 'crop-list-item--menu-open',
       )}
       style={{ ['--crop-accent' as string]: accentColor }}
+      data-active-news={isActiveNews ? 'true' : undefined}
+      aria-current={isActiveNews ? 'true' : undefined}
       draggable
       onDragStart={handleItemDragStart}
       onDragOver={onDragOver}
@@ -336,7 +341,8 @@ export function CropGroupItem({
         isChild
         compact={compact}
         showViewText={false}
-        isSelected={selectedCropId === crop.id}
+        isSelected={selectedCropId === crop.id || isNewsSelected}
+        isActiveNews={isNewsSelected}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDrop={onDrop}
@@ -368,6 +374,7 @@ export function CropGroupItem({
         metaContent={parentMeta}
         isDropTarget={isDropTarget}
         isSelected={selectedCropId === rootCrop.id || isNewsSelected}
+        isActiveNews={isNewsSelected}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDrop={onDrop}

@@ -4,6 +4,7 @@ import { AppHeader } from '@/components/layout/AppHeader/app-header'
 import { PageList } from '@/components/page-list/PageList'
 import { PageViewer } from '@/components/page-viewer/PageViewer'
 import { RightPanel } from '@/components/right-panel/RightPanel'
+import { NotificationToast } from '@/components/ui/NotificationToast/notification-toast'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { loadSession } from '@/services/loadSession'
 import { useSessionStore } from '@/stores/sessionStore'
@@ -56,11 +57,14 @@ export function ValidatorPage() {
   }
 
   return (
-    <ValidationLayout
-      header={<AppHeader />}
-      left={<PageList />}
-      center={<PageViewer />}
-      right={<RightPanel />}
-    />
+    <>
+      <ValidationLayout
+        header={<AppHeader />}
+        left={<PageList />}
+        center={<PageViewer />}
+        right={<RightPanel />}
+      />
+      <NotificationToast />
+    </>
   )
 }

@@ -1,8 +1,7 @@
-import { Check, Maximize2, Minus, Plus, RotateCcw, Scissors, X } from 'lucide-react'
+import { Check, Maximize2, Minus, Plus, RotateCcw } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
-import { useNewsStore } from '@/stores/newsStore'
 import { useCurrentPdf } from '@/hooks/useSessionSelectors'
 import { isPageFinalizedInState } from '@/utils/pageFinalization'
 import { useViewerStore } from '@/stores/viewerStore'
@@ -20,11 +19,6 @@ export function ViewerToolbar() {
   const resetView = useViewerStore((s) => s.resetView)
   const isRendering = useViewerStore((s) => s.isRendering)
 
-  const selectedNewsItemId = useNewsStore((s) => s.selectedNewsItemId)
-  const getNewsItem = useNewsStore((s) => s.getNewsItem)
-  const selectNewsItem = useNewsStore((s) => s.selectNewsItem)
-  const selectedNewsItem = selectedNewsItemId ? getNewsItem(selectedNewsItemId) : undefined
-
   const pageFinalized =
     !!currentPdf && isPageFinalizedInState(finalizedPages, currentPdf.id, selectedPageNumber)
 
@@ -40,27 +34,6 @@ export function ViewerToolbar() {
   return (
     <div className="viewer-toolbar">
       <div className="viewer-toolbar__start">
-        {selectedNewsItem && (
-          <div className="viewer-toolbar__news-target">
-            <span className="viewer-toolbar__news-target-icon" aria-hidden>
-              <Scissors size={13} strokeWidth={2} />
-            </span>
-            <span className="viewer-toolbar__news-target-label">
-              <span className="viewer-toolbar__news-target-kicker">Notícia ativa</span>
-              <span className="viewer-toolbar__news-target-title">{selectedNewsItem.title}</span>
-            </span>
-            <button
-              type="button"
-              className="viewer-toolbar__news-target-clear"
-              onClick={() => selectNewsItem(null)}
-              aria-label="Desmarcar notícia selecionada"
-              title="Desmarcar notícia"
-            >
-              <X size={13} strokeWidth={2} aria-hidden />
-            </button>
-          </div>
-        )}
-
         <div className="viewer-toolbar__tools">
           <button
             type="button"

@@ -182,6 +182,30 @@
   color: var(--color-primary);
 }
 
+.crops-tab__page-section--has-active-news .crops-tab__page-header {
+  color: var(--color-text);
+}
+
+.crops-tab__page-section--has-active-news .crops-tab__page-title {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.crops-tab__page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.crops-tab__page-active-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  flex-shrink: 0;
+}
+
 .crops-tab__page-header {
   display: flex;
   align-items: center;

@@ -1,4 +1,4 @@
-import { Scissors, UserRound } from 'lucide-react'
+import { Scissors, Trash2, UserRound } from 'lucide-react'
 import type { NewsItem } from '@/types/session'
 import { cn } from '@/utils/cn'
 import { formatClientKeywords } from '@/utils/cropClientStats'
@@ -10,7 +10,10 @@ interface PendingNewsListItemProps {
   item: NewsItem
   pageNumber: number
   isSelected?: boolean
+  isActiveNews?: boolean
+  canDelete?: boolean
   onSelect: () => void
+  onDelete?: () => void
 }
 
 function ClientBadge({ keywords }: { keywords: string[] }) {
@@ -42,7 +45,10 @@ export function PendingNewsListItem({
   item,
   pageNumber,
   isSelected,
+  isActiveNews = false,
+  canDelete = false,
   onSelect,
+  onDelete,
 }: PendingNewsListItemProps) {
   const hasClient = newsItemHasClient(item)
   const clientKeywords = item.clientKeywordsFound ?? []
@@ -54,9 +60,12 @@ export function PendingNewsListItem({
         'crop-list-item--compact',
         'crop-list-item--pending',
         isSelected && 'crop-list-item--selected',
+        isActiveNews && 'crop-list-item--active-news',
       )}
       role="button"
       tabIndex={0}
+      data-active-news={isActiveNews ? 'true' : undefined}
+      aria-current={isActiveNews ? 'true' : undefined}
       onClick={onSelect}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -85,6 +94,21 @@ export function PendingNewsListItem({
           {isSelected ? 'Desenhe na página para cortar' : `Sem corte · Página ${pageNumber}`}
         </span>
       </div>
+
+      {canDelete && onDelete && (
+        <button
+          type="button"
+          className="crop-list-item__action-btn crop-list-item__action-btn--delete crop-list-item__action-btn--pending-delete"
+          aria-label="Excluir notícia"
+          title="Excluir notícia"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+        >
+          <Trash2 size={14} strokeWidth={2} aria-hidden />
+        </button>
+      )}
     </div>
   )
 }

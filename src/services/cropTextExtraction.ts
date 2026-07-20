@@ -1,4 +1,5 @@
 import { useCropsStore } from '@/stores/cropsStore'
+import { useNewsStore } from '@/stores/newsStore'
 import { extractCropContent, type CropExtractionResult } from '@/services/textExtractor'
 import { isDefaultCropTitle } from '@/utils/detectTitle'
 import type { Crop, VehicleEdition } from '@/types/session'
@@ -15,11 +16,20 @@ export function resolveCropPdfUrl(
   return edition?.pdfs.find((pdf) => pdf.id === crop.pdfId)?.url
 }
 
+function syncNewsTitleFromCrop(crop: Crop, detectedTitle: string) {
+  if (!crop.newsItemId) return
+  const newsItem = useNewsStore.getState().getNewsItem(crop.newsItemId)
+  if (newsItem && isDefaultCropTitle(newsItem.title)) {
+    useNewsStore.getState().updateNewsItemTitle(crop.newsItemId, detectedTitle)
+  }
+}
+
 function applyCropExtraction(crop: Crop, result: CropExtractionResult) {
   const store = useCropsStore.getState()
   store.updateCropText(crop.id, result.text)
   if (isDefaultCropTitle(crop.title) && result.title) {
     store.updateCropTitle(crop.id, result.title)
+    syncNewsTitleFromCrop(crop, result.title)
   }
 }
 
@@ -65,6 +75,8 @@ export async function extractAndSaveModalText(
       const group = store.groups[modalId]
       if (group && isDefaultCropTitle(group.title) && detectedTitle) {
         store.updateGroupTitle(modalId, detectedTitle)
+        const rootCrop = store.crops[group.cropIds[0]]
+        if (rootCrop) syncNewsTitleFromCrop(rootCrop, detectedTitle)
       }
     }
   } finally {

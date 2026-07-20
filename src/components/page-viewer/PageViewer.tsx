@@ -8,6 +8,7 @@ import { usePageCrops, useCropDisplayIndexMap } from '@/hooks/useCropSelectors'
 import { usePdfPageRenderer } from '@/hooks/usePdfPageRenderer'
 import { useCropDrawing } from '@/hooks/useCropDrawing'
 import { extractAndSaveCropText } from '@/services/cropTextExtraction'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { CropOverlay } from './CropOverlay'
 import { CropEditOverlay } from './CropEditOverlay'
 import { ViewerToolbar } from './ViewerToolbar'
@@ -76,6 +77,14 @@ export function PageViewer() {
       })
 
       if (!cropId) return
+
+      const isCrossPage =
+        newsItem.pdfId === currentPdf.id && newsItem.pageNumber !== selectedPageNumber
+      if (isCrossPage) {
+        const title = newsItem.title.trim() || 'Notícia sem título'
+        useNotificationStore.getState().show(`Corte adicionado à notícia «${title}»`)
+      }
+
       const crop = useCropsStore.getState().crops[cropId]
       if (crop) void extractAndSaveCropText(crop, currentPdf.url)
     },

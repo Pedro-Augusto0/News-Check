@@ -1,5 +1,5 @@
-import { useMemo, useState, useCallback, useEffect } from 'react'
-import { ChevronDown, ChevronRight, Filter, Info, Plus, Search, Unlink } from 'lucide-react'
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
+import { ChevronDown, ChevronRight, Filter, Plus, Search, Unlink } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
@@ -16,7 +16,10 @@ import { newsDisplayNodeHasClient } from '@/utils/cropClientStats'
 import type { CropDisplayNode } from '@/types/session'
 import { CropListItem, CropGroupItem } from './CropListItem'
 import { PendingNewsListItem } from './PendingNewsListItem'
+import { ActiveNewsBanner } from './ActiveNewsBanner'
 import { buildNewsPageSections, newsItemHasClient } from '@/utils/pendingNews'
+import { canDeleteNewsItem } from '@/utils/newsItem'
+import { resolveNewsAccentColor } from '@/utils/newsAccentColor'
 import './crops-tab.css'
 
 export function CropsTab() {
@@ -30,6 +33,7 @@ export function CropsTab() {
   const displayTree = useCropDisplayTree(selectedEditionId, currentPdf?.id)
   const cropDisplayIndex = useCropDisplayIndexMap(selectedEditionId, currentPdf?.id)
   const crops = useCropsStore((s) => s.crops)
+  const groups = useCropsStore((s) => s.groups)
   const selectedCropId = useCropsStore((s) => s.selectedCropId)
   const expandedGroups = useCropsStore((s) => s.expandedGroups)
   const mergeCrops = useCropsStore((s) => s.mergeCrops)
@@ -45,6 +49,7 @@ export function CropsTab() {
   const selectedNewsItemId = useNewsStore((s) => s.selectedNewsItemId)
   const selectNewsItem = useNewsStore((s) => s.selectNewsItem)
   const addManualNewsItem = useNewsStore((s) => s.addManualNewsItem)
+  const deleteManualNewsItem = useNewsStore((s) => s.deleteManualNewsItem)
   const findNewsByCropId = useNewsStore((s) => s.findNewsByCropId)
   const getNewsItem = useNewsStore((s) => s.getNewsItem)
   const ensureNewsForCrop = useNewsStore((s) => s.ensureNewsForCrop)
@@ -53,6 +58,7 @@ export function CropsTab() {
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
   const [ungroupZoneActive, setUngroupZoneActive] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
   const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({})
 
   const pageSectionKey = useCallback(
@@ -90,24 +96,6 @@ export function CropsTab() {
 
   const dragSourceInGroup = dragId ? !!crops[dragId]?.groupId : false
 
-  const filteredTree = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    let nodes = displayTree
-
-    if (q) {
-      nodes = nodes.filter((node) => {
-        const title = node.group?.title ?? node.crop?.title ?? ''
-        return title.toLowerCase().includes(q)
-      })
-    }
-
-    if (newsViewFilter === 'withClient') {
-      nodes = nodes.filter((node) => newsDisplayNodeHasClient(node, crops))
-    }
-
-    return nodes
-  }, [displayTree, search, newsViewFilter, crops])
-
   const pdfNews = useMemo(
     () => Object.values(newsItems).filter((item) => item.pdfId === currentPdf?.id),
     [newsItems, currentPdf?.id],
@@ -116,12 +104,12 @@ export function CropsTab() {
   const pageSections = useMemo(
     () =>
       buildNewsPageSections(
-        buildCropsByPageSections(filteredTree, pdfNews),
+        buildCropsByPageSections(displayTree, pdfNews),
         pdfNews,
         currentPdf?.id ?? '',
         crops,
       ),
-    [filteredTree, pdfNews, currentPdf?.id, crops],
+    [displayTree, pdfNews, currentPdf?.id, crops],
   )
 
   const filteredPageSections = useMemo(() => {
@@ -129,22 +117,52 @@ export function CropsTab() {
 
     return pageSections
       .map((section) => {
-        let pendingNews = section.pendingNews
+        let entries = section.entries
 
         if (q) {
-          pendingNews = pendingNews.filter((item) => item.title.toLowerCase().includes(q))
+          entries = entries.filter((entry) => {
+            if (entry.kind === 'pending') {
+              return entry.item.title.toLowerCase().includes(q)
+            }
+            const title = entry.node.group?.title ?? entry.node.crop?.title ?? ''
+            return title.toLowerCase().includes(q)
+          })
         }
 
         if (newsViewFilter === 'withClient') {
-          pendingNews = pendingNews.filter((item) => newsItemHasClient(item))
+          entries = entries.filter((entry) => {
+            if (entry.kind === 'pending') return newsItemHasClient(entry.item)
+            return newsDisplayNodeHasClient(entry.node, crops)
+          })
         }
 
-        return { ...section, pendingNews }
+        return { ...section, entries }
       })
-      .filter((section) => section.cropNodes.length > 0 || section.pendingNews.length > 0)
-  }, [pageSections, search, newsViewFilter])
+      .filter((section) => section.entries.length > 0)
+  }, [pageSections, search, newsViewFilter, crops])
 
   const selectedNewsItem = selectedNewsItemId ? getNewsItem(selectedNewsItemId) : undefined
+
+  const activeNewsAccent = useMemo(() => {
+    if (!selectedNewsItem) return undefined
+    return resolveNewsAccentColor(selectedNewsItem, crops, groups, cropDisplayIndex)
+  }, [selectedNewsItem, crops, groups, cropDisplayIndex])
+
+  const activeNewsHasCrop = useMemo(() => {
+    if (!selectedNewsItem) return false
+    if (selectedNewsItem.cropId && crops[selectedNewsItem.cropId]) return true
+    return Object.values(crops).some((crop) => crop.newsItemId === selectedNewsItem.id)
+  }, [selectedNewsItem, crops])
+
+  useEffect(() => {
+    if (!selectedNewsItemId && !selectedCropId) return
+    const frame = requestAnimationFrame(() => {
+      listRef.current
+        ?.querySelector('[data-active-news="true"]')
+        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [selectedNewsItemId, selectedCropId])
 
   const isCropLinkedToSelectedNews = useCallback(
     (cropId?: string, newsItemId?: string | null) => {
@@ -175,6 +193,14 @@ export function CropsTab() {
       selectNewsItem(newsId)
     },
     [selectCrop, crops, selectPage, ensureNewsForCrop, selectNewsItem],
+  )
+
+  const handleDeleteNews = useCallback(
+    (newsId: string) => {
+      deleteManualNewsItem(newsId)
+      selectCrop(null)
+    },
+    [deleteManualNewsItem, selectCrop],
   )
 
   const handleAddNews = useCallback(() => {
@@ -293,6 +319,7 @@ export function CropsTab() {
             isDragging={dragId === node.crop.id}
             isDropTarget={dropTargetId === node.crop.id}
             isSelected={selectedCropId === node.crop.id || newsSelected}
+            isActiveNews={newsSelected}
             compact
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
@@ -347,25 +374,40 @@ export function CropsTab() {
         <span>Adicionar notícia</span>
       </button>
 
-      <p className="crops-tab__hint">
-        <Info size={13} aria-hidden />
-        <span>
-          {selectedNewsItem
-            ? `Notícia selecionada: "${selectedNewsItem.title}". Todo corte desenhado na página será adicionado a ela.`
-            : 'Selecione uma notícia na lista para começar a cortar. Use "Adicionar notícia" para criar uma nova.'}
-        </span>
-      </p>
+      <ActiveNewsBanner
+        newsItem={selectedNewsItem}
+        hasCrop={activeNewsHasCrop}
+        accentColor={activeNewsAccent}
+        onClear={() => {
+          selectNewsItem(null)
+          selectCrop(null)
+        }}
+        onDelete={
+          selectedNewsItemId && canDeleteNewsItem(selectedNewsItem)
+            ? () => handleDeleteNews(selectedNewsItemId)
+            : undefined
+        }
+      />
 
-      <div className="crops-tab__list" onDragEnd={handleDragEnd}>
+      <div className="crops-tab__list" ref={listRef} onDragEnd={handleDragEnd}>
         {filteredPageSections.length === 0 && (
           <p className="crops-tab__empty">Nenhuma notícia encontrada</p>
         )}
 
         {filteredPageSections.map((section) => {
           const expanded = isPageExpanded(section.pageNumber)
-          const newsCount = section.cropNodes.length + section.pendingNews.length
-          const pendingCount = section.pendingNews.length
+          const newsCount = section.entries.length
+          const pendingCount = section.entries.filter((entry) => entry.kind === 'pending').length
           const isCurrentPage = section.pageNumber === selectedPageNumber
+          const hasActiveNews =
+            !!selectedNewsItemId &&
+            section.entries.some((entry) => {
+              if (entry.kind === 'pending') return entry.item.id === selectedNewsItemId
+              return isCropLinkedToSelectedNews(
+                entry.node.crop?.id,
+                entry.node.crop?.newsItemId,
+              )
+            })
 
           return (
             <section
@@ -374,6 +416,7 @@ export function CropsTab() {
                 'crops-tab__page-section',
                 !expanded && 'crops-tab__page-section--collapsed',
                 isCurrentPage && 'crops-tab__page-section--current',
+                hasActiveNews && 'crops-tab__page-section--has-active-news',
               )}
             >
               <button
@@ -385,7 +428,12 @@ export function CropsTab() {
                 <span className="crops-tab__page-toggle" aria-hidden>
                   {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                 </span>
-                <span className="crops-tab__page-title">Página {section.pageNumber}</span>
+                <span className="crops-tab__page-title">
+                  Página {section.pageNumber}
+                  {hasActiveNews && (
+                    <span className="crops-tab__page-active-dot" aria-hidden />
+                  )}
+                </span>
                 <span className="crops-tab__page-count">
                   {newsCount} {newsCount === 1 ? 'notícia' : 'notícias'}
                   {pendingCount > 0 && (
@@ -397,16 +445,26 @@ export function CropsTab() {
               </button>
               {expanded && (
                 <div className="crops-tab__page-items">
-                  {section.cropNodes.map(renderNode)}
-                  {section.pendingNews.map((item) => (
-                    <PendingNewsListItem
-                      key={item.id}
-                      item={item}
-                      pageNumber={section.pageNumber}
-                      isSelected={selectedNewsItemId === item.id}
-                      onSelect={() => handleSelectNews(item.id, section.pageNumber)}
-                    />
-                  ))}
+                  {section.entries.map((entry) => {
+                    if (entry.kind === 'crop') {
+                      return renderNode(entry.node)
+                    }
+
+                    const item = entry.item
+                    const deletable = canDeleteNewsItem(item)
+                    return (
+                      <PendingNewsListItem
+                        key={item.id}
+                        item={item}
+                        pageNumber={section.pageNumber}
+                        isSelected={selectedNewsItemId === item.id}
+                        isActiveNews={selectedNewsItemId === item.id}
+                        canDelete={deletable}
+                        onSelect={() => handleSelectNews(item.id, section.pageNumber)}
+                        onDelete={deletable ? () => handleDeleteNews(item.id) : undefined}
+                      />
+                    )
+                  })}
                 </div>
               )}
             </section>
