@@ -37,7 +37,7 @@
 /* ── Nested child items ── */
 .crop-list-item--child {
   align-items: flex-start;
-  padding: 6px 2px 6px 0;
+  padding: 6px 2px 6px 2px;
   margin-left: 0;
   border: none;
   border-radius: 0;
@@ -351,6 +351,25 @@
 .crop-list-item--child.crop-list-item--finalized::before {
   background: var(--color-crop-finalized);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-crop-finalized) 20%, transparent);
+}
+
+.crop-list-item--child.crop-list-item--drop-target {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 2px 0 var(--color-primary);
+}
+
+.crop-list-item--child.crop-list-item--dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.crop-group-item__children--reorderable .crop-list-item--child {
+  cursor: grab;
+}
+
+.crop-group-item__children--reorderable .crop-list-item--child:active {
+  cursor: grabbing;
 }
 
 .crop-list-item__cross-page {

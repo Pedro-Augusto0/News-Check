@@ -364,15 +364,15 @@
   top: 4px;
   right: 4px;
   display: flex;
-  gap: 2px;
+  gap: 3px;
   z-index: 3;
-  padding: 2px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.97);
+  padding: 3px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(10px) saturate(1.15);
   box-shadow:
-    0 2px 6px rgba(26, 29, 38, 0.07),
-    0 0 0 1px rgba(26, 29, 38, 0.05);
+    0 2px 8px rgba(26, 29, 38, 0.1),
+    0 0 0 1px rgba(26, 29, 38, 0.06);
   opacity: 0;
   pointer-events: none;
   transform: translateY(-2px);
@@ -397,58 +397,66 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   padding: 0;
-  color: var(--color-text-secondary);
-  background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-full);
   cursor: pointer;
   transition:
     background var(--transition),
     color var(--transition),
-    transform 80ms ease;
+    transform 80ms ease,
+    box-shadow var(--transition);
 }
 
 .crop-box__action svg {
   flex-shrink: 0;
-  opacity: 0.82;
-  transition: opacity var(--transition);
-}
-
-.crop-box__action:hover svg {
-  opacity: 1;
 }
 
 .crop-box__action:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
+}
+
+.crop-box__action:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.crop-box__action--view-text {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-subtle);
 }
 
 .crop-box__action--view-text:hover {
-  background: color-mix(in srgb, var(--color-primary) 14%, #fff);
   color: var(--color-text);
+  background: var(--color-bg-app);
+}
+
+.crop-box__action--edit {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
 }
 
 .crop-box__action--edit:hover {
-  background: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 14%, #fff);
-  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-primary) 14%, #fff);
 }
 
 .crop-box__action--finalize {
   color: var(--color-crop-finalized);
+  background: var(--color-success-bg);
 }
 
 .crop-box__action--finalize:hover {
-  background: color-mix(in srgb, var(--color-crop-finalized) 24%, #fff);
   color: var(--color-crop-finalized-hover);
+  background: color-mix(in srgb, var(--color-crop-finalized) 12%, #fff);
 }
 
 .crop-box__action--delete {
   color: var(--color-danger);
+  background: #fef3f2;
 }
 
 .crop-box__action--delete:hover {
-  background: color-mix(in srgb, var(--color-danger) 12%, #fff);
-  color: var(--color-danger);
+  background: #fee4e2;
 }

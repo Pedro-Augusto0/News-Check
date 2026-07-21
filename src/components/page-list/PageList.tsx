@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, CircleDashed, FileText, Filter, LayoutGrid, Search, UserRound } from 'lucide-react'
+import { Check, CircleDashed, Filter, LayoutGrid, Newspaper, Search, UserRound } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
+import { useNewsStore } from '@/stores/newsStore'
 import { useFilteredPages, useCurrentPdf } from '@/hooks/useSessionSelectors'
-import { buildCropCountByPage } from '@/utils/pageListStats'
+import { buildNewsCountByPage } from '@/utils/pageListStats'
 import { buildClientCountByPage, countPagesWithClientCrops } from '@/utils/cropClientStats'
 import { isPageFinalizedInState } from '@/utils/pageFinalization'
 import type { PageFilter } from '@/types/session'
@@ -34,12 +35,13 @@ export function PageList() {
   const currentPdf = useCurrentPdf()
   const crops = useCropsStore((s) => s.crops)
   const finalizedPages = useCropsStore((s) => s.finalizedPages)
+  const newsItems = useNewsStore((s) => s.items)
   const [search, setSearch] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
 
-  const cropCountByPage = useMemo(
-    () => (currentPdf ? buildCropCountByPage(crops, currentPdf.id) : new Map<number, number>()),
-    [crops, currentPdf],
+  const newsCountByPage = useMemo(
+    () => (currentPdf ? buildNewsCountByPage(newsItems, currentPdf.id) : new Map<number, number>()),
+    [newsItems, currentPdf],
   )
 
   const clientCountByPage = useMemo(
@@ -145,7 +147,7 @@ export function PageList() {
       <ul className="page-list__items" role="listbox" aria-label="Lista de páginas">
         {visiblePages.map((page) => {
           const isActive = selectedPageNumber === page.pageNumber
-          const cropCount = cropCountByPage.get(page.pageNumber) ?? 0
+          const newsCount = newsCountByPage.get(page.pageNumber) ?? 0
           const clientCount = clientCountByPage.get(page.pageNumber) ?? 0
           const pageFinalized = currentPdf
             ? isPageFinalizedInState(finalizedPages, currentPdf.id, page.pageNumber)
@@ -180,29 +182,33 @@ export function PageList() {
                 <span className="page-list__page-name">Página {page.pageNumber}</span>
                 <span
                   className="page-list__meta"
-                  aria-label={`${clientCount} ${clientCount === 1 ? 'cliente' : 'clientes'}, ${cropCount} ${cropCount === 1 ? 'corte' : 'cortes'}`}
+                  aria-label={`${clientCount} ${clientCount === 1 ? 'cliente' : 'clientes'}, ${newsCount} ${newsCount === 1 ? 'notícia' : 'notícias'}`}
                 >
                   <span
                     className={cn(
-                      'page-list__stat',
-                      'page-list__stat--client',
-                      clientCount > 0 && 'page-list__stat--has-value',
+                      'page-list__indicator',
+                      'page-list__indicator--client',
+                      clientCount > 0 && 'page-list__indicator--has-value',
                     )}
                     title={`${clientCount} ${clientCount === 1 ? 'cliente' : 'clientes'}`}
                   >
-                    <UserRound size={11} strokeWidth={2.5} aria-hidden />
-                    {clientCount}
+                    <span className="page-list__indicator-icon" aria-hidden>
+                      <UserRound size={11} strokeWidth={2.3} />
+                    </span>
+                    <span className="page-list__indicator-count">{clientCount}</span>
                   </span>
                   <span
                     className={cn(
-                      'page-list__stat',
-                      'page-list__stat--crop',
-                      cropCount > 0 && 'page-list__stat--has-value',
+                      'page-list__indicator',
+                      'page-list__indicator--news',
+                      newsCount > 0 && 'page-list__indicator--has-value',
                     )}
-                    title={`${cropCount} ${cropCount === 1 ? 'corte' : 'cortes'}`}
+                    title={`${newsCount} ${newsCount === 1 ? 'notícia' : 'notícias'}`}
                   >
-                    <FileText size={11} strokeWidth={2.25} aria-hidden />
-                    {cropCount}
+                    <span className="page-list__indicator-icon" aria-hidden>
+                      <Newspaper size={11} strokeWidth={2.3} />
+                    </span>
+                    <span className="page-list__indicator-count">{newsCount}</span>
                   </span>
                 </span>
               </button>

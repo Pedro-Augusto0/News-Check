@@ -37,6 +37,7 @@ export function CropsTab() {
   const selectedCropId = useCropsStore((s) => s.selectedCropId)
   const expandedGroups = useCropsStore((s) => s.expandedGroups)
   const mergeCrops = useCropsStore((s) => s.mergeCrops)
+  const reorderGroupCrops = useCropsStore((s) => s.reorderGroupCrops)
   const ungroupCrop = useCropsStore((s) => s.ungroupCrop)
   const deleteCrop = useCropsStore((s) => s.deleteCrop)
   const updateCropTitle = useCropsStore((s) => s.updateCropTitle)
@@ -231,18 +232,27 @@ export function CropsTab() {
       e.stopPropagation()
       const sourceId = e.dataTransfer.getData('text/plain') || dragId
       if (sourceId && sourceId !== targetId) {
-        const groupId = mergeCrops(sourceId, targetId)
-        if (groupId) {
-          void extractAndSaveGroupText(groupId, (crop) =>
-            resolveCropPdfUrl(crop, editions),
-          )
+        const source = crops[sourceId]
+        const target = crops[targetId]
+        const sameGroup =
+          source?.groupId && target?.groupId && source.groupId === target.groupId
+
+        if (sameGroup) {
+          reorderGroupCrops(source.groupId!, sourceId, targetId)
+        } else {
+          const groupId = mergeCrops(sourceId, targetId)
+          if (groupId) {
+            void extractAndSaveGroupText(groupId, (crop) =>
+              resolveCropPdfUrl(crop, editions),
+            )
+          }
         }
       }
       setDragId(null)
       setDropTargetId(null)
       setUngroupZoneActive(false)
     },
-    [dragId, mergeCrops, editions],
+    [dragId, crops, reorderGroupCrops, mergeCrops, editions],
   )
 
   const handleUngroupDrop = useCallback(
@@ -288,11 +298,14 @@ export function CropsTab() {
             isDropTarget={dropTargetId === node.crop.id}
             selectedCropId={selectedCropId}
             isNewsSelected={newsSelected}
+            dragId={dragId}
+            dropTargetId={dropTargetId}
             compact
             onToggle={toggleGroupExpanded}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
+            onDragEnter={(cropId) => setDropTargetId(cropId)}
             onGroupTitleChange={updateGroupTitle}
             onViewText={openTextModal}
             onSelect={handleSelectCrop}

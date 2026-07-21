@@ -50,6 +50,7 @@ interface CropListItemProps {
   onDragStart: (e: React.DragEvent, cropId: string) => void
   onDragOver: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent, targetId: string) => void
+  onDragEnter?: () => void
   onTitleChange: (cropId: string, title: string) => void
   onViewText: (id: string) => void
   onSelect: (cropId: string) => void
@@ -76,6 +77,7 @@ export function CropListItem({
   onDragStart,
   onDragOver,
   onDrop,
+  onDragEnter,
   onTitleChange,
   onViewText,
   onSelect,
@@ -137,6 +139,7 @@ export function CropListItem({
       aria-current={isActiveNews ? 'true' : undefined}
       draggable
       onDragStart={handleItemDragStart}
+      onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, crop.id)}
       onClick={() => onSelect(crop.id)}
@@ -260,11 +263,14 @@ interface CropGroupItemProps {
   isDropTarget?: boolean
   selectedCropId?: string | null
   isNewsSelected?: boolean
+  dragId?: string | null
+  dropTargetId?: string | null
   compact?: boolean
   onToggle: (groupId: string) => void
   onDragStart: (e: React.DragEvent, cropId: string) => void
   onDragOver: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent, targetId: string) => void
+  onDragEnter?: (cropId: string) => void
   onGroupTitleChange: (groupId: string, title: string) => void
   onViewText: (groupId: string) => void
   onSelect: (cropId: string) => void
@@ -283,17 +289,21 @@ export function CropGroupItem({
   isDropTarget,
   selectedCropId,
   isNewsSelected,
+  dragId,
+  dropTargetId,
   compact = false,
   onToggle,
   onDragStart,
   onDragOver,
   onDrop,
+  onDragEnter,
   onGroupTitleChange,
   onViewText,
   onSelect,
   onDelete,
   onUngroup,
 }: CropGroupItemProps) {
+  const canReorder = childCrops.length > 0
   const allCrops = [rootCrop, ...childCrops]
   const pageNumbers = [...new Set(allCrops.map((c) => c.pageNumber))].sort((a, b) => a - b)
   const spansPages = pageNumbers.length > 1
@@ -341,11 +351,14 @@ export function CropGroupItem({
         isChild
         compact={compact}
         showViewText={false}
+        isDragging={dragId === crop.id}
+        isDropTarget={dropTargetId === crop.id}
         isSelected={selectedCropId === crop.id || isNewsSelected}
         isActiveNews={isNewsSelected}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onDragEnter={onDragEnter ? () => onDragEnter(crop.id) : undefined}
         onTitleChange={(_, title) => onGroupTitleChange(group.id, title)}
         onViewText={() => onViewText(group.id)}
         onSelect={onSelect}
@@ -372,12 +385,14 @@ export function CropGroupItem({
         expanded={expanded}
         onToggle={childCrops.length > 0 ? () => onToggle(group.id) : undefined}
         metaContent={parentMeta}
+        isDragging={dragId === rootCrop.id}
         isDropTarget={isDropTarget}
         isSelected={selectedCropId === rootCrop.id || isNewsSelected}
         isActiveNews={isNewsSelected}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onDragEnter={onDragEnter ? () => onDragEnter(rootCrop.id) : undefined}
         onTitleChange={(_, title) => onGroupTitleChange(group.id, title)}
         onViewText={() => onViewText(group.id)}
         onSelect={onSelect}
@@ -385,7 +400,12 @@ export function CropGroupItem({
       />
 
       {expanded && childCrops.length > 0 && (
-        <div className="crop-group-item__children">
+        <div
+          className={cn(
+            'crop-group-item__children',
+            canReorder && 'crop-group-item__children--reorderable',
+          )}
+        >
           {compact || pageNumbers.length <= 1
             ? childCrops.map((crop, childIndex) => renderChildCrop(crop, childIndex))
             : cropsByPage.map(([pageNumber, pageCrops]) => (

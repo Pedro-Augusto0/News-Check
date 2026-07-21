@@ -1,6 +1,5 @@
-import { MousePointerClick, Scissors, Trash2, X } from 'lucide-react'
+import { MousePointerClick, Scissors, X } from 'lucide-react'
 import type { StoredNewsItem } from '@/types/session'
-import { canDeleteNewsItem } from '@/utils/newsItem'
 import './active-news-banner.css'
 
 interface ActiveNewsBannerProps {
@@ -16,7 +15,6 @@ export function ActiveNewsBanner({
   hasCrop,
   accentColor,
   onClear,
-  onDelete,
 }: ActiveNewsBannerProps) {
   if (!newsItem) {
     return (
@@ -33,8 +31,6 @@ export function ActiveNewsBanner({
       </div>
     )
   }
-
-  const deletable = canDeleteNewsItem(newsItem)
 
   return (
     <div
@@ -56,17 +52,7 @@ export function ActiveNewsBanner({
           {hasCrop ? 'Corte vinculado — novos cortes entram nesta notícia' : 'Sem corte — desenhe na página'}
         </span>
       </div>
-      {deletable ? (
-        <button
-          type="button"
-          className="active-news-banner__clear active-news-banner__clear--delete"
-          onClick={onDelete}
-          aria-label="Excluir notícia"
-          title="Excluir notícia"
-        >
-          <Trash2 size={14} strokeWidth={2.25} aria-hidden />
-        </button>
-      ) : (
+     
         <button
           type="button"
           className="active-news-banner__clear"
@@ -76,7 +62,6 @@ export function ActiveNewsBanner({
         >
           <X size={14} strokeWidth={2.25} aria-hidden />
         </button>
-      )}
     </div>
   )
 }

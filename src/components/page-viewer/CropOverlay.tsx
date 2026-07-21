@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Check, FileText, GripVertical, Link2, Pencil, Trash2, Unlink, UserRound } from 'lucide-react'
+import { Check, Crop as CropIcon, Eye, GripVertical, Link2, Trash2, Unlink, UserRound } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import type { Crop } from '@/types/session'
 import type { CropRect } from '@/utils/cropGeometry'
@@ -177,7 +177,7 @@ function CropBoxInner({
               aria-label="Ver detalhes"
               title="Ver detalhes"
             >
-              <FileText size={13} strokeWidth={2} aria-hidden />
+              <Eye size={12} strokeWidth={2.25} aria-hidden />
             </button>
           )}
           {onEdit && (
@@ -188,7 +188,7 @@ function CropBoxInner({
               aria-label="Editar corte"
               title="Editar corte"
             >
-              <Pencil size={13} strokeWidth={2} aria-hidden />
+              <CropIcon size={12} strokeWidth={2.25} aria-hidden />
             </button>
           )}
           {!finalized && onFinalize && (
@@ -199,7 +199,7 @@ function CropBoxInner({
               aria-label="Finalizar"
               title="Finalizar"
             >
-              <Check size={13} strokeWidth={2.25} aria-hidden />
+              <Check size={12} strokeWidth={2.5} aria-hidden />
             </button>
           )}
           {onDelete && (
@@ -210,7 +210,7 @@ function CropBoxInner({
               aria-label="Excluir"
               title="Excluir"
             >
-              <Trash2 size={13} strokeWidth={2} aria-hidden />
+              <Trash2 size={12} strokeWidth={2.25} aria-hidden />
             </button>
           )}
         </div>

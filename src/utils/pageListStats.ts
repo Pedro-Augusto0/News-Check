@@ -1,4 +1,16 @@
-import type { Crop } from '@/types/session'
+import type { Crop, StoredNewsItem } from '@/types/session'
+
+export function buildNewsCountByPage(
+  newsItems: Record<string, Pick<StoredNewsItem, 'pdfId' | 'pageNumber'>>,
+  pdfId: string,
+): Map<number, number> {
+  const map = new Map<number, number>()
+  for (const item of Object.values(newsItems)) {
+    if (item.pdfId !== pdfId) continue
+    map.set(item.pageNumber, (map.get(item.pageNumber) ?? 0) + 1)
+  }
+  return map
+}
 
 export function buildCropCountByPage(
   crops: Record<string, { pdfId: string; pageNumber: number }>,
