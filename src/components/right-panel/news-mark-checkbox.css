@@ -1,0 +1,32 @@
+.news-highlight-indicator {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 2px;
+  border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--color-text-muted) 35%, transparent);
+  background: transparent;
+  opacity: 0;
+  transition:
+    opacity var(--transition),
+    border-color var(--transition),
+    background var(--transition),
+    box-shadow var(--transition);
+}
+
+.crop-list-item:hover .news-highlight-indicator,
+.crop-list-item--selected .news-highlight-indicator,
+.crop-list-item--active-news .news-highlight-indicator,
+.news-highlight-indicator--active {
+  opacity: 1;
+}
+
+.news-highlight-indicator--active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.crop-list-item--child .news-highlight-indicator {
+  display: none;
+}

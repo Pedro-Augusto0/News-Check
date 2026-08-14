@@ -2,19 +2,26 @@ import { useCropsStore } from '@/stores/cropsStore'
 import { useNewsStore } from '@/stores/newsStore'
 import { extractCropContent, type CropExtractionResult } from '@/services/textExtractor'
 import { isDefaultCropTitle } from '@/utils/detectTitle'
+import { comparePageKeys } from '@/utils/pageKey'
 import type { Crop, VehicleEdition } from '@/types/session'
 
 function setExtracting(id: string, extracting: boolean) {
   useCropsStore.getState().setTextExtracting(id, extracting)
 }
 
-export function resolveCropPdfUrl(
+/** Resolve a URL da imagem da página onde o corte foi feito. */
+export function resolveCropImageUrl(
   crop: Crop,
   editions: VehicleEdition[],
 ): string | undefined {
   const edition = editions.find((item) => item.id === crop.editionId)
-  return edition?.pdfs.find((pdf) => pdf.id === crop.pdfId)?.url
+  const pdf = edition?.pdfs.find((item) => item.id === crop.pdfId)
+  const page = pdf?.pages.find((item) => item.pageNumber === crop.pageNumber)
+  return page?.imageUrl || undefined
 }
+
+/** @deprecated Use resolveCropImageUrl */
+export const resolveCropPdfUrl = resolveCropImageUrl
 
 function syncNewsTitleFromCrop(crop: Crop, detectedTitle: string) {
   if (!crop.newsItemId) return
@@ -31,15 +38,18 @@ function applyCropExtraction(crop: Crop, result: CropExtractionResult) {
     store.updateCropTitle(crop.id, result.title)
     syncNewsTitleFromCrop(crop, result.title)
   }
+  if (crop.newsItemId && result.text.trim()) {
+    useNewsStore.getState().updateNewsItemText(crop.newsItemId, result.text)
+  }
 }
 
 export async function extractAndSaveCropText(
   crop: Crop,
-  pdfUrl: string,
+  imageUrl: string,
 ): Promise<CropExtractionResult> {
   setExtracting(crop.id, true)
   try {
-    const result = await extractCropContent(pdfUrl, crop.pageNumber, crop.rect)
+    const result = await extractCropContent(imageUrl, crop.rect)
     applyCropExtraction(crop, result)
     return result
   } finally {
@@ -50,7 +60,7 @@ export async function extractAndSaveCropText(
 export async function extractAndSaveModalText(
   modalId: string,
   modalCrops: Crop[],
-  resolvePdfUrl: (crop: Crop) => string | undefined,
+  resolveImageUrl: (crop: Crop) => string | undefined,
 ): Promise<void> {
   const store = useCropsStore.getState()
   const isGroup = !!store.groups[modalId]
@@ -61,9 +71,9 @@ export async function extractAndSaveModalText(
     let detectedTitle = ''
 
     for (const crop of modalCrops) {
-      const pdfUrl = resolvePdfUrl(crop)
-      if (!pdfUrl) continue
-      const result = await extractCropContent(pdfUrl, crop.pageNumber, crop.rect)
+      const imageUrl = resolveImageUrl(crop)
+      if (!imageUrl) continue
+      const result = await extractCropContent(imageUrl, crop.rect)
       if (result.text) parts.push(result.text)
       if (!detectedTitle && result.title) detectedTitle = result.title
       if (!isGroup) applyCropExtraction(crop, result)
@@ -78,6 +88,10 @@ export async function extractAndSaveModalText(
         const rootCrop = store.crops[group.cropIds[0]]
         if (rootCrop) syncNewsTitleFromCrop(rootCrop, detectedTitle)
       }
+      const rootCrop = group ? store.crops[group.cropIds[0]] : undefined
+      if (rootCrop?.newsItemId && combined.trim()) {
+        useNewsStore.getState().updateNewsItemText(rootCrop.newsItemId, combined)
+      }
     }
   } finally {
     setExtracting(modalId, false)
@@ -86,7 +100,7 @@ export async function extractAndSaveModalText(
 
 export async function extractAndSaveGroupText(
   groupId: string,
-  resolvePdfUrl: (crop: Crop) => string | undefined,
+  resolveImageUrl: (crop: Crop) => string | undefined,
 ): Promise<void> {
   const store = useCropsStore.getState()
   const group = store.groups[groupId]
@@ -96,9 +110,9 @@ export async function extractAndSaveGroupText(
     .map((id) => store.crops[id])
     .filter(Boolean)
     .sort((a, b) => {
-      if (a.pageNumber !== b.pageNumber) return a.pageNumber - b.pageNumber
+      if (a.pageNumber !== b.pageNumber) return comparePageKeys(a.pageNumber, b.pageNumber)
       return a.rect.y - b.rect.y
     })
 
-  await extractAndSaveModalText(groupId, modalCrops, resolvePdfUrl)
+  await extractAndSaveModalText(groupId, modalCrops, resolveImageUrl)
 }

@@ -12,7 +12,7 @@ export interface CropData {
   text: string
   groupId: string | null
   finalized: boolean
-  /** Número fixo do corte no PDF — não muda ao adicionar outros cortes. */
+  /** Número fixo do corte na página — não muda ao adicionar outros cortes. */
   displayIndex: number
   /** Palavras-chave do cliente encontradas nesta notícia (virá da API). */
   clientKeywordsFound?: string[]
@@ -24,6 +24,8 @@ export interface CropData {
 export interface NewsItem {
   id: string
   title: string
+  /** Texto completo da notícia (API). */
+  text?: string
   /** ID do corte associado; null = ainda precisa de corte manual. */
   cropId: string | null
   clientKeywordsFound?: string[]
@@ -32,7 +34,8 @@ export interface NewsItem {
 /** Notícia persistida na sessão (API + manuais). */
 export interface StoredNewsItem extends NewsItem {
   pdfId: string
-  pageNumber: number
+  /** Identificador da página (ex.: "A11", "1"). */
+  pageNumber: string
   editionId: string
   manual?: boolean
   /** Ordem fixa na lista da página — não muda ao vincular cortes. */
@@ -40,7 +43,10 @@ export interface StoredNewsItem extends NewsItem {
 }
 
 export interface PageData {
-  pageNumber: number
+  /** Identificador da página (ex.: "A11", "1"). */
+  pageNumber: string
+  /** URL da imagem scaneada desta página. */
+  imageUrl: string
   hasClient: boolean
   keywordsFound: string[]
   keywordsMissing: string[]
@@ -50,6 +56,7 @@ export interface PageData {
   newsItems?: NewsItem[]
 }
 
+/** Documento da edição (antes PDF; agora container de páginas-imagem). */
 export interface PdfFile {
   id: string
   name: string
@@ -72,7 +79,7 @@ export interface SessionPayload {
 
 export interface Crop extends CropData {
   pdfId: string
-  pageNumber: number
+  pageNumber: string
   editionId: string
 }
 

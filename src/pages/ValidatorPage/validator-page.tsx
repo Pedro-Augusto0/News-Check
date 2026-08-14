@@ -6,10 +6,10 @@ import { PageViewer } from '@/components/page-viewer/PageViewer'
 import { RightPanel } from '@/components/right-panel/RightPanel'
 import { NotificationToast } from '@/components/ui/NotificationToast/notification-toast'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { loadSession } from '@/services/loadSession'
+import { loadPublicationEditions } from '@/services/api/publications'
+import { hydrateEditionNews } from '@/services/hydrateEditionNews'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
-import { useNewsStore } from '@/stores/newsStore'
 import './validator-page.css'
 
 export function ValidatorPage() {
@@ -19,25 +19,36 @@ export function ValidatorPage() {
   const setLoading = useSessionStore((s) => s.setLoading)
   const setError = useSessionStore((s) => s.setError)
   const hydrateFromEdition = useCropsStore((s) => s.hydrateFromEdition)
-  const hydrateNewsFromEdition = useNewsStore((s) => s.hydrateFromEdition)
 
   useKeyboardShortcuts()
 
   useEffect(() => {
-    setLoading(true)
-    loadSession()
-      .then((payload) => {
-        setEditions(payload.editions)
-        const first = payload.editions[0]
+    let cancelled = false
+
+    async function bootstrap() {
+      setLoading(true)
+      try {
+        const editions = await loadPublicationEditions()
+        if (cancelled) return
+
+        setEditions(editions)
+        const first = editions[0]
         if (first) {
           hydrateFromEdition(first)
-          hydrateNewsFromEdition(first)
+          await hydrateEditionNews(first)
         }
-      })
-      .catch((err: unknown) => {
+        if (!cancelled) setLoading(false)
+      } catch (err: unknown) {
+        if (cancelled) return
         setError(err instanceof Error ? err.message : 'Erro ao carregar dados')
-      })
-  }, [setEditions, setLoading, setError, hydrateFromEdition, hydrateNewsFromEdition])
+      }
+    }
+
+    void bootstrap()
+    return () => {
+      cancelled = true
+    }
+  }, [setEditions, setLoading, setError, hydrateFromEdition])
 
   if (isLoading) {
     return (

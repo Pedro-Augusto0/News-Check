@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Crop } from '@/types/session'
-import { renderPageToCanvas } from '@/lib/pdf/documentCache'
+import { renderImageToCanvas } from '@/lib/image/pageImageCache'
 import { percentToPx } from '@/utils/cropGeometry'
 import { cropColor } from '@/utils/cropColors'
 import { cn } from '@/utils/cn'
@@ -9,7 +9,7 @@ import { useCropsStore } from '@/stores/cropsStore'
 import './crop-page-preview.css'
 interface CropPagePreviewProps {
   pdfUrl: string
-  pageNumber: number
+  pageNumber: string
   crops: Crop[]
   cropDisplayIndex: Map<string, CropDisplayInfo>
   activeCropId?: string | null
@@ -28,12 +28,12 @@ export function CropPagePreview({
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas || !pdfUrl) return
 
     let cancelled = false
     const scale = 0.35
 
-    void renderPageToCanvas(pdfUrl, pageNumber, canvas, scale).then((dims) => {
+    void renderImageToCanvas(pdfUrl, canvas, scale).then((dims) => {
       if (!cancelled) setDimensions(dims)
     })
 

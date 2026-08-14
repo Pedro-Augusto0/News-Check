@@ -7,18 +7,19 @@ interface SessionState {
   editions: VehicleEdition[]
   selectedEditionId: string | null
   selectedPdfId: string | null
-  selectedPageNumber: number
+  selectedPageNumber: string
   pageFilter: PageFilter
   newsViewFilter: NewsViewFilter
   isLoading: boolean
   error: string | null
 
   setEditions: (editions: VehicleEdition[]) => void
+  updateEditionPages: (editionId: string, pages: PageData[]) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   selectEdition: (id: string) => void
   selectPdf: (id: string) => void
-  selectPage: (pageNumber: number) => void
+  selectPage: (pageNumber: string) => void
   setPageFilter: (filter: PageFilter) => void
   setNewsViewFilter: (filter: NewsViewFilter) => void
   nextPage: () => void
@@ -34,7 +35,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   editions: [],
   selectedEditionId: null,
   selectedPdfId: null,
-  selectedPageNumber: 2,
+  selectedPageNumber: '',
   pageFilter: 'all',
   newsViewFilter: 'all',
   isLoading: true,
@@ -47,9 +48,31 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       editions,
       selectedEditionId: first?.id ?? null,
       selectedPdfId: firstPdf?.id ?? null,
-      selectedPageNumber: firstPdf?.pages[0]?.pageNumber ?? 1,
-      isLoading: false,
+      selectedPageNumber: firstPdf?.pages[0]?.pageNumber ?? '',
       error: null,
+    })
+  },
+
+  updateEditionPages: (editionId, pages) => {
+    const { editions, selectedEditionId, selectedPageNumber } = get()
+    const nextEditions = editions.map((edition) => {
+      if (edition.id !== editionId) return edition
+      const pdf = edition.pdfs[0]
+      if (!pdf) return edition
+      return {
+        ...edition,
+        pdfs: [{ ...pdf, pages }],
+      }
+    })
+
+    const current = nextEditions.find((e) => e.id === editionId)
+    const firstPage = current?.pdfs[0]?.pages[0]?.pageNumber ?? ''
+    const pageExists = current?.pdfs[0]?.pages.some((p) => p.pageNumber === selectedPageNumber)
+
+    set({
+      editions: nextEditions,
+      selectedPageNumber:
+        selectedEditionId === editionId && pageExists ? selectedPageNumber : firstPage,
     })
   },
 
@@ -60,7 +83,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const edition = get().editions.find((e) => e.id === id)
     const firstPdf = edition?.pdfs[0]
     const { newsViewFilter } = get()
-    let selectedPageNumber = firstPdf?.pages[0]?.pageNumber ?? 1
+    let selectedPageNumber = firstPdf?.pages[0]?.pageNumber ?? ''
 
     if (newsViewFilter === 'withClient' && firstPdf) {
       const crops = useCropsStore.getState().crops
@@ -83,7 +106,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   selectPdf: (id) => {
     const pdf = get().getCurrentEdition()?.pdfs.find((p) => p.id === id)
     const { newsViewFilter } = get()
-    let selectedPageNumber = pdf?.pages[0]?.pageNumber ?? 1
+    let selectedPageNumber = pdf?.pages[0]?.pageNumber ?? ''
 
     if (newsViewFilter === 'withClient' && pdf) {
       const crops = useCropsStore.getState().crops

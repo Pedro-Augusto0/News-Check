@@ -17,9 +17,12 @@ interface ViewerState {
   setRendering: (rendering: boolean) => void
 }
 
-const MIN_ZOOM = 0.5
+const MIN_ZOOM = 0.25
 const MAX_ZOOM = 4
 const ZOOM_STEP = 0.25
+
+/** Escala de encaixe quando zoom = 1 (100%). Antes era 75% do encaixe na largura. */
+export const DEFAULT_FIT_SCALE = 0.75
 
 export const useViewerStore = create<ViewerState>((set, get) => ({
   zoom: 1,

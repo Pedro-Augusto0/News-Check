@@ -1,5 +1,6 @@
 import type { Crop, CropDisplayNode, CropGroup } from '@/types/session'
-import { cropDisplayInfoFromIndex, resolveCropDisplayIndex } from '@/utils/cropDisplayIndex'
+import { cropDisplayInfoFromIndex } from '@/utils/cropDisplayIndex'
+import { comparePageKeys } from '@/utils/pageKey'
 
 export interface CropDisplayInfo {
   displayIndex: number
@@ -15,7 +16,7 @@ export function buildCropDisplayTree(
   const pdfCrops = Object.values(crops)
     .filter((c) => c.editionId === editionId && c.pdfId === pdfId)
     .sort((a, b) => {
-      if (a.pageNumber !== b.pageNumber) return a.pageNumber - b.pageNumber
+      if (a.pageNumber !== b.pageNumber) return comparePageKeys(a.pageNumber, b.pageNumber)
       return a.rect.y - b.rect.y
     })
 
@@ -58,19 +59,34 @@ export function buildCropDisplayIndexMap(
   groups: Record<string, CropGroup>,
 ): Map<string, CropDisplayInfo> {
   const tree = buildCropDisplayTree(editionId, pdfId, crops, groups)
-  const map = new Map<string, CropDisplayInfo>()
+  const byPage = new Map<string, CropDisplayNode[]>()
 
   for (const node of tree) {
-    const rootCrop = node.crop
-    const displayIndex = resolveCropDisplayIndex(rootCrop, crops)
-    const info = cropDisplayInfoFromIndex(displayIndex)
+    const pageNumber = node.crop?.pageNumber
+    if (!pageNumber) continue
+    const list = byPage.get(pageNumber) ?? []
+    list.push(node)
+    byPage.set(pageNumber, list)
+  }
 
-    if (node.type === 'group' && node.group) {
-      for (const cropId of node.group.cropIds) {
-        map.set(cropId, info)
+  const map = new Map<string, CropDisplayInfo>()
+  let displayIndex = 1
+
+  for (const [, nodes] of [...byPage.entries()].sort(([a], [b]) => comparePageKeys(a, b))) {
+    const sorted = [...nodes].sort(
+      (a, b) => (a.crop?.rect.y ?? 0) - (b.crop?.rect.y ?? 0),
+    )
+
+    for (const node of sorted) {
+      const info = cropDisplayInfoFromIndex(displayIndex++)
+
+      if (node.type === 'group' && node.group) {
+        for (const cropId of node.group.cropIds) {
+          map.set(cropId, info)
+        }
+      } else if (node.crop) {
+        map.set(node.crop.id, info)
       }
-    } else if (rootCrop) {
-      map.set(rootCrop.id, info)
     }
   }
 
@@ -78,19 +94,19 @@ export function buildCropDisplayIndexMap(
 }
 
 export interface CropPageSection {
-  pageNumber: number
+  pageNumber: string
   nodes: CropDisplayNode[]
 }
 
 export interface CropListPageNewsRef {
   id: string
-  pageNumber: number
+  pageNumber: string
 }
 
 export function resolveCropListPageNumber(
   crop: Crop,
   newsById: Map<string, CropListPageNewsRef>,
-): number {
+): string {
   if (crop.newsItemId) {
     const news = newsById.get(crop.newsItemId)
     if (news) return news.pageNumber
@@ -103,7 +119,7 @@ export function buildCropsByPageSections(
   newsItems: CropListPageNewsRef[] = [],
 ): CropPageSection[] {
   const newsById = new Map(newsItems.map((item) => [item.id, item]))
-  const byPage = new Map<number, CropDisplayNode[]>()
+  const byPage = new Map<string, CropDisplayNode[]>()
 
   for (const node of tree) {
     const crop = node.crop
@@ -115,12 +131,12 @@ export function buildCropsByPageSections(
   }
 
   return [...byPage.entries()]
-    .sort(([a], [b]) => a - b)
+    .sort(([a], [b]) => comparePageKeys(a, b))
     .map(([pageNumber, nodes]) => ({ pageNumber, nodes }))
 }
 
-export function formatCropPagesLabel(pageNumbers: number[]): string {
-  const unique = [...new Set(pageNumbers)].sort((a, b) => a - b)
+export function formatCropPagesLabel(pageNumbers: string[]): string {
+  const unique = [...new Set(pageNumbers)].sort(comparePageKeys)
   if (unique.length === 0) return ''
   if (unique.length === 1) return `p. ${unique[0]}`
   if (unique.length === 2) return `p. ${unique[0]} e ${unique[1]}`

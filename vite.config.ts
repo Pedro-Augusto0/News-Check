@@ -9,4 +9,17 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/printed-clipping': {
+        target: 'https://localhost:44344',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/scancontrol': {
+        target: 'http://170.80.70.78',
+        changeOrigin: true,
+      },
+    },
+  },
 })

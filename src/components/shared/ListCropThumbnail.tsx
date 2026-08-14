@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Crop } from '@/types/session'
-import { renderCropRegionToCanvas } from '@/lib/pdf/documentCache'
+import { renderImageRegionToCanvas } from '@/lib/image/pageImageCache'
 import { useLazyMount } from '@/hooks/useLazyMount'
 import { cn } from '@/utils/cn'
 import './list-thumbnail.css'
@@ -8,6 +8,7 @@ import './list-thumbnail.css'
 const LIST_CROP_THUMB_WIDTH = 88
 
 interface ListCropThumbnailProps {
+  /** URL da imagem da página (scan). */
   pdfUrl?: string
   crop: Crop
   displayIndex?: string | number
@@ -31,13 +32,7 @@ export function ListCropThumbnail({
     let cancelled = false
     setReady(false)
 
-    void renderCropRegionToCanvas(
-      pdfUrl,
-      crop.pageNumber,
-      crop.rect,
-      canvas,
-      LIST_CROP_THUMB_WIDTH,
-    )
+    void renderImageRegionToCanvas(pdfUrl, crop.rect, canvas, LIST_CROP_THUMB_WIDTH)
       .then((dims) => {
         if (!cancelled) setReady(dims.width > 0 && dims.height > 0)
       })
@@ -48,7 +43,7 @@ export function ListCropThumbnail({
     return () => {
       cancelled = true
     }
-  }, [pdfUrl, crop.pageNumber, crop.rect, mounted])
+  }, [pdfUrl, crop.rect, mounted])
 
   return (
     <div

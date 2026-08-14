@@ -1,14 +1,20 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
 import { useNewsStore } from '@/stores/newsStore'
 import { useViewerStore } from '@/stores/viewerStore'
 import { useCurrentPdf, useCurrentPage } from '@/hooks/useSessionSelectors'
 import { usePageCrops, useCropDisplayIndexMap } from '@/hooks/useCropSelectors'
-import { usePdfPageRenderer } from '@/hooks/usePdfPageRenderer'
+import { usePageImageRenderer } from '@/hooks/usePageImageRenderer'
 import { useCropDrawing } from '@/hooks/useCropDrawing'
-import { extractAndSaveCropText } from '@/services/cropTextExtraction'
 import { useNotificationStore } from '@/stores/notificationStore'
+import {
+  filterCropsByHighlightedNews,
+  handleCropListSelection,
+  handleImageNewsHighlightAtPoint,
+  shouldUseMultiNewsSelection,
+} from '@/utils/cropNewsSelection'
+import { pageScopeKey } from '@/utils/pageKey'
 import { CropOverlay } from './CropOverlay'
 import { CropEditOverlay } from './CropEditOverlay'
 import { ViewerToolbar } from './ViewerToolbar'
@@ -34,9 +40,24 @@ export function PageViewer() {
   const openTextModal = useCropsStore((s) => s.openTextModal)
   const cropsMap = useCropsStore((s) => s.crops)
   const selectedNewsItemId = useNewsStore((s) => s.selectedNewsItemId)
+  const highlightedNewsByPage = useNewsStore((s) => s.highlightedNewsByPage)
   const getNewsItem = useNewsStore((s) => s.getNewsItem)
-  const selectNewsItem = useNewsStore((s) => s.selectNewsItem)
-  const ensureNewsForCrop = useNewsStore((s) => s.ensureNewsForCrop)
+  const findNewsByCropId = useNewsStore((s) => s.findNewsByCropId)
+
+  const pageHighlightScope = useMemo(
+    () =>
+      currentPdf
+        ? { pdfId: currentPdf.id, pageNumber: selectedPageNumber }
+        : undefined,
+    [currentPdf, selectedPageNumber],
+  )
+
+  const visibleCrops = useMemo(() => {
+    const highlightedNewsIds = pageHighlightScope
+      ? highlightedNewsByPage[pageScopeKey(pageHighlightScope.pdfId, pageHighlightScope.pageNumber)] ?? {}
+      : {}
+    return filterCropsByHighlightedNews(crops, highlightedNewsIds, findNewsByCropId)
+  }, [crops, highlightedNewsByPage, findNewsByCropId, pageHighlightScope])
 
   const panMode = useViewerStore((s) => s.panMode)
   const panOffset = useViewerStore((s) => s.panOffset)
@@ -44,10 +65,22 @@ export function PageViewer() {
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const panStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
+  const [viewportWidth, setViewportWidth] = useState(800)
 
-  const pdfUrl = currentPdf?.url
-  const pageNumber = selectedPageNumber
-  const { canvasRef, dimensions, error } = usePdfPageRenderer(pdfUrl, pageNumber)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    const update = () => setViewportWidth(el.clientWidth)
+    update()
+
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [currentPdf?.id, currentPage?.pageNumber])
+
+  const imageUrl = currentPage?.imageUrl
+  const { canvasRef, dimensions, error } = usePageImageRenderer(imageUrl, viewportWidth)
 
   const isEditing = !!editingCropId
   const editingCrop = editingCropId ? cropsMap[editingCropId] : undefined
@@ -63,7 +96,9 @@ export function PageViewer() {
 
   const handleCropComplete = useCallback(
     (rect: Parameters<typeof addCropToNews>[0]['rect']) => {
-      if (!selectedEditionId || !currentPdf || isEditing || !selectedNewsItemId) return
+      if (!selectedEditionId || !currentPdf || !currentPage || isEditing || !selectedNewsItemId) {
+        return
+      }
 
       const newsItem = getNewsItem(selectedNewsItemId)
       if (!newsItem) return
@@ -84,14 +119,12 @@ export function PageViewer() {
         const title = newsItem.title.trim() || 'Notícia sem título'
         useNotificationStore.getState().show(`Corte adicionado à notícia «${title}»`)
       }
-
-      const crop = useCropsStore.getState().crops[cropId]
-      if (crop) void extractAndSaveCropText(crop, currentPdf.url)
     },
     [
       addCropToNews,
       selectedEditionId,
       currentPdf,
+      currentPage,
       selectedPageNumber,
       isEditing,
       selectedNewsItemId,
@@ -107,16 +140,18 @@ export function PageViewer() {
   })
 
   const handleSelectCrop = useCallback(
-    (cropId: string | null) => {
+    (cropId: string | null, event?: React.MouseEvent) => {
       if (!cropId) {
         selectCrop(null)
         return
       }
-      selectCrop(cropId)
-      const newsId = ensureNewsForCrop(cropId)
-      selectNewsItem(newsId)
+      handleCropListSelection(
+        cropId,
+        shouldUseMultiNewsSelection(event, pageHighlightScope),
+        pageHighlightScope,
+      )
     },
-    [selectCrop, ensureNewsForCrop, selectNewsItem],
+    [selectCrop, pageHighlightScope],
   )
 
   const handlePanStart = (e: React.PointerEvent) => {
@@ -174,12 +209,10 @@ export function PageViewer() {
 
   const handleSaveEdit = useCallback(
     (rect: Parameters<typeof commitEditCrop>[1]) => {
-      if (!editingCropId || !currentPdf) return
+      if (!editingCropId) return
       commitEditCrop(editingCropId, rect)
-      const crop = useCropsStore.getState().crops[editingCropId]
-      if (crop) void extractAndSaveCropText(crop, currentPdf.url)
     },
-    [editingCropId, commitEditCrop, currentPdf],
+    [editingCropId, commitEditCrop],
   )
 
   const canvasCursor = isEditing
@@ -193,7 +226,7 @@ export function PageViewer() {
   if (!currentPdf || !currentPage) {
     return (
       <div className="page-viewer page-viewer--empty">
-        <p>Selecione um PDF e uma página</p>
+        <p>Selecione um veículo e uma página</p>
       </div>
     )
   }
@@ -213,8 +246,27 @@ export function PageViewer() {
               if (isEditing) return
 
               const target = e.target as HTMLElement
-              if (!target.closest('.crop-box')) {
-                selectCrop(null)
+              const onCropBox = target.closest('.crop-box')
+
+              if (!onCropBox && !panMode) {
+                const wrap = e.currentTarget as HTMLElement
+                const bounds = wrap.getBoundingClientRect()
+                const px = e.clientX - bounds.left
+                const py = e.clientY - bounds.top
+                const handled = handleImageNewsHighlightAtPoint(
+                  crops,
+                  px,
+                  py,
+                  dimensions.width,
+                  dimensions.height,
+                  e,
+                  pageHighlightScope,
+                )
+                if (handled) return
+              }
+
+              if (!onCropBox) {
+                handleSelectCrop(null)
               }
 
               if (panMode) handlePanStart(e)
@@ -233,7 +285,7 @@ export function PageViewer() {
           >
             <canvas ref={canvasRef} className="page-viewer__canvas" />
             <CropOverlay
-              crops={crops}
+              crops={visibleCrops}
               cropDisplayIndex={cropDisplayIndex}
               selectedCropId={selectedCropId}
               editingCropId={editingCropId}

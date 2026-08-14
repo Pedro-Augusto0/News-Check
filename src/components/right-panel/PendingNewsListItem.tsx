@@ -1,4 +1,4 @@
-import { Scissors, Trash2, UserRound } from 'lucide-react'
+import { Scissors, Trash2, UserRound, Eye } from 'lucide-react'
 import type { NewsItem } from '@/types/session'
 import { cn } from '@/utils/cn'
 import { formatClientKeywords } from '@/utils/cropClientStats'
@@ -8,11 +8,12 @@ import './crop-list-item.css'
 
 interface PendingNewsListItemProps {
   item: NewsItem
-  pageNumber: number
+  pageNumber: string
   isSelected?: boolean
   isActiveNews?: boolean
   canDelete?: boolean
-  onSelect: () => void
+  onSelect: (event?: React.MouseEvent) => void
+  onViewText?: () => void
   onDelete?: () => void
 }
 
@@ -48,6 +49,7 @@ export function PendingNewsListItem({
   isActiveNews = false,
   canDelete = false,
   onSelect,
+  onViewText,
   onDelete,
 }: PendingNewsListItemProps) {
   const hasClient = newsItemHasClient(item)
@@ -66,7 +68,7 @@ export function PendingNewsListItem({
       tabIndex={0}
       data-active-news={isActiveNews ? 'true' : undefined}
       aria-current={isActiveNews ? 'true' : undefined}
-      onClick={onSelect}
+      onClick={(e) => onSelect(e)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
@@ -95,20 +97,37 @@ export function PendingNewsListItem({
         </span>
       </div>
 
-      {canDelete && onDelete && (
-        <button
-          type="button"
-          className="crop-list-item__action-btn crop-list-item__action-btn--delete crop-list-item__action-btn--pending-delete"
-          aria-label="Excluir notícia"
-          title="Excluir notícia"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete()
-          }}
-        >
-          <Trash2 size={14} strokeWidth={2} aria-hidden />
-        </button>
-      )}
+      <div className="crop-list-item__actions">
+        {onViewText && (
+          <button
+            type="button"
+            className="crop-list-item__action-btn crop-list-item__action-btn--view"
+            aria-label="Ver detalhes"
+            title="Ver detalhes"
+            onClick={(e) => {
+              e.stopPropagation()
+              onViewText()
+            }}
+          >
+            <Eye size={14} />
+          </button>
+        )}
+
+        {canDelete && onDelete && (
+          <button
+            type="button"
+            className="crop-list-item__action-btn crop-list-item__action-btn--delete crop-list-item__action-btn--pending-delete"
+            aria-label="Excluir notícia"
+            title="Excluir notícia"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+          >
+            <Trash2 size={14} strokeWidth={2} aria-hidden />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

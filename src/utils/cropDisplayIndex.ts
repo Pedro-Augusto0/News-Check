@@ -1,9 +1,10 @@
 import type { Crop } from '@/types/session'
 import type { CropDisplayInfo } from '@/utils/cropDisplayTree'
+import { comparePageKeys } from '@/utils/pageKey'
 
 function sortCropsByPagePosition(crops: Crop[]): Crop[] {
   return [...crops].sort((a, b) => {
-    if (a.pageNumber !== b.pageNumber) return a.pageNumber - b.pageNumber
+    if (a.pageNumber !== b.pageNumber) return comparePageKeys(a.pageNumber, b.pageNumber)
     return a.rect.y - b.rect.y
   })
 }

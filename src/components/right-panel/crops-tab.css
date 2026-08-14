@@ -95,6 +95,13 @@
   border-color: var(--color-border-strong);
 }
 
+.crops-tab__filter-btn--active,
+.crops-tab__filter-btn--custom {
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  background: var(--color-primary-light);
+}
+
 .crops-tab__add-news-btn {
   display: inline-flex;
   align-items: center;

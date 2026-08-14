@@ -9,11 +9,6 @@ import type { CropDisplayInfo } from '@/utils/cropDisplayTree'
 import { cropHasClient, formatClientKeywords } from '@/utils/cropClientStats'
 import { useCropsStore } from '@/stores/cropsStore'
 import { useViewerStore } from '@/stores/viewerStore'
-import { useSessionStore } from '@/stores/sessionStore'
-import {
-  extractAndSaveGroupText,
-  resolveCropPdfUrl,
-} from '@/services/cropTextExtraction'
 import './crop-overlay.css'
 
 interface CropOverlayProps {
@@ -24,7 +19,7 @@ interface CropOverlayProps {
   draftRect: CropRect | null
   width: number
   height: number
-  onSelectCrop: (cropId: string) => void
+  onSelectCrop: (cropId: string, event?: React.MouseEvent) => void
   onViewText: (cropId: string) => void
   onEditCrop: (cropId: string) => void
   onFinalizeCrop: (cropId: string) => void
@@ -46,7 +41,7 @@ interface CropBoxInnerProps {
   isDropTarget?: boolean
   mergeFlash?: boolean
   clientKeywords?: string[]
-  onClick?: () => void
+  onClick?: (event?: React.MouseEvent) => void
   onViewText?: () => void
   onEdit?: () => void
   onFinalize?: () => void
@@ -108,7 +103,7 @@ function CropBoxInner({
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation()
-        onClick?.()
+        onClick?.(e)
       }}
       onDragOver={mergeEnabled ? onMergeDragOver : undefined}
       onDragEnter={mergeEnabled ? () => onMergeDragEnter?.(cropId) : undefined}
@@ -252,13 +247,7 @@ export function CropOverlay({
   const cropsMap = useCropsStore((s) => s.crops)
   const mergeCrops = useCropsStore((s) => s.mergeCrops)
   const ungroupCrop = useCropsStore((s) => s.ungroupCrop)
-  const editions = useSessionStore((s) => s.editions)
   const panMode = useViewerStore((s) => s.panMode)
-
-  const resolvePdfUrl = useCallback(
-    (crop: Crop) => resolveCropPdfUrl(crop, editions),
-    [editions],
-  )
 
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
@@ -309,16 +298,15 @@ export function CropOverlay({
       const source = sourceId ? cropsMap[sourceId] : undefined
       const target = cropsMap[targetId]
       if (sourceId && canMergeInto(source, target)) {
-        const groupId = mergeCrops(sourceId, targetId)
+        mergeCrops(sourceId, targetId)
         onSelectCrop(targetId)
         setMergeFlashId(targetId)
-        if (groupId) void extractAndSaveGroupText(groupId, resolvePdfUrl)
       }
       setDragId(null)
       setDropTargetId(null)
       setUngroupZoneActive(false)
     },
-    [dragId, cropsMap, mergeCrops, onSelectCrop, resolvePdfUrl],
+    [dragId, cropsMap, mergeCrops, onSelectCrop],
   )
 
   const handleDragEnter = useCallback(
@@ -411,7 +399,7 @@ export function CropOverlay({
             isDragging={dragId === crop.id}
             isDropTarget={dropTargetId === crop.id}
             mergeFlash={mergeFlashId === crop.id}
-            onClick={() => onSelectCrop(crop.id)}
+            onClick={(event) => onSelectCrop(crop.id, event)}
             onViewText={() => onViewText(crop.id)}
             onEdit={() => onEditCrop(crop.id)}
             onFinalize={() => onFinalizeCrop(crop.id)}

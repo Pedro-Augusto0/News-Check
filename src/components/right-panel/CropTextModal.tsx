@@ -1,33 +1,38 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
-  RefreshCw,
+  X,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal/modal'
 import { useCropsStore } from '@/stores/cropsStore'
+import { useNewsStore } from '@/stores/newsStore'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropDisplayIndexMap, useCropDisplayTree } from '@/hooks/useCropSelectors'
 import { extractAndSaveModalText } from '@/services/cropTextExtraction'
 import { buildClientKeywordRows } from '@/utils/newsDetailClients'
-import { mergeClientKeywords } from '@/utils/cropClientStats'
-import { cn } from '@/utils/cn'
-import { cropColor } from '@/utils/cropColors'
-import type { Crop } from '@/types/session'
-import { ClippingLightbox, DETAIL_THUMBNAIL_WIDTH_LARGE, NewsClippingThumbnail } from './NewsClippingThumbnail'
+import { mergeClientKeywords, newsDisplayNodeHasClient } from '@/utils/cropClientStats'
+import { buildCropsByPageSections } from '@/utils/cropDisplayTree'
+import { buildNewsPageSections, isNewsItemPending, newsItemHasClient } from '@/utils/pendingNews'
+import { NewsDetailCropEditor } from './NewsDetailCropEditor'
+import { NewsDetailInfoPanel } from './NewsDetailInfoPanel'
 import './crop-text-modal.css'
 
-interface CropPreviewItem {
-  crop: Crop
-  pdfUrl: string
+function formatEditionDate(value: string): string {
+  const dateOnly = value.slice(0, 10)
+  const parsed = new Date(`${dateOnly}T12:00:00`)
+  if (Number.isNaN(parsed.getTime())) return value
+  return parsed.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
 }
 
-function splitTextParagraphs(text: string): string[] {
-  const trimmed = text.trim()
-  if (!trimmed) return []
-  return trimmed.split(/\n{2,}/).map((p) => p.replace(/\n/g, ' ').trim())
+function formatTime(value: Date): string {
+  return value.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
 export function CropTextModal() {
@@ -36,128 +41,175 @@ export function CropTextModal() {
   const openTextModal = useCropsStore((s) => s.openTextModal)
   const crops = useCropsStore((s) => s.crops)
   const groups = useCropsStore((s) => s.groups)
+  const textModalNewsId = useNewsStore((s) => s.textModalNewsId)
+  const closeNewsTextModal = useNewsStore((s) => s.closeNewsTextModal)
+  const openNewsTextModal = useNewsStore((s) => s.openNewsTextModal)
+  const newsItems = useNewsStore((s) => s.items)
+  const getNewsItem = useNewsStore((s) => s.getNewsItem)
   const editions = useSessionStore((s) => s.editions)
   const newsViewFilter = useSessionStore((s) => s.newsViewFilter)
-  const autoExtractAttempted = useRef<string | null>(null)
-  const [expandedCropId, setExpandedCropId] = useState<string | null>(null)
+  const [lastTextUpdate, setLastTextUpdate] = useState<Date | null>(null)
 
-  const isGroup = textModalCropId ? !!groups[textModalCropId] : false
-  const group = textModalCropId ? groups[textModalCropId] : undefined
-  const singleCrop = textModalCropId && !isGroup ? crops[textModalCropId] : undefined
+  const pendingNewsItem = textModalNewsId ? getNewsItem(textModalNewsId) : undefined
+  const isPendingNewsModal = !!textModalNewsId && !textModalCropId
+
+  const modalRootId = useMemo(() => {
+    if (!textModalCropId) return null
+    if (groups[textModalCropId]) return textModalCropId
+    const crop = crops[textModalCropId]
+    if (crop?.groupId && groups[crop.groupId]) return crop.groupId
+    return textModalCropId
+  }, [textModalCropId, crops, groups])
+
+  useEffect(() => {
+    if (!textModalCropId || !modalRootId || modalRootId === textModalCropId) return
+    openTextModal(modalRootId)
+  }, [textModalCropId, modalRootId, openTextModal])
+
+  const isGroup = modalRootId ? !!groups[modalRootId] : false
+  const group = modalRootId ? groups[modalRootId] : undefined
+  const singleCrop =
+    modalRootId && !isGroup ? crops[modalRootId] : undefined
 
   const modalCrops = useMemo(() => {
-    if (!textModalCropId) return []
+    if (!modalRootId) return []
     if (group) {
       return group.cropIds.map((id) => crops[id]).filter(Boolean)
     }
-    const crop = crops[textModalCropId]
+    const crop = crops[modalRootId]
     return crop ? [crop] : []
-  }, [textModalCropId, group, crops])
+  }, [modalRootId, group, crops])
 
-  const editionId = modalCrops[0]?.editionId
-  const pdfId = modalCrops[0]?.pdfId
+  const editionId = modalCrops[0]?.editionId ?? pendingNewsItem?.editionId
+  const pdfId = modalCrops[0]?.pdfId ?? pendingNewsItem?.pdfId
+  const edition = editions.find((e) => e.id === editionId)
 
   const displayTree = useCropDisplayTree(editionId, pdfId)
   const cropDisplayIndex = useCropDisplayIndexMap(editionId, pdfId)
 
-  const newsItemIds = useMemo(() => {
-    return displayTree
-      .filter((node) => {
-        if (newsViewFilter !== 'withClient') return true
-        const id = node.group?.id ?? node.crop?.id
-        if (!id) return false
-        const modalGroup = node.group
-        if (modalGroup) {
-          return modalGroup.cropIds.some(
-            (cropId) => (crops[cropId]?.clientKeywordsFound?.length ?? 0) > 0,
-          )
-        }
-        return (node.crop?.clientKeywordsFound?.length ?? 0) > 0
-      })
-      .map((node) => node.group?.id ?? node.crop?.id)
-      .filter((id): id is string => !!id)
-  }, [displayTree, newsViewFilter, crops])
+  const pageSections = useMemo(() => {
+    if (!editionId || !pdfId) return []
+    const pdfNews = Object.values(newsItems).filter((item) => item.pdfId === pdfId)
+    const cropSections = buildCropsByPageSections(displayTree, pdfNews)
+    return buildNewsPageSections(cropSections, pdfNews, pdfId, crops)
+  }, [editionId, pdfId, newsItems, displayTree, crops])
 
-  const currentNewsIndex = textModalCropId ? newsItemIds.indexOf(textModalCropId) : -1
+  const newsItemIds = useMemo(() => {
+    return pageSections.flatMap((section) =>
+      section.entries
+        .filter((entry) => {
+          if (newsViewFilter !== 'withClient') return true
+          if (entry.kind === 'pending') return newsItemHasClient(entry.item)
+          return newsDisplayNodeHasClient(entry.node, crops)
+        })
+        .map((entry) => {
+          if (entry.kind === 'pending') return entry.item.id
+          return entry.node.group?.id ?? entry.node.crop?.id ?? null
+        })
+        .filter((id): id is string => !!id),
+    )
+  }, [pageSections, newsViewFilter, crops])
+
+  const activeModalId = textModalNewsId ?? textModalCropId
+  const currentNewsIndex = activeModalId ? newsItemIds.indexOf(activeModalId) : -1
   const hasPrev = currentNewsIndex > 0
   const hasNext = currentNewsIndex >= 0 && currentNewsIndex < newsItemIds.length - 1
 
+  const isPendingModalId = useCallback(
+    (id: string) => {
+      const item = getNewsItem(id)
+      if (!item || !pdfId) return false
+      return isNewsItemPending(item, crops, pdfId)
+    },
+    [getNewsItem, crops, pdfId],
+  )
+
   const goToPrev = useCallback(() => {
     if (!hasPrev) return
-    openTextModal(newsItemIds[currentNewsIndex - 1])
-  }, [hasPrev, currentNewsIndex, newsItemIds, openTextModal])
+    const targetId = newsItemIds[currentNewsIndex - 1]
+    if (isPendingModalId(targetId)) {
+      openNewsTextModal(targetId)
+      return
+    }
+    openTextModal(targetId)
+  }, [hasPrev, currentNewsIndex, newsItemIds, openTextModal, openNewsTextModal, isPendingModalId])
 
   const goToNext = useCallback(() => {
     if (!hasNext) return
-    openTextModal(newsItemIds[currentNewsIndex + 1])
-  }, [hasNext, currentNewsIndex, newsItemIds, openTextModal])
-
-  const cropPreviews = useMemo((): CropPreviewItem[] => {
-    const items: CropPreviewItem[] = []
-    for (const crop of modalCrops) {
-      const edition = editions.find((e) => e.id === crop.editionId)
-      const pdf = edition?.pdfs.find((p) => p.id === crop.pdfId)
-      if (pdf) items.push({ crop, pdfUrl: pdf.url })
+    const targetId = newsItemIds[currentNewsIndex + 1]
+    if (isPendingModalId(targetId)) {
+      openNewsTextModal(targetId)
+      return
     }
-    return items
-  }, [modalCrops, editions])
+    openTextModal(targetId)
+  }, [hasNext, currentNewsIndex, newsItemIds, openTextModal, openNewsTextModal, isPendingModalId])
 
-  const pdfUrl = cropPreviews[0]?.pdfUrl
+  const handleClose = useCallback(() => {
+    closeTextModal()
+    closeNewsTextModal()
+  }, [closeTextModal, closeNewsTextModal])
 
   const resolvePdfUrl = useCallback(
-    (crop: Crop) => {
-      const edition = editions.find((e) => e.id === crop.editionId)
-      return edition?.pdfs.find((p) => p.id === crop.pdfId)?.url
+    (crop: (typeof modalCrops)[number]) => {
+      const ed = editions.find((e) => e.id === crop.editionId)
+      const pdf = ed?.pdfs.find((p) => p.id === crop.pdfId)
+      return pdf?.pages.find((p) => p.pageNumber === crop.pageNumber)?.imageUrl
     },
     [editions],
   )
 
   useEffect(() => {
-    setExpandedCropId(null)
-  }, [textModalCropId])
+    setLastTextUpdate(null)
+  }, [textModalCropId, textModalNewsId])
 
-  useEffect(() => {
-    if (!textModalCropId) {
-      autoExtractAttempted.current = null
-      return
-    }
-
-    if (autoExtractAttempted.current === textModalCropId) return
-    autoExtractAttempted.current = textModalCropId
-
+  const handleRunOcr = useCallback(async () => {
+    if (!textModalCropId || isPendingNewsModal || modalCrops.length === 0) return
     const state = useCropsStore.getState()
-    const text = state.getModalText()
-    if (text.trim() || modalCrops.length === 0 || state.isTextExtracting(textModalCropId)) return
+    if (state.isTextExtracting(textModalCropId)) return
+    await extractAndSaveModalText(textModalCropId, modalCrops, resolvePdfUrl)
+    setLastTextUpdate(new Date())
+  }, [textModalCropId, isPendingNewsModal, modalCrops, resolvePdfUrl])
 
-    void extractAndSaveModalText(textModalCropId, modalCrops, resolvePdfUrl)
-  }, [textModalCropId, modalCrops, resolvePdfUrl])
+  const title = isPendingNewsModal
+    ? pendingNewsItem?.title ?? ''
+    : isGroup
+      ? group?.title ?? ''
+      : singleCrop?.title ?? ''
 
-  const title = isGroup ? group?.title ?? '' : singleCrop?.title ?? ''
-
-  const text = useCropsStore((s) => {
+  const cropModalText = useCropsStore((s) => {
     const id = s.textModalCropId
     if (!id) return ''
     if (s.groups[id]) return s.getGroupText(id)
     return s.getCropText(id)
   })
 
+  const linkedNewsText = modalCrops[0]?.newsItemId
+    ? getNewsItem(modalCrops[0].newsItemId)?.text ?? ''
+    : ''
+
+  const text = isPendingNewsModal
+    ? (pendingNewsItem?.text ?? '')
+    : (cropModalText.trim() || linkedNewsText)
+
   const extracting = useCropsStore((s) =>
     textModalCropId ? !!s.extractingTextIds[textModalCropId] : false,
   )
 
-  const clientRows = useMemo(
-    () => buildClientKeywordRows(mergeClientKeywords(modalCrops)),
-    [modalCrops],
-  )
+  const clientRows = useMemo(() => {
+    if (isPendingNewsModal && pendingNewsItem) {
+      return buildClientKeywordRows(pendingNewsItem.clientKeywordsFound ?? [])
+    }
+    return buildClientKeywordRows(mergeClientKeywords(modalCrops))
+  }, [isPendingNewsModal, pendingNewsItem, modalCrops])
 
-  const paragraphs = useMemo(() => splitTextParagraphs(text), [text])
+  const pageLabel = useMemo(() => {
+    const pages = [...new Set(modalCrops.map((crop) => crop.pageNumber))]
+    if (pages.length === 0) return pendingNewsItem?.pageNumber ?? '—'
+    if (pages.length === 1) return pages[0]
+    return pages.join(', ')
+  }, [modalCrops, pendingNewsItem?.pageNumber])
 
-  const expandedPreview = useMemo(() => {
-    if (!expandedCropId) return null
-    return cropPreviews.find((preview) => preview.crop.id === expandedCropId) ?? null
-  }, [expandedCropId, cropPreviews])
-
-  if (!textModalCropId) return null
+  if (!textModalCropId && !textModalNewsId) return null
 
   const totalNews = newsItemIds.length
   const positionLabel =
@@ -165,161 +217,105 @@ export function CropTextModal() {
       ? `${currentNewsIndex + 1} de ${totalNews} notícias`
       : '1 notícia'
 
+  const sourceLabel = edition
+    ? `${edition.vehicleName} - ${formatEditionDate(edition.editionDate)} - Página ${pageLabel}`
+    : `Página ${pageLabel}`
+
   return (
-    <Modal open hideHeader size="fullscreen" onClose={closeTextModal}>
+    <Modal open hideHeader size="fullscreen" onClose={handleClose}>
       <div className="news-detail-modal">
         <header className="news-detail-modal__topbar">
-          <button
-            type="button"
-            className="news-detail-modal__back"
-            onClick={closeTextModal}
-          >
-            <ArrowLeft size={16} strokeWidth={2.25} aria-hidden />
-            Voltar para a lista
-          </button>
-
-          <div className="news-detail-modal__pagination">
-            <span className="news-detail-modal__pagination-label">{positionLabel}</span>
+          <div className="news-detail-modal__topbar-start">
             <button
               type="button"
-              className="news-detail-modal__nav-btn"
-              onClick={goToPrev}
-              disabled={!hasPrev}
-              aria-label="Notícia anterior"
+              className="news-detail-modal__back"
+              onClick={handleClose}
             >
-              <ChevronLeft size={16} strokeWidth={2.25} aria-hidden />
+              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden />
+              Voltar para a lista
             </button>
+          </div>
+
+          <div className="news-detail-modal__topbar-center">
+            <h1 className="news-detail-modal__headline">{title || 'Sem título'}</h1>
+            <p className="news-detail-modal__source">{sourceLabel}</p>
+          </div>
+
+          <div className="news-detail-modal__topbar-end">
+            <span className="news-detail-modal__pagination-label">{positionLabel}</span>
+            <div className="news-detail-modal__nav-group">
+              <button
+                type="button"
+                className="news-detail-modal__nav-btn"
+                onClick={goToPrev}
+                disabled={!hasPrev}
+                aria-label="Notícia anterior"
+              >
+                <ChevronLeft size={16} strokeWidth={2.25} aria-hidden />
+              </button>
+              <button
+                type="button"
+                className="news-detail-modal__nav-btn"
+                onClick={goToNext}
+                disabled={!hasNext}
+                aria-label="Próxima notícia"
+              >
+                <ChevronRight size={16} strokeWidth={2.25} aria-hidden />
+              </button>
+            </div>
             <button
               type="button"
-              className="news-detail-modal__nav-btn"
-              onClick={goToNext}
-              disabled={!hasNext}
-              aria-label="Próxima notícia"
+              className="news-detail-modal__close"
+              onClick={handleClose}
+              aria-label="Fechar"
             >
-              <ChevronRight size={16} strokeWidth={2.25} aria-hidden />
+              <X size={18} strokeWidth={2.25} aria-hidden />
             </button>
           </div>
         </header>
 
         <div className="news-detail-modal__layout">
-          <article className="news-detail-modal__article-card">
-            <section className="news-detail-modal__section news-detail-modal__section--title">
-              <h3 className="news-detail-modal__section-label">Título</h3>
-              <h1 className="news-detail-modal__title">{title || 'Sem título'}</h1>
-            </section>
+          <NewsDetailInfoPanel
+            title={title}
+            text={text}
+            extracting={extracting}
+            canRunOcr={modalCrops.length > 0 && !isPendingNewsModal}
+            onRunOcr={() => void handleRunOcr()}
+            clientRows={clientRows}
+            metadata={{
+              vehicleName: edition?.vehicleName ?? '',
+              editionDate: edition?.editionDate ?? '',
+              pageLabel,
+            }}
+          />
 
-            <div className="news-detail-modal__divider" role="separator" />
-
-            <section className="news-detail-modal__section news-detail-modal__section--text">
-              <h3 className="news-detail-modal__section-label">Texto</h3>
-              {extracting ? (
-                <p className="news-detail-modal__extracting">
-                  <RefreshCw size={14} className="news-detail-modal__spin" aria-hidden />
-                  Extraindo texto da notícia…
-                </p>
-              ) : paragraphs.length > 0 ? (
-                <div className="news-detail-modal__text">
-                  {paragraphs.map((paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
-                  ))}
-                </div>
-              ) : (
-                <p className="news-detail-modal__empty-text">
-                  Sem texto disponível para esta notícia.
-                </p>
-              )}
-            </section>
-          </article>
-
-          <aside className="news-detail-modal__aside">
-            <section
-              className={cn(
-                'news-detail-modal__card news-detail-modal__card--clippings',
-                modalCrops.length === 1 && 'news-detail-modal__card--clippings-single',
-              )}
-            >
-              <header className="news-detail-modal__card-header">
-                <div className="news-detail-modal__card-title-row">
-                  <h2 className="news-detail-modal__card-title">Cortes da notícia</h2>
-                  <span className="news-detail-modal__count-badge">{modalCrops.length}</span>
-                </div>
-                {pdfUrl && (
-                  <a
-                    href={pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="news-detail-modal__external-link"
-                    aria-label="Abrir PDF original"
-                    title="Abrir PDF original"
-                  >
-                    <ExternalLink size={16} strokeWidth={2} aria-hidden />
-                  </a>
-                )}
-              </header>
-
-              <div
-                className={cn(
-                  'news-detail-modal__clippings',
-                  modalCrops.length === 1 && 'news-detail-modal__clippings--single',
-                  modalCrops.length > 1 && 'news-detail-modal__clippings--multi',
-                )}
-              >
-                {cropPreviews.map((preview) => {
-                  const displayInfo = cropDisplayIndex.get(preview.crop.id)
-                  return (
-                    <NewsClippingThumbnail
-                      key={preview.crop.id}
-                      pdfUrl={preview.pdfUrl}
-                      crop={preview.crop}
-                      displayIndex={displayInfo?.displayIndex}
-                      accentColor={cropColor(displayInfo?.colorIndex ?? 0)}
-                      renderWidth={modalCrops.length === 1 ? DETAIL_THUMBNAIL_WIDTH_LARGE : undefined}
-                      onExpand={() => setExpandedCropId(preview.crop.id)}
-                    />
-                  )
-                })}
-              </div>
-            </section>
-
-            <section className="news-detail-modal__card news-detail-modal__card--clients">
-              <header className="news-detail-modal__card-header">
-                <div className="news-detail-modal__card-title-row">
-                  <h2 className="news-detail-modal__card-title">
-                    Clientes e palavras-chave
-                  </h2>
-                  {clientRows.length > 0 && (
-                    <span className="news-detail-modal__count-badge">{clientRows.length}</span>
-                  )}
-                </div>
-              </header>
-
-              {clientRows.length > 0 ? (
-                <ul className="news-detail-modal__clients-list">
-                  {clientRows.map((row) => (
-                    <li key={`${row.clientName}-${row.keyword}`} className="news-detail-modal__client-item">
-                      <span className="news-detail-modal__client-name">{row.clientName}</span>
-                      <span className="news-detail-modal__keyword-pill">{row.keyword}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="news-detail-modal__clients-empty">
-                  Nenhuma palavra-chave encontrada.
-                </p>
-              )}
-            </section>
-          </aside>
+          <NewsDetailCropEditor
+            modalCrops={modalCrops}
+            modalRootId={modalRootId}
+            pendingNewsItem={isPendingNewsModal ? pendingNewsItem : undefined}
+            cropDisplayIndex={cropDisplayIndex}
+          />
         </div>
-      </div>
 
-      {expandedPreview && (
-        <ClippingLightbox
-          pdfUrl={expandedPreview.pdfUrl}
-          crop={expandedPreview.crop}
-          displayIndex={cropDisplayIndex.get(expandedPreview.crop.id)?.displayIndex}
-          onClose={() => setExpandedCropId(null)}
-        />
-      )}
+        <footer className="news-detail-modal__footer">
+          <div className="news-detail-modal__footer-status">
+            {lastTextUpdate ? (
+              <>
+                <CheckCircle2 size={15} aria-hidden />
+                <span>Texto atualizado pelo OCR</span>
+                <span className="news-detail-modal__footer-time">
+                  Última atualização: {formatTime(lastTextUpdate)}
+                </span>
+              </>
+            ) : (
+              <span>O texto original é mantido. Use Passar OCR para extrair o texto dos cortes.</span>
+            )}
+          </div>
+          <button type="button" className="news-detail-modal__save-btn" onClick={handleClose}>
+            Salvar alterações
+          </button>
+        </footer>
+      </div>
     </Modal>
   )
 }

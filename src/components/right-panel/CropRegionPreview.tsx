@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Crop } from '@/types/session'
-import { renderCropRegionToCanvas } from '@/lib/pdf/documentCache'
+import { renderImageRegionToCanvas } from '@/lib/image/pageImageCache'
 import './crop-region-preview.css'
 
 interface CropRegionPreviewProps {
@@ -18,7 +18,7 @@ export function CropRegionPreview({ pdfUrl, crop, displayIndex }: CropRegionPrev
 
     let cancelled = false
 
-    void renderCropRegionToCanvas(pdfUrl, crop.pageNumber, crop.rect, canvas).catch(() => {
+    void renderImageRegionToCanvas(pdfUrl, crop.rect, canvas).catch(() => {
       if (!cancelled) {
         const ctx = canvas.getContext('2d')
         if (ctx) {
@@ -31,7 +31,7 @@ export function CropRegionPreview({ pdfUrl, crop, displayIndex }: CropRegionPrev
     return () => {
       cancelled = true
     }
-  }, [pdfUrl, crop.pageNumber, crop.rect])
+  }, [pdfUrl, crop.rect])
 
   return (
     <figure className="crop-region-preview">

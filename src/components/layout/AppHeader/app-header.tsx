@@ -6,10 +6,12 @@ import { useCropsStore } from '@/stores/cropsStore'
 import { useNewsStore } from '@/stores/newsStore'
 import { useViewerStore } from '@/stores/viewerStore'
 import { useCurrentPdf } from '@/hooks/useSessionSelectors'
+import { hydrateEditionNews } from '@/services/hydrateEditionNews'
+import { formatPublicationLabel } from '@/services/api/publications'
 import type { VehicleEdition, NewsViewFilter } from '@/types/session'
 import './app-header.css'
 
-const ZOOM_PRESETS = [50, 75, 100, 125, 150, 200, 300, 400]
+const ZOOM_PRESETS = [25, 50, 75, 100, 125, 150, 200, 300, 400]
 
 const NEWS_VIEW_OPTIONS: { value: NewsViewFilter; label: string }[] = [
   { value: 'all', label: 'Todas as notícias' },
@@ -17,8 +19,7 @@ const NEWS_VIEW_OPTIONS: { value: NewsViewFilter; label: string }[] = [
 ]
 
 function formatEditionLabel(edition: VehicleEdition): string {
-  const [year, month, day] = edition.editionDate.split('-')
-  return `${edition.vehicleName} - ${day}/${month}/${year}`
+  return formatPublicationLabel(edition.vehicleName, edition.editionDate)
 }
 
 export function AppHeader() {
@@ -32,6 +33,7 @@ export function AppHeader() {
   const prevPage = useSessionStore((s) => s.prevPage)
   const hydrateFromEdition = useCropsStore((s) => s.hydrateFromEdition)
   const hydrateNewsFromEdition = useNewsStore((s) => s.hydrateFromEdition)
+  const setLoadingNews = useNewsStore((s) => s.setLoadingNews)
 
   const zoom = useViewerStore((s) => s.zoom)
   const setZoom = useViewerStore((s) => s.setZoom)
@@ -48,17 +50,27 @@ export function AppHeader() {
       .map((value) => ({ value: String(value), label: `${value}%` }))
   }, [zoomPercent])
 
-  const handleEditionChange = (id: string) => {
+  const handleEditionChange = async (id: string) => {
     selectEdition(id)
     const edition = editions.find((e) => e.id === id)
-    if (edition) {
-      hydrateFromEdition(edition)
-      hydrateNewsFromEdition(edition)
+    if (!edition) return
+
+    hydrateFromEdition(edition)
+    hydrateNewsFromEdition(edition)
+    setLoadingNews(true)
+    try {
+      await hydrateEditionNews(edition)
+    } catch (err: unknown) {
+      setLoadingNews(false)
+      console.error(err instanceof Error ? err.message : 'Erro ao carregar notícias')
     }
   }
 
-  const isFirstPage = selectedPageNumber <= 1
-  const isLastPage = currentPdf ? selectedPageNumber >= currentPdf.pages.length : true
+  const lastPageLabel = currentPdf?.pages.at(-1)?.pageNumber ?? ''
+  const firstPageLabel = currentPdf?.pages[0]?.pageNumber ?? ''
+  const pageIndex = currentPdf?.pages.findIndex((p) => p.pageNumber === selectedPageNumber) ?? -1
+  const isFirstPage = pageIndex <= 0
+  const isLastPage = !currentPdf || pageIndex < 0 || pageIndex >= currentPdf.pages.length - 1
 
   return (
     <header className="app-header">
@@ -79,7 +91,9 @@ export function AppHeader() {
             value: e.id,
             label: formatEditionLabel(e),
           }))}
-          onChange={handleEditionChange}
+          onChange={(value) => {
+            void handleEditionChange(value)
+          }}
         />
         <span className="app-header__session-divider" aria-hidden />
         <ComboBox
@@ -107,7 +121,7 @@ export function AppHeader() {
             </button>
 
             <span className="app-header__pagination-label">
-              {selectedPageNumber} / {currentPdf.pages.length}
+              {selectedPageNumber || firstPageLabel} / {lastPageLabel}
             </span>
 
             <button

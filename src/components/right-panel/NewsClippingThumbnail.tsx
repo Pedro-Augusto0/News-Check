@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ImageOff, ZoomIn } from 'lucide-react'
 import type { Crop } from '@/types/session'
-import { renderCropRegionToCanvas } from '@/lib/pdf/documentCache'
+import { renderImageRegionToCanvas } from '@/lib/image/pageImageCache'
 import { cn } from '@/utils/cn'
 import './news-clipping-thumbnail.css'
 
@@ -36,9 +36,8 @@ export function NewsClippingThumbnail({
     let cancelled = false
     setStatus('loading')
 
-    void renderCropRegionToCanvas(
+    void renderImageRegionToCanvas(
       pdfUrl,
-      crop.pageNumber,
       crop.rect,
       canvas,
       renderWidth,
@@ -54,7 +53,7 @@ export function NewsClippingThumbnail({
     return () => {
       cancelled = true
     }
-  }, [pdfUrl, crop.pageNumber, crop.rect, renderWidth])
+  }, [pdfUrl, crop.rect, renderWidth])
 
   const handleExpand = useCallback(() => {
     if (status === 'ready') onExpand?.()
@@ -148,9 +147,8 @@ export function ClippingLightbox({
     let cancelled = false
     setStatus('loading')
 
-    void renderCropRegionToCanvas(
+    void renderImageRegionToCanvas(
       pdfUrl,
-      crop.pageNumber,
       crop.rect,
       canvas,
       LIGHTBOX_WIDTH,
@@ -166,7 +164,7 @@ export function ClippingLightbox({
     return () => {
       cancelled = true
     }
-  }, [pdfUrl, crop.pageNumber, crop.rect])
+  }, [pdfUrl, crop.rect])
 
   return (
     <div

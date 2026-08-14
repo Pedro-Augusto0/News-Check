@@ -1,12 +1,13 @@
 import type { Crop, CropDisplayNode, StoredNewsItem } from '@/types/session'
 import type { CropPageSection } from '@/utils/cropDisplayTree'
+import { comparePageKeys } from '@/utils/pageKey'
 
 export type NewsPageEntry =
   | { kind: 'crop'; node: CropDisplayNode; newsId: string | null }
   | { kind: 'pending'; item: StoredNewsItem }
 
 export interface NewsPageSection {
-  pageNumber: number
+  pageNumber: string
   entries: NewsPageEntry[]
 }
 
@@ -41,6 +42,28 @@ export function newsItemHasClient(item: Pick<StoredNewsItem, 'clientKeywordsFoun
   return (item.clientKeywordsFound?.length ?? 0) > 0
 }
 
+function resolveEntrySortY(
+  entry: NewsPageEntry,
+  crops: Record<string, Crop>,
+  pageNumber: string,
+): number {
+  if (entry.kind === 'pending') {
+    return 900_000 + (entry.item.listOrder ?? 0)
+  }
+
+  const node = entry.node
+  if (!node.crop) return 999_000
+
+  if (node.group) {
+    const onPage = node.group.cropIds
+      .map((id) => crops[id])
+      .find((crop) => crop?.pageNumber === pageNumber)
+    if (onPage) return onPage.rect.y
+  }
+
+  return node.crop.rect.y
+}
+
 function findCropNodeForNews(
   news: StoredNewsItem,
   cropNodes: CropDisplayNode[],
@@ -66,7 +89,18 @@ function findCropNodeForNews(
   return undefined
 }
 
+function sortPageEntries(
+  entries: NewsPageEntry[],
+  crops: Record<string, Crop>,
+  pageNumber: string,
+): NewsPageEntry[] {
+  return [...entries].sort(
+    (a, b) => resolveEntrySortY(a, crops, pageNumber) - resolveEntrySortY(b, crops, pageNumber),
+  )
+}
+
 function buildPageEntries(
+  pageNumber: string,
   cropNodes: CropDisplayNode[],
   pageNews: StoredNewsItem[],
   crops: Record<string, Crop>,
@@ -95,7 +129,7 @@ function buildPageEntries(
     entries.push({ kind: 'crop', node, newsId })
   }
 
-  return entries
+  return sortPageEntries(entries, crops, pageNumber)
 }
 
 export function buildNewsPageSections(
@@ -105,7 +139,7 @@ export function buildNewsPageSections(
   crops: Record<string, Crop>,
 ): NewsPageSection[] {
   const cropByPage = new Map(cropSections.map((s) => [s.pageNumber, s.nodes]))
-  const newsByPage = new Map<number, StoredNewsItem[]>()
+  const newsByPage = new Map<string, StoredNewsItem[]>()
 
   for (const news of allNews) {
     if (news.pdfId !== pdfId) continue
@@ -120,10 +154,11 @@ export function buildNewsPageSections(
   ])
 
   return [...pageNumbers]
-    .sort((a, b) => a - b)
+    .sort((a, b) => comparePageKeys(a, b))
     .map((pageNumber) => ({
       pageNumber,
       entries: buildPageEntries(
+        pageNumber,
         cropByPage.get(pageNumber) ?? [],
         newsByPage.get(pageNumber) ?? [],
         crops,

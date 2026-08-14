@@ -3,8 +3,8 @@ import type { Crop, StoredNewsItem } from '@/types/session'
 export function buildNewsCountByPage(
   newsItems: Record<string, Pick<StoredNewsItem, 'pdfId' | 'pageNumber'>>,
   pdfId: string,
-): Map<number, number> {
-  const map = new Map<number, number>()
+): Map<string, number> {
+  const map = new Map<string, number>()
   for (const item of Object.values(newsItems)) {
     if (item.pdfId !== pdfId) continue
     map.set(item.pageNumber, (map.get(item.pageNumber) ?? 0) + 1)
@@ -13,10 +13,10 @@ export function buildNewsCountByPage(
 }
 
 export function buildCropCountByPage(
-  crops: Record<string, { pdfId: string; pageNumber: number }>,
+  crops: Record<string, { pdfId: string; pageNumber: string }>,
   pdfId: string,
-): Map<number, number> {
-  const map = new Map<number, number>()
+): Map<string, number> {
+  const map = new Map<string, number>()
   for (const crop of Object.values(crops)) {
     if (crop.pdfId !== pdfId) continue
     map.set(crop.pageNumber, (map.get(crop.pageNumber) ?? 0) + 1)
@@ -28,7 +28,7 @@ export function getUniqueNewsItemsForPage(
   crops: Record<string, Crop>,
   groups: Record<string, { cropIds: string[] }>,
   pdfId: string,
-  pageNumber: number,
+  pageNumber: string,
 ): Crop[] {
   const pageCrops = Object.values(crops).filter(
     (crop) => crop.pdfId === pdfId && crop.pageNumber === pageNumber,

@@ -1,16 +1,11 @@
 import Tesseract from 'tesseract.js'
 import {
   CROP_OCR_TARGET_WIDTH,
-  extractTextLinesInRect,
-  renderCropRegionToCanvas,
-} from '@/lib/pdf/documentCache'
+  renderImageRegionToCanvas,
+} from '@/lib/image/pageImageCache'
 import { sortLinesByColumnReadingOrder } from '@/utils/columnTextOrder'
 import { detectTitleFromLines, type TextLineInfo } from '@/utils/detectTitle'
 import type { CropRect } from '@/utils/cropGeometry'
-
-export { extractPageText, extractTextInRect, extractTextLinesInRect } from '@/lib/pdf/documentCache'
-
-const MIN_PDF_TEXT_CHARS = 15
 
 interface OcrWordBox {
   text: string
@@ -107,13 +102,6 @@ async function getOcrWorker(): Promise<Tesseract.Worker> {
   return ocrWorkerPromise
 }
 
-function linesToText(lines: TextLineInfo[]): string {
-  return sortLinesByColumnReadingOrder(lines)
-    .map((line) => line.text)
-    .join('\n')
-    .trim()
-}
-
 function resultFromLines(lines: TextLineInfo[]): CropExtractionResult {
   const { title, fullText } = detectTitleFromLines(lines)
   return {
@@ -123,12 +111,11 @@ function resultFromLines(lines: TextLineInfo[]): CropExtractionResult {
 }
 
 async function ocrCropRegion(
-  url: string,
-  pageNumber: number,
+  imageUrl: string,
   rect: CropRect,
 ): Promise<CropExtractionResult> {
   const canvas = document.createElement('canvas')
-  await renderCropRegionToCanvas(url, pageNumber, rect, canvas, CROP_OCR_TARGET_WIDTH)
+  await renderImageRegionToCanvas(imageUrl, rect, canvas, CROP_OCR_TARGET_WIDTH)
   if (canvas.width <= 0 || canvas.height <= 0) {
     return { title: '', text: '' }
   }
@@ -154,34 +141,21 @@ async function ocrCropRegion(
 }
 
 export async function extractCropContent(
-  url: string,
-  pageNumber: number,
+  imageUrl: string,
   rect: CropRect,
 ): Promise<CropExtractionResult> {
-  const pdfLines = await extractTextLinesInRect(url, pageNumber, rect)
-  const pdfText = linesToText(pdfLines)
-
-  if (pdfText.length >= MIN_PDF_TEXT_CHARS) {
-    return resultFromLines(pdfLines)
-  }
-
   try {
-    const ocrResult = await ocrCropRegion(url, pageNumber, rect)
-    if (ocrResult.text.length > pdfText.length) {
-      return ocrResult
-    }
-    return resultFromLines(pdfLines)
+    return await ocrCropRegion(imageUrl, rect)
   } catch {
-    return resultFromLines(pdfLines)
+    return { title: '', text: '' }
   }
 }
 
 /** @deprecated Use extractCropContent */
 export async function extractCropText(
-  url: string,
-  pageNumber: number,
+  imageUrl: string,
   rect: CropRect,
 ): Promise<string> {
-  const { text } = await extractCropContent(url, pageNumber, rect)
+  const { text } = await extractCropContent(imageUrl, rect)
   return text
 }

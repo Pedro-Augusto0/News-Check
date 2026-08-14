@@ -40,12 +40,12 @@ export function PageList() {
   const searchRef = useRef<HTMLInputElement>(null)
 
   const newsCountByPage = useMemo(
-    () => (currentPdf ? buildNewsCountByPage(newsItems, currentPdf.id) : new Map<number, number>()),
+    () => (currentPdf ? buildNewsCountByPage(newsItems, currentPdf.id) : new Map<string, number>()),
     [newsItems, currentPdf],
   )
 
   const clientCountByPage = useMemo(
-    () => (currentPdf ? buildClientCountByPage(crops, currentPdf.id) : new Map<number, number>()),
+    () => (currentPdf ? buildClientCountByPage(crops, currentPdf.id) : new Map<string, number>()),
     [crops, currentPdf],
   )
 
@@ -75,7 +75,7 @@ export function PageList() {
   if (!currentPdf) {
     return (
       <div className="page-list page-list--empty">
-        <p>Selecione um PDF</p>
+        <p>Selecione um veículo</p>
       </div>
     )
   }

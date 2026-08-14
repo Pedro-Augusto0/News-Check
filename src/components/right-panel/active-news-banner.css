@@ -140,3 +140,25 @@
   line-height: 1.35;
   color: var(--color-text-muted);
 }
+
+.active-news-banner--droppable {
+  outline: 1px dashed color-mix(in srgb, var(--crop-accent, var(--color-primary)) 55%, var(--color-border));
+  outline-offset: 1px;
+}
+
+.active-news-banner--drop-target {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--crop-accent, var(--color-primary)) 22%, #ffffff) 0%,
+    color-mix(in srgb, var(--crop-accent, var(--color-primary)) 12%, #ffffff) 100%
+  );
+  border-color: var(--crop-accent, var(--color-primary));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--crop-accent, var(--color-primary)) 28%, transparent),
+    var(--shadow-xs);
+}
+
+.active-news-banner--drop-target .active-news-banner__meta {
+  color: var(--crop-accent, var(--color-primary));
+  font-weight: 600;
+}

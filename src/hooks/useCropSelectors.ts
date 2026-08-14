@@ -1,13 +1,16 @@
 import { useMemo } from 'react'
 import { useCropsStore } from '@/stores/cropsStore'
+import { useNewsStore } from '@/stores/newsStore'
 import type { Crop } from '@/types/session'
 import {
-  buildCropDisplayIndexMap,
   buildCropDisplayTree,
+  buildCropsByPageSections,
   type CropDisplayInfo,
 } from '@/utils/cropDisplayTree'
+import { buildCropDisplayIndexMapFromNewsSections } from '@/utils/newsDisplayIndex'
+import { buildNewsPageSections } from '@/utils/pendingNews'
 
-export function usePageCrops(pdfId: string | undefined, pageNumber: number): Crop[] {
+export function usePageCrops(pdfId: string | undefined, pageNumber: string): Crop[] {
   const crops = useCropsStore((s) => s.crops)
   return useMemo(
     () =>
@@ -37,9 +40,16 @@ export function useCropDisplayIndexMap(
 ): Map<string, CropDisplayInfo> {
   const crops = useCropsStore((s) => s.crops)
   const groups = useCropsStore((s) => s.groups)
+  const newsItems = useNewsStore((s) => s.items)
 
   return useMemo(() => {
     if (!editionId || !pdfId) return new Map()
-    return buildCropDisplayIndexMap(editionId, pdfId, crops, groups)
-  }, [crops, groups, editionId, pdfId])
+
+    const tree = buildCropDisplayTree(editionId, pdfId, crops, groups)
+    const pdfNews = Object.values(newsItems).filter((item) => item.pdfId === pdfId)
+    const cropSections = buildCropsByPageSections(tree, pdfNews)
+    const pageSections = buildNewsPageSections(cropSections, pdfNews, pdfId, crops)
+
+    return buildCropDisplayIndexMapFromNewsSections(pageSections)
+  }, [crops, groups, newsItems, editionId, pdfId])
 }

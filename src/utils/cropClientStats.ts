@@ -7,8 +7,8 @@ export function cropHasClient(crop: Pick<Crop, 'clientKeywordsFound'>): boolean 
 export function buildClientCountByPage(
   crops: Record<string, Crop>,
   pdfId: string,
-): Map<number, number> {
-  const map = new Map<number, number>()
+): Map<string, number> {
+  const map = new Map<string, number>()
   for (const crop of Object.values(crops)) {
     if (crop.pdfId !== pdfId || !cropHasClient(crop)) continue
     map.set(crop.pageNumber, (map.get(crop.pageNumber) ?? 0) + 1)
@@ -19,7 +19,7 @@ export function buildClientCountByPage(
 export function pageHasClientCrops(
   crops: Record<string, Crop>,
   pdfId: string,
-  pageNumber: number,
+  pageNumber: string,
 ): boolean {
   return (buildClientCountByPage(crops, pdfId).get(pageNumber) ?? 0) > 0
 }

@@ -3,9 +3,13 @@ import { ChevronDown, ChevronRight, Eye, FileText, MoreVertical, UserRound } fro
 import type { Crop, CropGroup } from '@/types/session'
 import { cn } from '@/utils/cn'
 import { cropHasClient, formatClientKeywords, mergeClientKeywords } from '@/utils/cropClientStats'
+import { comparePageKeys } from '@/utils/pageKey'
+import { resolveCropImageUrl } from '@/services/cropTextExtraction'
 import { CropItemMenu } from './CropItemMenu'
+import { NewsHighlightIndicator } from './NewsHighlightIndicator'
 import { ListCropThumbnail } from '@/components/shared/ListCropThumbnail'
 import { useCropsStore } from '@/stores/cropsStore'
+import { useSessionStore } from '@/stores/sessionStore'
 import './crop-list-item.css'
 
 function isBlockedDragTarget(target: EventTarget | null, editingTitle = false): boolean {
@@ -53,10 +57,11 @@ interface CropListItemProps {
   onDragEnter?: () => void
   onTitleChange: (cropId: string, title: string) => void
   onViewText: (id: string) => void
-  onSelect: (cropId: string) => void
+  onSelect: (cropId: string, event?: React.MouseEvent) => void
   onDelete: (cropId: string) => void
   onUngroup?: (cropId: string) => void
   showViewText?: boolean
+  isHighlightedOnImage?: boolean
 }
 
 export function CropListItem({
@@ -84,7 +89,9 @@ export function CropListItem({
   onDelete,
   onUngroup,
   showViewText = true,
+  isHighlightedOnImage = false,
 }: CropListItemProps) {
+  const editions = useSessionStore((s) => s.editions)
   const isNewsItemFinalized = useCropsStore((s) => s.isNewsItemFinalized)
   const startEditCrop = useCropsStore((s) => s.startEditCrop)
   const finalizeCrop = useCropsStore((s) => s.finalizeCrop)
@@ -97,6 +104,7 @@ export function CropListItem({
   const finalized = isNewsItemFinalized(crop.id)
   const clientKeywords = crop.clientKeywordsFound ?? []
   const hasClient = cropHasClient(crop)
+  const pageImageUrl = pdfUrl || resolveCropImageUrl(crop, editions)
 
   const handleEditTitle = () => {
     setEditingTitle(true)
@@ -142,11 +150,13 @@ export function CropListItem({
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, crop.id)}
-      onClick={() => onSelect(crop.id)}
+      onClick={(e) => onSelect(crop.id, e)}
       aria-label={finalized ? `${crop.title || 'Sem título'} — Finalizado` : undefined}
     >
+      {!isChild && <NewsHighlightIndicator active={isHighlightedOnImage} />}
+
       <ListCropThumbnail
-        pdfUrl={pdfUrl}
+        pdfUrl={pageImageUrl}
         crop={crop}
         displayIndex={label}
         accentColor={accentColor}
@@ -273,9 +283,10 @@ interface CropGroupItemProps {
   onDragEnter?: (cropId: string) => void
   onGroupTitleChange: (groupId: string, title: string) => void
   onViewText: (groupId: string) => void
-  onSelect: (cropId: string) => void
+  onSelect: (cropId: string, event?: React.MouseEvent) => void
   onDelete: (cropId: string) => void
   onUngroup: (cropId: string) => void
+  isHighlightedOnImage?: boolean
 }
 
 export function CropGroupItem({
@@ -302,22 +313,23 @@ export function CropGroupItem({
   onSelect,
   onDelete,
   onUngroup,
+  isHighlightedOnImage,
 }: CropGroupItemProps) {
   const canReorder = childCrops.length > 0
   const allCrops = [rootCrop, ...childCrops]
-  const pageNumbers = [...new Set(allCrops.map((c) => c.pageNumber))].sort((a, b) => a - b)
+  const pageNumbers = [...new Set(allCrops.map((c) => c.pageNumber))].sort(comparePageKeys)
   const spansPages = pageNumbers.length > 1
   const clientKeywords = mergeClientKeywords(allCrops)
   const hasClient = clientKeywords.length > 0
 
   const cropsByPage = useMemo(() => {
-    const map = new Map<number, Crop[]>()
+    const map = new Map<string, Crop[]>()
     for (const crop of childCrops) {
       const list = map.get(crop.pageNumber) ?? []
       list.push(crop)
       map.set(crop.pageNumber, list)
     }
-    return [...map.entries()].sort(([a], [b]) => a - b)
+    return [...map.entries()].sort(([a], [b]) => comparePageKeys(a, b))
   }, [childCrops])
 
   const parentMeta = useMemo(() => {
@@ -345,7 +357,7 @@ export function CropGroupItem({
       <CropListItem
         key={crop.id}
         crop={{ ...crop, title: group.title }}
-        pdfUrl={pdfUrl}
+        pdfUrl={undefined}
         subLabel={subLabel}
         accentColor={accentColor}
         isChild
@@ -364,6 +376,7 @@ export function CropGroupItem({
         onSelect={onSelect}
         onDelete={onDelete}
         onUngroup={onUngroup}
+        isHighlightedOnImage={isHighlightedOnImage}
       />
     )
   }
@@ -397,6 +410,7 @@ export function CropGroupItem({
         onViewText={() => onViewText(group.id)}
         onSelect={onSelect}
         onDelete={onDelete}
+        isHighlightedOnImage={isHighlightedOnImage}
       />
 
       {expanded && childCrops.length > 0 && (
