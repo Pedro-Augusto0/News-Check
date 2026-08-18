@@ -99,30 +99,28 @@ export function NewsDetailInfoPanel({
         )}
       </div>
 
+      {clients.length > 0 && (
       <section className="news-detail-info__clients" aria-label="Clientes e palavras-chave">
         <h3 className="news-detail-info__section-title">Clientes</h3>
-        {clients.length > 0 ? (
-          <ul className="news-detail-info__client-list">
-            {clients.map(([name, rows]) => (
-              <li key={name} className="news-detail-info__client">
-                {showClientNames && <p className="news-detail-info__client-name">{name}</p>}
-                <ul className="news-detail-info__chips">
-                  {rows.map((row) => (
-                    <li
-                      key={`${row.clientName}-${row.keyword}`}
-                      className={cn('news-detail-info__chip', `news-detail-info__chip--${row.tone}`)}
-                    >
-                      {row.keyword}
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="news-detail-info__empty">Nenhum cliente associado.</p>
-        )}
+        <ul className="news-detail-info__client-list">
+          {clients.map(([name, rows]) => (
+            <li key={name} className="news-detail-info__client">
+              {showClientNames && <p className="news-detail-info__client-name">{name}</p>}
+              <ul className="news-detail-info__chips">
+                {rows.map((row) => (
+                  <li
+                    key={`${row.clientName}-${row.keyword}`}
+                    className={cn('news-detail-info__chip', `news-detail-info__chip--${row.tone}`)}
+                  >
+                    {row.keyword}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
       </section>
+      )}
     </aside>
   )
 }

@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   X,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal/modal'
@@ -13,23 +11,15 @@ import { useSessionStore } from '@/stores/sessionStore'
 import { useCropDisplayIndexMap, useCropDisplayTree } from '@/hooks/useCropSelectors'
 import { extractAndSaveModalText } from '@/services/cropTextExtraction'
 import { buildClientKeywordRows } from '@/utils/newsDetailClients'
-import { mergeClientKeywords, newsDisplayNodeHasClient } from '@/utils/cropClientStats'
+import { mergeClientKeywords } from '@/utils/cropClientStats'
 import { buildCropsByPageSections } from '@/utils/cropDisplayTree'
-import { buildNewsPageSections, isNewsItemPending, newsItemHasClient } from '@/utils/pendingNews'
+import { buildNewsPageSections, excludeFinalizedNewsSections } from '@/utils/pendingNews'
+import { comparePageKeys } from '@/utils/pageKey'
+import { cn } from '@/utils/cn'
 import { NewsDetailCropEditor } from './NewsDetailCropEditor'
 import { NewsDetailInfoPanel } from './NewsDetailInfoPanel'
+import { NewsDetailNewsList, type NewsDetailBrowseTarget } from './NewsDetailNewsList'
 import './crop-text-modal.css'
-
-function formatEditionDate(value: string): string {
-  const dateOnly = value.slice(0, 10)
-  const parsed = new Date(`${dateOnly}T12:00:00`)
-  if (Number.isNaN(parsed.getTime())) return value
-  return parsed.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  })
-}
 
 function formatTime(value: Date): string {
   return value.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
@@ -43,12 +33,15 @@ export function CropTextModal() {
   const groups = useCropsStore((s) => s.groups)
   const textModalNewsId = useNewsStore((s) => s.textModalNewsId)
   const closeNewsTextModal = useNewsStore((s) => s.closeNewsTextModal)
-  const openNewsTextModal = useNewsStore((s) => s.openNewsTextModal)
-  const newsItems = useNewsStore((s) => s.items)
   const getNewsItem = useNewsStore((s) => s.getNewsItem)
   const editions = useSessionStore((s) => s.editions)
-  const newsViewFilter = useSessionStore((s) => s.newsViewFilter)
+  const newsItems = useNewsStore((s) => s.items)
+  const mergeCrops = useCropsStore((s) => s.mergeCrops)
   const [lastTextUpdate, setLastTextUpdate] = useState<Date | null>(null)
+  const [listCollapsed, setListCollapsed] = useState(false)
+  const [viewPageNumber, setViewPageNumber] = useState<string | null>(null)
+  const [previewNewsId, setPreviewNewsId] = useState<string | null>(null)
+  const [previewCropIds, setPreviewCropIds] = useState<string[]>([])
 
   const pendingNewsItem = textModalNewsId ? getNewsItem(textModalNewsId) : undefined
   const isPendingNewsModal = !!textModalNewsId && !textModalCropId
@@ -84,70 +77,90 @@ export function CropTextModal() {
   const pdfId = modalCrops[0]?.pdfId ?? pendingNewsItem?.pdfId
   const edition = editions.find((e) => e.id === editionId)
 
-  const displayTree = useCropDisplayTree(editionId, pdfId)
   const cropDisplayIndex = useCropDisplayIndexMap(editionId, pdfId)
+  const displayTree = useCropDisplayTree(editionId, pdfId)
+  const currentNewsId = isPendingNewsModal
+    ? pendingNewsItem?.id ?? null
+    : (modalCrops[0]?.newsItemId ?? null)
+  const currentCropIds = useMemo(() => new Set(modalCrops.map((crop) => crop.id)), [modalCrops])
 
   const pageSections = useMemo(() => {
     if (!editionId || !pdfId) return []
     const pdfNews = Object.values(newsItems).filter((item) => item.pdfId === pdfId)
     const cropSections = buildCropsByPageSections(displayTree, pdfNews)
-    return buildNewsPageSections(cropSections, pdfNews, pdfId, crops)
-  }, [editionId, pdfId, newsItems, displayTree, crops])
-
-  const newsItemIds = useMemo(() => {
-    return pageSections.flatMap((section) =>
-      section.entries
-        .filter((entry) => {
-          if (newsViewFilter !== 'withClient') return true
-          if (entry.kind === 'pending') return newsItemHasClient(entry.item)
-          return newsDisplayNodeHasClient(entry.node, crops)
-        })
-        .map((entry) => {
-          if (entry.kind === 'pending') return entry.item.id
-          return entry.node.group?.id ?? entry.node.crop?.id ?? null
-        })
-        .filter((id): id is string => !!id),
+    const newsSections = excludeFinalizedNewsSections(
+      buildNewsPageSections(cropSections, pdfNews, pdfId, crops),
+      crops,
+      groups,
+      currentNewsId ? { keepNewsIds: [currentNewsId] } : undefined,
     )
-  }, [pageSections, newsViewFilter, crops])
+    const pdf = edition?.pdfs.find((item) => item.id === pdfId)
+    const pages = pdf?.pages ?? []
+    if (pages.length === 0) return newsSections
 
-  const activeModalId = textModalNewsId ?? textModalCropId
-  const currentNewsIndex = activeModalId ? newsItemIds.indexOf(activeModalId) : -1
-  const hasPrev = currentNewsIndex > 0
-  const hasNext = currentNewsIndex >= 0 && currentNewsIndex < newsItemIds.length - 1
+    const byPage = new Map(newsSections.map((section) => [section.pageNumber, section]))
+    return [...pages]
+      .sort((a, b) => comparePageKeys(a.pageNumber, b.pageNumber))
+      .map((page) => byPage.get(page.pageNumber) ?? { pageNumber: page.pageNumber, entries: [] })
+  }, [editionId, pdfId, newsItems, displayTree, crops, groups, edition, currentNewsId])
 
-  const isPendingModalId = useCallback(
-    (id: string) => {
-      const item = getNewsItem(id)
-      if (!item || !pdfId) return false
-      return isNewsItemPending(item, crops, pdfId)
-    },
-    [getNewsItem, crops, pdfId],
+  const previewCrops = useMemo(
+    () => previewCropIds.map((id) => crops[id]).filter(Boolean),
+    [previewCropIds, crops],
   )
 
-  const goToPrev = useCallback(() => {
-    if (!hasPrev) return
-    const targetId = newsItemIds[currentNewsIndex - 1]
-    if (isPendingModalId(targetId)) {
-      openNewsTextModal(targetId)
-      return
-    }
-    openTextModal(targetId)
-  }, [hasPrev, currentNewsIndex, newsItemIds, openTextModal, openNewsTextModal, isPendingModalId])
+  const newsIdentity = isPendingNewsModal
+    ? pendingNewsItem?.id ?? null
+    : (modalCrops[0]?.newsItemId ?? modalRootId)
 
-  const goToNext = useCallback(() => {
-    if (!hasNext) return
-    const targetId = newsItemIds[currentNewsIndex + 1]
-    if (isPendingModalId(targetId)) {
-      openNewsTextModal(targetId)
-      return
-    }
-    openTextModal(targetId)
-  }, [hasNext, currentNewsIndex, newsItemIds, openTextModal, openNewsTextModal, isPendingModalId])
+  useEffect(() => {
+    setPreviewNewsId(null)
+    setPreviewCropIds([])
+    setViewPageNumber(modalCrops[0]?.pageNumber ?? pendingNewsItem?.pageNumber ?? null)
+  }, [newsIdentity])
 
   const handleClose = useCallback(() => {
     closeTextModal()
     closeNewsTextModal()
   }, [closeTextModal, closeNewsTextModal])
+
+  const handleSelectPage = useCallback((pageNumber: string) => {
+    setViewPageNumber(pageNumber)
+  }, [])
+
+  const handleSelectNews = useCallback(
+    (target: NewsDetailBrowseTarget) => {
+      setViewPageNumber(target.pageNumber)
+      const isCurrent =
+        (target.newsId && target.newsId === currentNewsId) ||
+        target.cropIds.some((id) => currentCropIds.has(id))
+      if (isCurrent) {
+        setPreviewNewsId(null)
+        setPreviewCropIds([])
+        return
+      }
+      setPreviewNewsId(target.newsId)
+      setPreviewCropIds(target.cropIds)
+    },
+    [currentNewsId, currentCropIds],
+  )
+
+  const handleMergeCrop = useCallback(
+    (sourceCropId: string) => {
+      const targetCropId = modalCrops[0]?.id
+      if (!targetCropId || sourceCropId === targetCropId) return
+      if (currentCropIds.has(sourceCropId)) return
+
+      const groupId = mergeCrops(sourceCropId, targetCropId)
+      setPreviewNewsId(null)
+      setPreviewCropIds([])
+      if (groupId) {
+        closeNewsTextModal()
+        openTextModal(groupId)
+      }
+    },
+    [modalCrops, currentCropIds, mergeCrops, closeNewsTextModal, openTextModal],
+  )
 
   const resolvePdfUrl = useCallback(
     (crop: (typeof modalCrops)[number]) => {
@@ -210,71 +223,46 @@ export function CropTextModal() {
   }, [modalCrops, pendingNewsItem?.pageNumber])
 
   if (!textModalCropId && !textModalNewsId) return null
-
-  const totalNews = newsItemIds.length
-  const positionLabel =
-    currentNewsIndex >= 0 && totalNews > 0
-      ? `${currentNewsIndex + 1} de ${totalNews} notícias`
-      : '1 notícia'
-
-  const sourceLabel = edition
-    ? `${edition.vehicleName} - ${formatEditionDate(edition.editionDate)} - Página ${pageLabel}`
-    : `Página ${pageLabel}`
-
   return (
     <Modal open hideHeader size="fullscreen" onClose={handleClose}>
       <div className="news-detail-modal">
         <header className="news-detail-modal__topbar">
-          <div className="news-detail-modal__topbar-start">
-            <button
-              type="button"
-              className="news-detail-modal__back"
-              onClick={handleClose}
-            >
-              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden />
-              Voltar para a lista
-            </button>
-          </div>
-
-          <div className="news-detail-modal__topbar-center">
-            <h1 className="news-detail-modal__headline">{title || 'Sem título'}</h1>
-            <p className="news-detail-modal__source">{sourceLabel}</p>
-          </div>
+          <button
+            type="button"
+            className="news-detail-modal__back"
+            onClick={handleClose}
+          >
+            <ArrowLeft size={15} strokeWidth={2.25} aria-hidden />
+            Voltar
+          </button>
 
           <div className="news-detail-modal__topbar-end">
-            <span className="news-detail-modal__pagination-label">{positionLabel}</span>
-            <div className="news-detail-modal__nav-group">
-              <button
-                type="button"
-                className="news-detail-modal__nav-btn"
-                onClick={goToPrev}
-                disabled={!hasPrev}
-                aria-label="Notícia anterior"
-              >
-                <ChevronLeft size={16} strokeWidth={2.25} aria-hidden />
-              </button>
-              <button
-                type="button"
-                className="news-detail-modal__nav-btn"
-                onClick={goToNext}
-                disabled={!hasNext}
-                aria-label="Próxima notícia"
-              >
-                <ChevronRight size={16} strokeWidth={2.25} aria-hidden />
-              </button>
-            </div>
+            {lastTextUpdate && (
+              <div className="news-detail-modal__footer-status">
+                <CheckCircle2 size={14} aria-hidden />
+                <span>OCR atualizado {formatTime(lastTextUpdate)}</span>
+              </div>
+            )}
+            <button type="button" className="news-detail-modal__save-btn" onClick={handleClose}>
+              Salvar
+            </button>
             <button
               type="button"
               className="news-detail-modal__close"
               onClick={handleClose}
               aria-label="Fechar"
             >
-              <X size={18} strokeWidth={2.25} aria-hidden />
+              <X size={16} strokeWidth={2.25} aria-hidden />
             </button>
           </div>
         </header>
 
-        <div className="news-detail-modal__layout">
+        <div
+          className={cn(
+            'news-detail-modal__layout',
+            listCollapsed && 'news-detail-modal__layout--list-collapsed',
+          )}
+        >
           <NewsDetailInfoPanel
             title={title}
             text={text}
@@ -294,27 +282,28 @@ export function CropTextModal() {
             modalRootId={modalRootId}
             pendingNewsItem={isPendingNewsModal ? pendingNewsItem : undefined}
             cropDisplayIndex={cropDisplayIndex}
+            viewPageNumber={viewPageNumber}
+            onViewPage={setViewPageNumber}
+            previewCrops={previewCrops}
+          />
+
+          <NewsDetailNewsList
+            sections={pageSections}
+            currentNewsId={currentNewsId}
+            currentCropIds={currentCropIds}
+            currentGroupId={group?.id ?? null}
+            previewNewsId={previewNewsId}
+            previewCropIds={previewCropIds}
+            viewPageNumber={viewPageNumber}
+            collapsed={listCollapsed}
+            canMerge={modalCrops.length > 0}
+            cropDisplayIndex={cropDisplayIndex}
+            onToggleCollapsed={() => setListCollapsed((value) => !value)}
+            onSelectPage={handleSelectPage}
+            onSelectNews={handleSelectNews}
+            onMergeCrop={handleMergeCrop}
           />
         </div>
-
-        <footer className="news-detail-modal__footer">
-          <div className="news-detail-modal__footer-status">
-            {lastTextUpdate ? (
-              <>
-                <CheckCircle2 size={15} aria-hidden />
-                <span>Texto atualizado pelo OCR</span>
-                <span className="news-detail-modal__footer-time">
-                  Última atualização: {formatTime(lastTextUpdate)}
-                </span>
-              </>
-            ) : (
-              <span>O texto original é mantido. Use Passar OCR para extrair o texto dos cortes.</span>
-            )}
-          </div>
-          <button type="button" className="news-detail-modal__save-btn" onClick={handleClose}>
-            Salvar alterações
-          </button>
-        </footer>
       </div>
     </Modal>
   )

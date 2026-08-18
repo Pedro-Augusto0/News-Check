@@ -1,4 +1,4 @@
-import type { Crop, CropDisplayNode, StoredNewsItem } from '@/types/session'
+import type { Crop, CropDisplayNode, CropGroup, StoredNewsItem } from '@/types/session'
 import type { CropPageSection } from '@/utils/cropDisplayTree'
 import { comparePageKeys } from '@/utils/pageKey'
 
@@ -40,6 +40,59 @@ export function isNewsItemPending(
 
 export function newsItemHasClient(item: Pick<StoredNewsItem, 'clientKeywordsFound'>): boolean {
   return (item.clientKeywordsFound?.length ?? 0) > 0
+}
+
+function getRelatedCropIds(
+  cropId: string,
+  crops: Record<string, Crop>,
+  groups: Record<string, CropGroup>,
+): string[] {
+  const crop = crops[cropId]
+  if (!crop) return []
+  if (crop.groupId && groups[crop.groupId]) {
+    return groups[crop.groupId].cropIds.filter((id) => crops[id])
+  }
+  return [cropId]
+}
+
+export function isNewsPageEntryFinalized(
+  entry: NewsPageEntry,
+  crops: Record<string, Crop>,
+  groups: Record<string, CropGroup>,
+): boolean {
+  if (entry.kind === 'pending') return false
+  const cropId = entry.node.crop?.id
+  if (!cropId) return false
+  const ids = getRelatedCropIds(cropId, crops, groups)
+  return ids.length > 0 && ids.every((id) => crops[id]?.finalized)
+}
+
+export interface ExcludeFinalizedNewsOptions {
+  /** Mantém notícias finalizadas visíveis quando ainda estão em foco (ex.: modal aberto). */
+  keepNewsIds?: Iterable<string>
+}
+
+export function excludeFinalizedNewsSections(
+  sections: NewsPageSection[],
+  crops: Record<string, Crop>,
+  groups: Record<string, CropGroup>,
+  options?: ExcludeFinalizedNewsOptions,
+): NewsPageSection[] {
+  const keepNewsIds = options?.keepNewsIds ? new Set(options.keepNewsIds) : null
+
+  return sections
+    .map((section) => ({
+      ...section,
+      entries: section.entries.filter((entry) => {
+        if (keepNewsIds) {
+          const newsId =
+            entry.kind === 'pending' ? entry.item.id : (entry.newsId ?? entry.node.crop?.newsItemId)
+          if (newsId && keepNewsIds.has(newsId)) return true
+        }
+        return !isNewsPageEntryFinalized(entry, crops, groups)
+      }),
+    }))
+    .filter((section) => section.entries.length > 0)
 }
 
 function resolveEntrySortY(

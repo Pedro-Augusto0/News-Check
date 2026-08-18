@@ -441,6 +441,7 @@ export const useCropsStore = create<CropsState>((set, get) => ({
   updateCropTitle: (cropId, title) => {
     const crop = get().crops[cropId]
     if (!crop) return
+    if (get().isNewsItemFinalized(cropId)) return
     if (crop.groupId && get().groups[crop.groupId]) {
       get().updateGroupTitle(crop.groupId, title)
       return
@@ -455,22 +456,28 @@ export const useCropsStore = create<CropsState>((set, get) => ({
   },
 
   updateGroupTitle: (groupId, title) => {
+    const group = get().groups[groupId]
+    if (!group) return
+    if (get().isNewsItemFinalized(group.cropIds[0])) return
     set((state) => {
-      const group = state.groups[groupId]
-      if (!group) return state
-      const groups = { ...state.groups, [groupId]: { ...group, title } }
+      const currentGroup = state.groups[groupId]
+      if (!currentGroup) return state
+      const groups = { ...state.groups, [groupId]: { ...currentGroup, title } }
       const crops = { ...state.crops }
-      for (const cropId of group.cropIds) {
+      for (const cropId of currentGroup.cropIds) {
         if (crops[cropId]) {
           crops[cropId] = { ...crops[cropId], title }
         }
       }
-      savePersisted(group.editionId, crops, groups, state.finalizedPages)
+      savePersisted(currentGroup.editionId, crops, groups, state.finalizedPages)
       return { crops, groups }
     })
   },
 
-  selectCrop: (cropId) => set({ selectedCropId: cropId }),
+  selectCrop: (cropId) => {
+    if (cropId && get().isNewsItemFinalized(cropId)) return
+    set({ selectedCropId: cropId })
+  },
 
   setNewsItemIdForRelatedCrops: (rootCropId, newsItemId) => {
     const { crops, groups } = get()
@@ -496,9 +503,7 @@ export const useCropsStore = create<CropsState>((set, get) => ({
   startEditCrop: (cropId) => {
     const crop = get().crops[cropId]
     if (!crop) return
-    if (get().isNewsItemFinalized(cropId)) {
-      get().reopenCrop(cropId)
-    }
+    if (get().isNewsItemFinalized(cropId)) return
     const finalizedPages = reopenPageInState(
       get().finalizedPages,
       crop.pdfId,
@@ -513,6 +518,7 @@ export const useCropsStore = create<CropsState>((set, get) => ({
   cancelEditCrop: () => set({ editingCropId: null }),
 
   updateCropRect: (cropId, rect) => {
+    if (get().isNewsItemFinalized(cropId)) return
     set((state) => {
       const crop = state.crops[cropId]
       if (!crop) return state
@@ -534,6 +540,7 @@ export const useCropsStore = create<CropsState>((set, get) => ({
     const source = crops[sourceId]
     const target = crops[targetId]
     if (!source || !target || source.editionId !== target.editionId) return null
+    if (get().isNewsItemFinalized(sourceId) || get().isNewsItemFinalized(targetId)) return null
 
     const sourceGroupId = source.groupId
     const targetGroupId = target.groupId
@@ -616,6 +623,7 @@ export const useCropsStore = create<CropsState>((set, get) => ({
 
   reorderGroupCrops: (groupId, sourceId, targetId) => {
     if (sourceId === targetId) return
+    if (get().isNewsItemFinalized(sourceId)) return
     const { crops, groups, finalizedPages } = get()
     const group = groups[groupId]
     if (!group) return
@@ -641,6 +649,7 @@ export const useCropsStore = create<CropsState>((set, get) => ({
   },
 
   ungroupCrop: (cropId) => {
+    if (get().isNewsItemFinalized(cropId)) return
     const { crops, groups, finalizedPages } = get()
     const crop = crops[cropId]
     if (!crop?.groupId) return
@@ -677,6 +686,7 @@ export const useCropsStore = create<CropsState>((set, get) => ({
     const { crops, groups, selectedCropId, textModalCropId, finalizedPages } = get()
     const crop = crops[cropId]
     if (!crop) return
+    if (get().isNewsItemFinalized(cropId)) return
 
     const newsItemId =
       crop.newsItemId ?? useNewsStore.getState().findNewsByCropId(cropId)?.id ?? null
@@ -685,9 +695,11 @@ export const useCropsStore = create<CropsState>((set, get) => ({
     delete newCrops[cropId]
 
     const newGroups = { ...groups }
+    let remainingGroupCropIds: string[] = []
     if (crop.groupId && newGroups[crop.groupId]) {
       const group = newGroups[crop.groupId]
       const remainingIds = group.cropIds.filter((id) => id !== cropId)
+      remainingGroupCropIds = remainingIds
       if (remainingIds.length <= 1) {
         delete newGroups[group.id]
         for (const id of remainingIds) {
@@ -700,7 +712,6 @@ export const useCropsStore = create<CropsState>((set, get) => ({
       }
     }
 
-    const closedGroupModal = textModalCropId && !newGroups[textModalCropId]
     const nextFinalizedPages = reopenPageInState(finalizedPages, crop.pdfId, crop.pageNumber)
     savePersisted(crop.editionId, newCrops, newGroups, nextFinalizedPages)
 
@@ -708,17 +719,42 @@ export const useCropsStore = create<CropsState>((set, get) => ({
       useNewsStore.getState().syncNewsCropLink(newsItemId)
     }
 
+    const modalStillValid =
+      !!textModalCropId &&
+      (!!newGroups[textModalCropId] || !!newCrops[textModalCropId])
+
+    let nextTextModalCropId = textModalCropId
+    let openNewsId: string | null = null
+
+    if (!modalStillValid && textModalCropId) {
+      const remaining = newsItemId
+        ? Object.values(newCrops).filter((item) => item.newsItemId === newsItemId)
+        : remainingGroupCropIds.map((id) => newCrops[id]).filter(Boolean)
+
+      if (remaining.length > 0) {
+        const grouped = remaining.find((item) => item.groupId && newGroups[item.groupId])
+        nextTextModalCropId = grouped?.groupId ?? remaining[0].id
+      } else {
+        nextTextModalCropId = null
+        openNewsId = newsItemId
+      }
+    }
+
+    if (openNewsId) {
+      useNewsStore.setState({ textModalNewsId: openNewsId })
+    }
+
     set({
       crops: newCrops,
       groups: newGroups,
       finalizedPages: nextFinalizedPages,
       selectedCropId: selectedCropId === cropId ? null : selectedCropId,
-      textModalCropId:
-        textModalCropId === cropId || closedGroupModal ? null : textModalCropId,
+      textModalCropId: nextTextModalCropId,
     })
   },
 
   updateCropText: (cropId, text) => {
+    if (get().isNewsItemFinalized(cropId)) return
     set((state) => {
       const crop = state.crops[cropId]
       if (!crop) return state
@@ -729,12 +765,15 @@ export const useCropsStore = create<CropsState>((set, get) => ({
   },
 
   updateGroupText: (groupId, text) => {
+    const group = get().groups[groupId]
+    if (!group) return
+    if (get().isNewsItemFinalized(group.cropIds[0])) return
     set((state) => {
-      const group = state.groups[groupId]
-      if (!group) return state
+      const currentGroup = state.groups[groupId]
+      if (!currentGroup) return state
 
       const newCrops = { ...state.crops }
-      const [firstId, ...restIds] = group.cropIds
+      const [firstId, ...restIds] = currentGroup.cropIds
 
       if (firstId && newCrops[firstId]) {
         newCrops[firstId] = { ...newCrops[firstId], text }
@@ -745,7 +784,7 @@ export const useCropsStore = create<CropsState>((set, get) => ({
         }
       }
 
-      savePersisted(group.editionId, newCrops, state.groups, state.finalizedPages)
+      savePersisted(currentGroup.editionId, newCrops, state.groups, state.finalizedPages)
       return { crops: newCrops }
     })
   },
@@ -766,7 +805,27 @@ export const useCropsStore = create<CropsState>((set, get) => ({
         }
       }
       savePersisted(crop.editionId, crops, state.groups, state.finalizedPages)
-      return { crops }
+
+      const newsIds = [
+        ...new Set(
+          ids
+            .map((id) => crops[id]?.newsItemId)
+            .filter((newsId): newsId is string => !!newsId),
+        ),
+      ]
+      if (newsIds.length > 0) {
+        useNewsStore.getState().unhighlightNewsItems(newsIds)
+      }
+
+      const clearsSelection =
+        (state.selectedCropId && ids.includes(state.selectedCropId)) ||
+        (state.editingCropId && ids.includes(state.editingCropId))
+
+      return {
+        crops,
+        selectedCropId: clearsSelection ? null : state.selectedCropId,
+        editingCropId: clearsSelection ? null : state.editingCropId,
+      }
     })
   },
 
@@ -826,6 +885,10 @@ export const useCropsStore = create<CropsState>((set, get) => ({
     })),
 
   openTextModal: (cropOrGroupId) => {
+    const { groups } = get()
+    const group = groups[cropOrGroupId]
+    const rootCropId = group?.cropIds[0] ?? cropOrGroupId
+    if (get().isNewsItemFinalized(rootCropId)) return
     useNewsStore.getState().closeNewsTextModal()
     set({ textModalCropId: cropOrGroupId })
   },

@@ -1,4 +1,5 @@
 import type { CropDisplayInfo } from '@/utils/cropDisplayTree'
+import { stableColorIndex } from '@/utils/cropColors'
 import { cropDisplayInfoFromIndex } from '@/utils/cropDisplayIndex'
 import type { NewsPageSection } from '@/utils/pendingNews'
 
@@ -19,8 +20,9 @@ function assignSequentialIndices(pageSections: NewsPageSection[]) {
       const newsId = entry.newsId ?? entry.node.crop?.newsItemId
       if (newsId) newsMap.set(newsId, index)
 
-      const info = cropDisplayInfoFromIndex(index)
       const node = entry.node
+      const colorKey = newsId ?? node.group?.id ?? node.crop?.id ?? String(index)
+      const info = cropDisplayInfoFromIndex(index, stableColorIndex(colorKey))
 
       if (node.type === 'group' && node.group) {
         for (const cropId of node.group.cropIds) {

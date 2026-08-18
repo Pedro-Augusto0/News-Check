@@ -9,8 +9,11 @@ function sortCropsByPagePosition(crops: Crop[]): Crop[] {
   })
 }
 
-export function cropDisplayInfoFromIndex(displayIndex: number): CropDisplayInfo {
-  return { displayIndex, colorIndex: displayIndex - 1 }
+export function cropDisplayInfoFromIndex(
+  displayIndex: number,
+  colorIndex = displayIndex - 1,
+): CropDisplayInfo {
+  return { displayIndex, colorIndex }
 }
 
 export function nextDisplayIndex(

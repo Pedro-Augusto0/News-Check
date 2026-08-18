@@ -12,6 +12,7 @@ import {
   filterCropsByHighlightedNews,
   handleCropListSelection,
   handleImageNewsHighlightAtPoint,
+  hitTestCropsAtPoint,
   shouldUseMultiNewsSelection,
 } from '@/utils/cropNewsSelection'
 import { pageScopeKey } from '@/utils/pageKey'
@@ -27,6 +28,7 @@ export function PageViewer() {
   const selectedPageNumber = useSessionStore((s) => s.selectedPageNumber)
 
   const crops = usePageCrops(currentPdf?.id, selectedPageNumber)
+  const isNewsItemFinalized = useCropsStore((s) => s.isNewsItemFinalized)
   const cropDisplayIndex = useCropDisplayIndexMap(selectedEditionId, currentPdf?.id)
   const selectedCropId = useCropsStore((s) => s.selectedCropId)
   const editingCropId = useCropsStore((s) => s.editingCropId)
@@ -52,12 +54,19 @@ export function PageViewer() {
     [currentPdf, selectedPageNumber],
   )
 
-  const visibleCrops = useMemo(() => {
+  const overlayFinalizedCrops = useMemo(
+    () => crops.filter((crop) => isNewsItemFinalized(crop.id)),
+    [crops, isNewsItemFinalized],
+  )
+
+  const overlayInteractiveCrops = useMemo(() => {
     const highlightedNewsIds = pageHighlightScope
       ? highlightedNewsByPage[pageScopeKey(pageHighlightScope.pdfId, pageHighlightScope.pageNumber)] ?? {}
       : {}
-    return filterCropsByHighlightedNews(crops, highlightedNewsIds, findNewsByCropId)
-  }, [crops, highlightedNewsByPage, findNewsByCropId, pageHighlightScope])
+    return filterCropsByHighlightedNews(crops, highlightedNewsIds, findNewsByCropId).filter(
+      (crop) => !isNewsItemFinalized(crop.id),
+    )
+  }, [crops, highlightedNewsByPage, findNewsByCropId, pageHighlightScope, isNewsItemFinalized])
 
   const panMode = useViewerStore((s) => s.panMode)
   const panOffset = useViewerStore((s) => s.panOffset)
@@ -147,7 +156,7 @@ export function PageViewer() {
       }
       handleCropListSelection(
         cropId,
-        shouldUseMultiNewsSelection(event, pageHighlightScope),
+        shouldUseMultiNewsSelection(event),
         pageHighlightScope,
       )
     },
@@ -186,9 +195,8 @@ export function PageViewer() {
   const handleFinalizeCrop = useCallback(
     (cropId: string) => {
       finalizeCrop(cropId)
-      handleSelectCrop(cropId)
     },
-    [finalizeCrop, handleSelectCrop],
+    [finalizeCrop],
   )
 
   const handleViewText = useCallback(
@@ -253,6 +261,16 @@ export function PageViewer() {
                 const bounds = wrap.getBoundingClientRect()
                 const px = e.clientX - bounds.left
                 const py = e.clientY - bounds.top
+
+                const hit = hitTestCropsAtPoint(
+                  crops,
+                  px,
+                  py,
+                  dimensions.width,
+                  dimensions.height,
+                )
+                if (hit.kind === 'finalized') return
+
                 const handled = handleImageNewsHighlightAtPoint(
                   crops,
                   px,
@@ -285,7 +303,8 @@ export function PageViewer() {
           >
             <canvas ref={canvasRef} className="page-viewer__canvas" />
             <CropOverlay
-              crops={visibleCrops}
+              crops={overlayInteractiveCrops}
+              finalizedCrops={overlayFinalizedCrops}
               cropDisplayIndex={cropDisplayIndex}
               selectedCropId={selectedCropId}
               editingCropId={editingCropId}

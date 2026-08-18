@@ -118,7 +118,6 @@ export function CropListItem({
 
   const handleFinalize = () => {
     finalizeCrop(crop.id)
-    onSelect(crop.id)
   }
 
   const handleItemDragStart = (e: React.DragEvent) => {

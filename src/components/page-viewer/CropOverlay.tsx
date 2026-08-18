@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Crop as CropIcon, Eye, GripVertical, Link2, Trash2, Unlink, UserRound } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import type { Crop } from '@/types/session'
@@ -9,10 +9,12 @@ import type { CropDisplayInfo } from '@/utils/cropDisplayTree'
 import { cropHasClient, formatClientKeywords } from '@/utils/cropClientStats'
 import { useCropsStore } from '@/stores/cropsStore'
 import { useViewerStore } from '@/stores/viewerStore'
+import { cropRectArea } from '@/utils/cropNewsSelection'
 import './crop-overlay.css'
 
 interface CropOverlayProps {
   crops: Crop[]
+  finalizedCrops?: Crop[]
   cropDisplayIndex: Map<string, CropDisplayInfo>
   selectedCropId: string | null
   editingCropId: string | null
@@ -33,9 +35,9 @@ interface CropBoxInnerProps {
   containerHeight: number
   color: string
   selected: boolean
-  finalized?: boolean
   draft?: boolean
   index?: number
+  title?: string
   mergeEnabled?: boolean
   isDragging?: boolean
   isDropTarget?: boolean
@@ -53,6 +55,40 @@ interface CropBoxInnerProps {
   onMergeDragLeave?: (cropId: string) => void
 }
 
+function FinalizedCropBox({
+  rect,
+  containerWidth,
+  containerHeight,
+}: {
+  rect: CropRect
+  containerWidth: number
+  containerHeight: number
+}) {
+  const px = percentToPx(rect, containerWidth, containerHeight)
+
+  return (
+    <div
+      className="crop-box crop-box--finalized"
+      style={{
+        left: px.x,
+        top: px.y,
+        width: px.width,
+        height: px.height,
+      }}
+      aria-hidden
+    />
+  )
+}
+
+function overlayCaption(title: string | undefined, boxWidth: number): string | undefined {
+  const text = title?.trim()
+  if (!text || boxWidth < 92) return undefined
+  const maxChars = boxWidth >= 180 ? 16 : 10
+  const upper = text.toLocaleUpperCase('pt-BR')
+  if (upper.length <= maxChars) return upper
+  return `${upper.slice(0, maxChars).trimEnd()}…`
+}
+
 function CropBoxInner({
   cropId,
   rect,
@@ -60,9 +96,9 @@ function CropBoxInner({
   containerHeight,
   color,
   selected,
-  finalized,
   draft,
   index,
+  title,
   mergeEnabled,
   isDragging,
   isDropTarget,
@@ -78,16 +114,15 @@ function CropBoxInner({
   onMergeDrop,
   onMergeDragEnter,
   onMergeDragLeave,
-}: CropBoxInnerProps) {
+}: Omit<CropBoxInnerProps, 'finalized'>) {
   const px = percentToPx(rect, containerWidth, containerHeight)
+  const caption = overlayCaption(title, px.width)
 
   return (
     <div
       className={cn(
         'crop-box',
-        selected && !finalized && 'crop-box--selected',
-        selected && finalized && 'crop-box--finalized-selected',
-        finalized && 'crop-box--finalized',
+        selected && 'crop-box--selected',
         draft && 'crop-box--draft',
         isDragging && 'crop-box--dragging',
         isDropTarget && 'crop-box--drop-target',
@@ -121,8 +156,13 @@ function CropBoxInner({
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
     >
-      {index !== undefined && !finalized && (
-        <span className="crop-box__badge">{index}</span>
+      {(index !== undefined || caption) && (
+        <span className="crop-box__badge">
+          {index !== undefined && (
+            <span className="crop-box__badge-index">{index}</span>
+          )}
+          {caption && <span className="crop-box__badge-label">{caption}</span>}
+        </span>
       )}
 
       {clientKeywords && clientKeywords.length > 0 && (
@@ -186,7 +226,7 @@ function CropBoxInner({
               <CropIcon size={12} strokeWidth={2.25} aria-hidden />
             </button>
           )}
-          {!finalized && onFinalize && (
+          {onFinalize && (
             <button
               type="button"
               className="crop-box__action crop-box__action--finalize"
@@ -217,6 +257,8 @@ function CropBoxInner({
 function canMergeInto(source: Crop | undefined, target: Crop | undefined): boolean {
   if (!source || !target || source.id === target.id) return false
   if (source.groupId && source.groupId === target.groupId) return false
+  const store = useCropsStore.getState()
+  if (store.isNewsItemFinalized(source.id) || store.isNewsItemFinalized(target.id)) return false
   return true
 }
 
@@ -231,6 +273,7 @@ function createMergeDragGhost(label: string, color: string) {
 
 export function CropOverlay({
   crops,
+  finalizedCrops = [],
   cropDisplayIndex,
   selectedCropId,
   editingCropId,
@@ -243,7 +286,6 @@ export function CropOverlay({
   onFinalizeCrop,
   onDeleteCrop,
 }: CropOverlayProps) {
-  const isNewsItemFinalized = useCropsStore((s) => s.isNewsItemFinalized)
   const cropsMap = useCropsStore((s) => s.crops)
   const mergeCrops = useCropsStore((s) => s.mergeCrops)
   const ungroupCrop = useCropsStore((s) => s.ungroupCrop)
@@ -255,6 +297,7 @@ export function CropOverlay({
   const [mergeFlashId, setMergeFlashId] = useState<string | null>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const dragGhostRef = useRef<HTMLElement | null>(null)
+  const suppressClickCropIdRef = useRef<string | null>(null)
 
   const mergeEnabled = !panMode && !editingCropId
   const dragSourceInGroup = dragId ? !!cropsMap[dragId]?.groupId : false
@@ -268,9 +311,9 @@ export function CropOverlay({
   const handleDragStart = useCallback((e: React.DragEvent, cropId: string) => {
     e.dataTransfer.setData('text/plain', cropId)
     e.dataTransfer.effectAllowed = 'move'
+    suppressClickCropIdRef.current = cropId
     setDragId(cropId)
     setDropTargetId(null)
-    onSelectCrop(cropId)
 
     const info = cropDisplayIndex.get(cropId)
     const color = cropColor(info?.colorIndex ?? 0)
@@ -282,7 +325,15 @@ export function CropOverlay({
       ghost.remove()
       dragGhostRef.current = null
     })
-  }, [cropDisplayIndex, onSelectCrop])
+  }, [cropDisplayIndex])
+
+  const handleMergeCropClick = useCallback(
+    (cropId: string, event?: React.MouseEvent) => {
+      if (suppressClickCropIdRef.current === cropId) return
+      onSelectCrop(cropId, event)
+    },
+    [onSelectCrop],
+  )
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -299,14 +350,13 @@ export function CropOverlay({
       const target = cropsMap[targetId]
       if (sourceId && canMergeInto(source, target)) {
         mergeCrops(sourceId, targetId)
-        onSelectCrop(targetId)
         setMergeFlashId(targetId)
       }
       setDragId(null)
       setDropTargetId(null)
       setUngroupZoneActive(false)
     },
-    [dragId, cropsMap, mergeCrops, onSelectCrop],
+    [dragId, cropsMap, mergeCrops],
   )
 
   const handleDragEnter = useCallback(
@@ -333,13 +383,12 @@ export function CropOverlay({
       const sourceId = e.dataTransfer.getData('text/plain') || dragId
       if (sourceId && cropsMap[sourceId]?.groupId) {
         ungroupCrop(sourceId)
-        onSelectCrop(sourceId)
       }
       setDragId(null)
       setDropTargetId(null)
       setUngroupZoneActive(false)
     },
-    [dragId, cropsMap, ungroupCrop, onSelectCrop],
+    [dragId, cropsMap, ungroupCrop],
   )
 
   const handleDragLeaveOverlay = useCallback((e: React.DragEvent) => {
@@ -354,12 +403,19 @@ export function CropOverlay({
     setUngroupZoneActive(false)
     dragGhostRef.current?.remove()
     dragGhostRef.current = null
+    requestAnimationFrame(() => {
+      suppressClickCropIdRef.current = null
+    })
   }, [])
 
-  if (width <= 0 || height <= 0) return null
-  const visibleCrops = editingCropId ? [] : crops
+  const visibleInteractive = useMemo(() => {
+    if (editingCropId) return []
+    return [...crops].sort((a, b) => cropRectArea(b.rect) - cropRectArea(a.rect))
+  }, [crops, editingCropId])
 
-  if (visibleCrops.length === 0 && !draftRect) {
+  if (width <= 0 || height <= 0) return null
+
+  if (visibleInteractive.length === 0 && finalizedCrops.length === 0 && !draftRect) {
     return null
   }
 
@@ -379,9 +435,17 @@ export function CropOverlay({
         </div>
       )}
 
-      {visibleCrops.map((crop) => {
+      {finalizedCrops.map((crop) => (
+        <FinalizedCropBox
+          key={`finalized-${crop.id}`}
+          rect={crop.rect}
+          containerWidth={width}
+          containerHeight={height}
+        />
+      ))}
+
+      {visibleInteractive.map((crop) => {
         const info = cropDisplayIndex.get(crop.id)
-        const finalized = isNewsItemFinalized(crop.id)
         const clientKeywords = cropHasClient(crop) ? crop.clientKeywordsFound : undefined
         return (
           <CropBoxInner
@@ -392,14 +456,14 @@ export function CropOverlay({
             containerHeight={height}
             color={cropColor(info?.colorIndex ?? 0)}
             selected={selectedCropId === crop.id}
-            finalized={finalized}
             index={info?.displayIndex}
+            title={crop.title}
             clientKeywords={clientKeywords}
             mergeEnabled={mergeEnabled}
             isDragging={dragId === crop.id}
             isDropTarget={dropTargetId === crop.id}
             mergeFlash={mergeFlashId === crop.id}
-            onClick={(event) => onSelectCrop(crop.id, event)}
+            onClick={(event) => handleMergeCropClick(crop.id, event)}
             onViewText={() => onViewText(crop.id)}
             onEdit={() => onEditCrop(crop.id)}
             onFinalize={() => onFinalizeCrop(crop.id)}

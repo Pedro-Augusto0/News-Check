@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, CircleDashed, Filter, LayoutGrid, Newspaper, Search, UserRound } from 'lucide-react'
+import { Check, CircleDashed, LayoutGrid, Newspaper, Search, UserRound } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useCropsStore } from '@/stores/cropsStore'
@@ -54,6 +54,15 @@ export function PageList() {
     return countPagesWithClientCrops(currentPdf.pages, crops, currentPdf.id)
   }, [currentPdf, crops])
 
+  const pageProgress = useMemo(() => {
+    if (!currentPdf) return { total: 0, finalized: 0 }
+    const total = currentPdf.pages.length
+    const finalized = currentPdf.pages.filter((page) =>
+      isPageFinalizedInState(finalizedPages, currentPdf.id, page.pageNumber),
+    ).length
+    return { total, finalized }
+  }, [currentPdf, finalizedPages])
+
   const visiblePages = useMemo(() => {
     const q = search.trim()
     if (!q) return filteredPages
@@ -84,6 +93,9 @@ export function PageList() {
     <div className="page-list">
       <div className="page-list__header">
         <h2 className="page-list__title">Páginas</h2>
+        <p className="page-list__progress">
+          {pageProgress.finalized} de {pageProgress.total} finalizadas
+        </p>
       </div>
 
       <div className="page-list__toolbar">
@@ -104,9 +116,6 @@ export function PageList() {
               </kbd>
             )}
           </label>
-          <button type="button" className="page-list__filter-toggle" aria-label="Filtros">
-            <Filter size={15} aria-hidden />
-          </button>
         </div>
 
         <div
@@ -179,7 +188,10 @@ export function PageList() {
                 >
                   {pageFinalized && <Check size={11} strokeWidth={2.75} />}
                 </span>
-                <span className="page-list__page-name">Página {page.pageNumber}</span>
+                <span className="page-list__page-name">
+                  <span className="page-list__page-kicker">Página</span>
+                  {page.pageNumber}
+                </span>
                 <span
                   className="page-list__meta"
                   aria-label={`${clientCount} ${clientCount === 1 ? 'cliente' : 'clientes'}, ${newsCount} ${newsCount === 1 ? 'notícia' : 'notícias'}`}
@@ -192,9 +204,7 @@ export function PageList() {
                     )}
                     title={`${clientCount} ${clientCount === 1 ? 'cliente' : 'clientes'}`}
                   >
-                    <span className="page-list__indicator-icon" aria-hidden>
-                      <UserRound size={11} strokeWidth={2.3} />
-                    </span>
+                    <UserRound size={12} strokeWidth={2.2} aria-hidden />
                     <span className="page-list__indicator-count">{clientCount}</span>
                   </span>
                   <span
@@ -205,9 +215,7 @@ export function PageList() {
                     )}
                     title={`${newsCount} ${newsCount === 1 ? 'notícia' : 'notícias'}`}
                   >
-                    <span className="page-list__indicator-icon" aria-hidden>
-                      <Newspaper size={11} strokeWidth={2.3} />
-                    </span>
+                    <Newspaper size={12} strokeWidth={2.2} aria-hidden />
                     <span className="page-list__indicator-count">{newsCount}</span>
                   </span>
                 </span>

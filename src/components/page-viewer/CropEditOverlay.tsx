@@ -104,7 +104,9 @@ export function CropEditOverlay({
         }}
       >
         {cropDisplayInfo?.displayIndex !== undefined && (
-          <span className="crop-edit-box__badge">{cropDisplayInfo.displayIndex}</span>
+          <span className="crop-edit-box__badge">
+            <span className="crop-edit-box__badge-index">{cropDisplayInfo.displayIndex}</span>
+          </span>
         )}
 
         {!draftRect && (

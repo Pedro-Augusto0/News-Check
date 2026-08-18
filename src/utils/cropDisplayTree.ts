@@ -1,4 +1,5 @@
 import type { Crop, CropDisplayNode, CropGroup } from '@/types/session'
+import { stableColorIndex } from '@/utils/cropColors'
 import { cropDisplayInfoFromIndex } from '@/utils/cropDisplayIndex'
 import { comparePageKeys } from '@/utils/pageKey'
 
@@ -78,7 +79,9 @@ export function buildCropDisplayIndexMap(
     )
 
     for (const node of sorted) {
-      const info = cropDisplayInfoFromIndex(displayIndex++)
+      const colorKey =
+        node.crop?.newsItemId ?? node.group?.id ?? node.crop?.id ?? String(displayIndex)
+      const info = cropDisplayInfoFromIndex(displayIndex++, stableColorIndex(colorKey))
 
       if (node.type === 'group' && node.group) {
         for (const cropId of node.group.cropIds) {

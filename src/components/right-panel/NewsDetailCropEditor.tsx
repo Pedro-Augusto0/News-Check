@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  Crop as CropIcon,
-  Maximize2,
-  Minus,
-  Pencil,
-  Plus,
-  Trash2,
-  ZoomIn,
-} from 'lucide-react'
+import { Crop as CropIcon, Maximize2, Minus, ZoomIn } from 'lucide-react'
 import type { Crop, StoredNewsItem } from '@/types/session'
 import type { CropDisplayInfo } from '@/utils/cropDisplayTree'
 import { useCropsStore } from '@/stores/cropsStore'
@@ -15,7 +7,6 @@ import { useNewsStore } from '@/stores/newsStore'
 import { useSessionStore } from '@/stores/sessionStore'
 import { DEFAULT_FIT_SCALE } from '@/stores/viewerStore'
 import { useCropDrawing } from '@/hooks/useCropDrawing'
-import { CropEditOverlay } from '@/components/page-viewer/CropEditOverlay'
 import { resolveCropImageUrl } from '@/services/cropTextExtraction'
 import { loadPageImage, renderImageRegionToCanvas, renderImageToCanvas } from '@/lib/image/pageImageCache'
 import { percentToPx } from '@/utils/cropGeometry'
@@ -29,6 +20,9 @@ interface NewsDetailCropEditorProps {
   modalRootId: string | null
   pendingNewsItem?: StoredNewsItem
   cropDisplayIndex: Map<string, CropDisplayInfo>
+  viewPageNumber?: string | null
+  onViewPage?: (pageNumber: string) => void
+  previewCrops?: Crop[]
 }
 
 function sortModalCrops(crops: Crop[]): Crop[] {
@@ -92,6 +86,7 @@ interface CropThumbnailChipProps {
   selected: boolean
   accentColor: string
   onSelect: () => void
+  onDelete: () => void
 }
 
 function CropThumbnailChip({
@@ -102,6 +97,7 @@ function CropThumbnailChip({
   selected,
   accentColor,
   onSelect,
+  onDelete,
 }: CropThumbnailChipProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ready, setReady] = useState(false)
@@ -135,8 +131,12 @@ function CropThumbnailChip({
       )}
       style={{ ['--clip-accent' as string]: accentColor }}
       onClick={onSelect}
-      title={`Página ${pageLabel}`}
-      aria-label={`Selecionar corte ${label}, página ${pageLabel}`}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        onDelete()
+      }}
+      title={`Página ${pageLabel}. Botão direito para excluir`}
+      aria-label={`Selecionar corte ${label}, página ${pageLabel}. Botão direito para excluir`}
     >
       <div className="news-detail-crop-editor__thumb-preview">
         <canvas
@@ -156,25 +156,45 @@ function CropThumbnailChip({
 interface ModalCropBoxProps {
   crop: Crop
   selected: boolean
+  preview?: boolean
+  finalized?: boolean
   label: string
   accentColor: string
   width: number
   height: number
-  interactive: boolean
-  onSelect: () => void
+  onSelect?: () => void
+  onDelete?: () => void
 }
 
 function ModalCropBox({
   crop,
   selected,
+  preview,
+  finalized,
   label,
   accentColor,
   width,
   height,
-  interactive,
   onSelect,
+  onDelete,
 }: ModalCropBoxProps) {
   const px = percentToPx(crop.rect, width, height)
+  const interactive = !preview && !finalized
+
+  if (finalized) {
+    return (
+      <div
+        className="modal-crop-box modal-crop-box--finalized"
+        style={{
+          left: px.x,
+          top: px.y,
+          width: px.width,
+          height: px.height,
+        }}
+        aria-hidden
+      />
+    )
+  }
 
   return (
     <button
@@ -182,7 +202,7 @@ function ModalCropBox({
       className={cn(
         'modal-crop-box',
         selected && 'modal-crop-box--selected',
-        !interactive && 'modal-crop-box--readonly',
+        preview && 'modal-crop-box--preview',
       )}
       style={{
         left: px.x,
@@ -191,12 +211,31 @@ function ModalCropBox({
         height: px.height,
         ['--crop-accent' as string]: accentColor,
       }}
-      onClick={(e) => {
-        e.stopPropagation()
-        onSelect()
-      }}
-      disabled={!interactive}
-      aria-label={`Corte da página ${crop.pageNumber}`}
+      onPointerDown={interactive ? (event) => event.stopPropagation() : undefined}
+      onClick={
+        interactive
+          ? (event) => {
+              event.stopPropagation()
+              onSelect?.()
+            }
+          : undefined
+      }
+      onContextMenu={
+        interactive
+          ? (event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              onDelete?.()
+            }
+          : undefined
+      }
+      disabled={preview}
+      title={preview ? 'Corte de outra notícia' : 'Botão direito para excluir'}
+      aria-label={
+        preview
+          ? `Marcação de outra notícia na página ${crop.pageNumber}`
+          : `Corte da página ${crop.pageNumber}. Botão direito para excluir`
+      }
     >
       <span className="modal-crop-box__badge">{label}</span>
     </button>
@@ -208,12 +247,15 @@ export function NewsDetailCropEditor({
   modalRootId,
   pendingNewsItem,
   cropDisplayIndex,
+  viewPageNumber,
+  onViewPage,
+  previewCrops = [],
 }: NewsDetailCropEditorProps) {
   const editions = useSessionStore((s) => s.editions)
   const addCropToNews = useCropsStore((s) => s.addCropToNews)
-  const updateCropRect = useCropsStore((s) => s.updateCropRect)
   const deleteCrop = useCropsStore((s) => s.deleteCrop)
   const openTextModal = useCropsStore((s) => s.openTextModal)
+  const isNewsItemFinalized = useCropsStore((s) => s.isNewsItemFinalized)
   const crops = useCropsStore((s) => s.crops)
   const closeNewsTextModal = useNewsStore((s) => s.closeNewsTextModal)
   const getNewsItem = useNewsStore((s) => s.getNewsItem)
@@ -228,9 +270,6 @@ export function NewsDetailCropEditor({
   }, [pendingNewsItem, sortedCrops, getNewsItem])
 
   const [selectedCropId, setSelectedCropId] = useState<string | null>(null)
-  const [editingCropId, setEditingCropId] = useState<string | null>(null)
-  const [drawMode, setDrawMode] = useState(isPending)
-  const [activePageNumber, setActivePageNumber] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
 
   const canvasWrapRef = useRef<HTMLDivElement>(null)
@@ -247,12 +286,9 @@ export function NewsDetailCropEditor({
   }, [])
 
   useEffect(() => {
-    setDrawMode(isPending)
     setZoom(1)
     if (sortedCrops.length === 0) {
       setSelectedCropId(null)
-      setEditingCropId(null)
-      setActivePageNumber(pendingNewsItem?.pageNumber ?? null)
       return
     }
 
@@ -260,37 +296,34 @@ export function NewsDetailCropEditor({
       if (current && sortedCrops.some((crop) => crop.id === current)) return current
       return sortedCrops[0].id
     })
-    setEditingCropId((current) => {
-      if (current && sortedCrops.some((crop) => crop.id === current)) return current
-      return sortedCrops[0].id
-    })
-    setActivePageNumber((current) => {
-      if (current && sortedCrops.some((crop) => crop.pageNumber === current)) return current
-      return sortedCrops[0].pageNumber
-    })
-  }, [modalRootId, pendingNewsItem?.id, isPending, sortedCrops, pendingNewsItem?.pageNumber])
+  }, [modalRootId, pendingNewsItem?.id, sortedCrops])
 
   const selectedCrop = selectedCropId
     ? sortedCrops.find((crop) => crop.id === selectedCropId)
     : undefined
 
   const pageNumber =
-    activePageNumber ?? selectedCrop?.pageNumber ?? pendingNewsItem?.pageNumber ?? null
+    viewPageNumber ?? selectedCrop?.pageNumber ?? pendingNewsItem?.pageNumber ?? null
 
   const pageCrops = useMemo(
     () => sortedCrops.filter((crop) => crop.pageNumber === pageNumber),
     [sortedCrops, pageNumber],
   )
 
+  const previewPageCrops = useMemo(
+    () => previewCrops.filter((crop) => crop.pageNumber === pageNumber),
+    [previewCrops, pageNumber],
+  )
+
   const imageUrl = useMemo(() => {
     if (!pageNumber) return undefined
-    const refCrop = pageCrops[0] ?? selectedCrop ?? sortedCrops[0]
-    if (refCrop) return resolveCropImageUrl(refCrop, editions)
-    if (!pendingNewsItem) return undefined
-    const edition = editions.find((e) => e.id === pendingNewsItem.editionId)
-    const pdf = edition?.pdfs.find((p) => p.id === pendingNewsItem.pdfId)
-    return pdf?.pages.find((p) => p.pageNumber === pageNumber)?.imageUrl
-  }, [pageNumber, pageCrops, selectedCrop, sortedCrops, pendingNewsItem, editions])
+    const editionId = newsItem?.editionId ?? sortedCrops[0]?.editionId ?? pendingNewsItem?.editionId
+    const pdfId = newsItem?.pdfId ?? sortedCrops[0]?.pdfId ?? pendingNewsItem?.pdfId
+    if (!editionId || !pdfId) return undefined
+    const edition = editions.find((item) => item.id === editionId)
+    const pdf = edition?.pdfs.find((item) => item.id === pdfId)
+    return pdf?.pages.find((page) => page.pageNumber === pageNumber)?.imageUrl
+  }, [pageNumber, newsItem, sortedCrops, pendingNewsItem, editions])
 
   const { canvasRef, dimensions, error } = useModalPageImage(imageUrl, viewportWidth, zoom)
 
@@ -317,8 +350,6 @@ export function NewsDetailCropEditor({
 
       if (!newCropId) return
 
-      setDrawMode(false)
-
       const state = useCropsStore.getState()
       const newCrop = state.crops[newCropId]
       const modalId = newCrop?.groupId ?? newCropId
@@ -330,8 +361,7 @@ export function NewsDetailCropEditor({
 
       if (newCrop) {
         setSelectedCropId(newCropId)
-        setEditingCropId(newCropId)
-        setActivePageNumber(newCrop.pageNumber)
+        onViewPage?.(newCrop.pageNumber)
       }
     },
     [
@@ -342,10 +372,14 @@ export function NewsDetailCropEditor({
       isPending,
       closeNewsTextModal,
       openTextModal,
+      onViewPage,
     ],
   )
 
-  const canDraw = drawMode && !editingCropId && !!newsItem && !!pageNumber
+  const canDraw =
+    !!newsItem &&
+    !!pageNumber &&
+    !sortedCrops.some((crop) => isNewsItemFinalized(crop.id))
 
   const { draftRect, handlePointerDown, handlePointerMove, handlePointerUp } = useCropDrawing({
     enabled: canDraw,
@@ -355,58 +389,46 @@ export function NewsDetailCropEditor({
   })
 
   const handleSelectCrop = useCallback((cropId: string) => {
+    if (isNewsItemFinalized(cropId)) return
     setSelectedCropId(cropId)
-    setDrawMode(false)
-    setEditingCropId(cropId)
     const crop = useCropsStore.getState().crops[cropId]
-    if (crop) setActivePageNumber(crop.pageNumber)
-  }, [])
+    if (crop) onViewPage?.(crop.pageNumber)
+  }, [onViewPage, isNewsItemFinalized])
 
-  const handleCancelEdit = useCallback(() => {
-    setEditingCropId(null)
-  }, [])
+  const handleDeleteCrop = useCallback(
+    (cropId: string) => {
+      const deletedNewsId = crops[cropId]?.newsItemId ?? newsItem?.id
+      deleteCrop(cropId)
 
-  const handleSaveEdit = useCallback(
-    (rect: Crop['rect']) => {
-      if (!editingCropId) return
-      updateCropRect(editingCropId, rect)
-      setEditingCropId(editingCropId)
+      const state = useCropsStore.getState()
+      let nextCrops: Crop[] = []
+
+      if (modalRootId && state.groups[modalRootId]) {
+        nextCrops = state.groups[modalRootId].cropIds
+          .map((id) => state.crops[id])
+          .filter(Boolean)
+      } else if (modalRootId && state.crops[modalRootId]) {
+        nextCrops = [state.crops[modalRootId]]
+      } else if (deletedNewsId) {
+        nextCrops = Object.values(state.crops).filter((c) => c.newsItemId === deletedNewsId)
+      }
+
+      if (nextCrops.length === 0) {
+        setSelectedCropId(null)
+        return
+      }
+
+      const keepSelected = selectedCropId && nextCrops.some((crop) => crop.id === selectedCropId)
+      const nextCrop = keepSelected
+        ? nextCrops.find((crop) => crop.id === selectedCropId)!
+        : nextCrops[0]
+      setSelectedCropId(nextCrop.id)
+      onViewPage?.(nextCrop.pageNumber)
     },
-    [editingCropId, updateCropRect],
+    [selectedCropId, crops, newsItem, deleteCrop, modalRootId, onViewPage],
   )
 
-  const handleDeleteCrop = useCallback(() => {
-    if (!selectedCropId) return
-    const deletedNewsId = crops[selectedCropId]?.newsItemId ?? newsItem?.id
-    deleteCrop(selectedCropId)
-    setEditingCropId(null)
-
-    const state = useCropsStore.getState()
-    let nextCrops: Crop[] = []
-
-    if (modalRootId && state.groups[modalRootId]) {
-      nextCrops = state.groups[modalRootId].cropIds
-        .map((id) => state.crops[id])
-        .filter(Boolean)
-    } else if (modalRootId && state.crops[modalRootId]) {
-      nextCrops = [state.crops[modalRootId]]
-    } else if (deletedNewsId) {
-      nextCrops = Object.values(state.crops).filter((c) => c.newsItemId === deletedNewsId)
-    }
-
-    if (nextCrops.length === 0) {
-      setSelectedCropId(null)
-      setDrawMode(true)
-      return
-    }
-
-    setSelectedCropId(nextCrops[0].id)
-    setActivePageNumber(nextCrops[0].pageNumber)
-  }, [selectedCropId, crops, newsItem, deleteCrop, modalRootId])
-
-  const editingCrop = editingCropId ? crops[editingCropId] : undefined
-
-  const canvasCursor = editingCropId ? 'default' : canDraw ? 'crosshair' : 'default'
+  const canvasCursor = canDraw ? 'crosshair' : 'default'
   const zoomLabel = `${Math.round(zoom * 100)}%`
 
   const cropIndexLabel = (cropId: string, index: number) => {
@@ -416,187 +438,136 @@ export function NewsDetailCropEditor({
 
   return (
     <section className="news-detail-crop-editor">
-      <div className="news-detail-crop-editor__chrome">
-        <div className="news-detail-crop-editor__toolbar">
-          <div className="news-detail-crop-editor__title-row">
-            <h2 className="news-detail-crop-editor__title">Cortes</h2>
-            <span className="news-detail-crop-editor__count">{sortedCrops.length}</span>
-          </div>
-
-          <div className="news-detail-crop-editor__tools">
-            <div className="news-detail-crop-editor__zoom-controls">
-              <button
-                type="button"
-                className="news-detail-crop-editor__icon-btn"
-                onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}
-                aria-label="Diminuir zoom"
-              >
-                <Minus size={14} aria-hidden />
-              </button>
-              <span className="news-detail-crop-editor__zoom-label">{zoomLabel}</span>
-              <button
-                type="button"
-                className="news-detail-crop-editor__icon-btn"
-                onClick={() => setZoom((value) => Math.min(2.5, value + 0.25))}
-                aria-label="Aumentar zoom"
-              >
-                <ZoomIn size={14} aria-hidden />
-              </button>
-              <button
-                type="button"
-                className="news-detail-crop-editor__icon-btn"
-                onClick={() => setZoom(1)}
-                title="Ajustar à tela"
-                aria-label="Ajustar à tela"
-              >
-                <Maximize2 size={13} aria-hidden />
-              </button>
+      <div className="news-detail-crop-editor__body">
+        <div className="news-detail-crop-editor__workspace" ref={canvasWrapRef}>
+          {!imageUrl && (
+            <div className="news-detail-crop-editor__empty">
+              <CropIcon size={28} strokeWidth={1.5} aria-hidden />
+              <p>Selecione uma página com imagem disponível.</p>
             </div>
+          )}
 
-            {selectedCrop && !drawMode && (
-              <div className="news-detail-crop-editor__actions">
-                <button
-                  type="button"
-                  className="news-detail-crop-editor__action-btn"
-                  onClick={() => setEditingCropId(selectedCrop.id)}
+          {imageUrl && (
+            <div
+              className="news-detail-crop-editor__canvas-wrap"
+              style={{ cursor: canvasCursor }}
+              onPointerDown={canDraw ? handlePointerDown : undefined}
+              onPointerMove={canDraw ? handlePointerMove : undefined}
+              onPointerUp={canDraw ? handlePointerUp : undefined}
+            >
+              <canvas ref={canvasRef} className="news-detail-crop-editor__canvas" />
+
+              {dimensions.width > 0 && dimensions.height > 0 && (
+                <div
+                  className="news-detail-crop-editor__overlay"
+                  style={{ width: dimensions.width, height: dimensions.height }}
                 >
-                  <Pencil size={13} strokeWidth={2.25} aria-hidden />
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  className="news-detail-crop-editor__action-btn news-detail-crop-editor__action-btn--danger"
-                  onClick={handleDeleteCrop}
-                >
-                  <Trash2 size={13} strokeWidth={2.25} aria-hidden />
-                  Remover
-                </button>
-              </div>
-            )}
-          </div>
+                  {pageCrops.map((crop, index) => {
+                    const info = cropDisplayIndex.get(crop.id)
+                    const finalized = isNewsItemFinalized(crop.id)
+                    return (
+                      <ModalCropBox
+                        key={crop.id}
+                        crop={crop}
+                        selected={!finalized && selectedCropId === crop.id}
+                        finalized={finalized}
+                        label={cropIndexLabel(crop.id, index)}
+                        accentColor={cropColor(info?.colorIndex ?? 0)}
+                        width={dimensions.width}
+                        height={dimensions.height}
+                        onSelect={() => handleSelectCrop(crop.id)}
+                        onDelete={() => handleDeleteCrop(crop.id)}
+                      />
+                    )
+                  })}
+
+                  {previewPageCrops.map((crop, index) => {
+                    const info = cropDisplayIndex.get(crop.id)
+                    return (
+                      <ModalCropBox
+                        key={`preview-${crop.id}`}
+                        crop={crop}
+                        selected={false}
+                        preview
+                        label={cropIndexLabel(crop.id, index)}
+                        accentColor={cropColor(info?.colorIndex ?? 0)}
+                        width={dimensions.width}
+                        height={dimensions.height}
+                      />
+                    )
+                  })}
+
+                  {draftRect && (
+                    <div
+                      className="modal-crop-box modal-crop-box--draft"
+                      style={{
+                        ...(() => {
+                          const px = percentToPx(draftRect, dimensions.width, dimensions.height)
+                          return { left: px.x, top: px.y, width: px.width, height: px.height }
+                        })(),
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {error && <p className="news-detail-crop-editor__error">{error}</p>}
         </div>
 
-        <div className="news-detail-crop-editor__filmstrip">
-          {sortedCrops.map((crop, index) => {
-            const pdfUrl = resolvePdfUrl(crop)
-            const info = cropDisplayIndex.get(crop.id)
-            if (!pdfUrl) return null
-            return (
-              <CropThumbnailChip
-                key={crop.id}
-                crop={crop}
-                pdfUrl={pdfUrl}
-                label={cropIndexLabel(crop.id, index)}
-                pageLabel={crop.pageNumber}
-                selected={selectedCropId === crop.id}
-                accentColor={cropColor(info?.colorIndex ?? 0)}
-                onSelect={() => handleSelectCrop(crop.id)}
-              />
-            )
-          })}
-
+        <div className="news-detail-crop-editor__zoom-controls">
           <button
             type="button"
-            className={cn(
-              'news-detail-crop-editor__add-thumb',
-              drawMode && 'news-detail-crop-editor__add-thumb--active',
-            )}
-            onClick={() => {
-              setDrawMode((value) => !value)
-              setEditingCropId(null)
-            }}
-            disabled={!newsItem || !pageNumber}
-            title="Adicionar corte"
-            aria-label="Adicionar corte"
+            className="news-detail-crop-editor__icon-btn"
+            onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}
+            aria-label="Diminuir zoom"
           >
-            <Plus size={16} strokeWidth={2.25} aria-hidden />
-            <span>Novo</span>
+            <Minus size={14} aria-hidden />
+          </button>
+          <span className="news-detail-crop-editor__zoom-label">{zoomLabel}</span>
+          <button
+            type="button"
+            className="news-detail-crop-editor__icon-btn"
+            onClick={() => setZoom((value) => Math.min(2.5, value + 0.25))}
+            aria-label="Aumentar zoom"
+          >
+            <ZoomIn size={14} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="news-detail-crop-editor__icon-btn"
+            onClick={() => setZoom(1)}
+            title="Ajustar à tela"
+            aria-label="Ajustar à tela"
+          >
+            <Maximize2 size={13} aria-hidden />
           </button>
         </div>
-      </div>
 
-      <div className="news-detail-crop-editor__workspace" ref={canvasWrapRef}>
-        {!imageUrl && (
-          <div className="news-detail-crop-editor__empty">
-            <CropIcon size={28} strokeWidth={1.5} aria-hidden />
-            <p>Selecione uma página com imagem disponível.</p>
-          </div>
-        )}
-
-        {imageUrl && (
-          <div
-            className="news-detail-crop-editor__canvas-wrap"
-            style={{ cursor: canvasCursor }}
-            onPointerDown={canDraw ? handlePointerDown : undefined}
-            onPointerMove={canDraw ? handlePointerMove : undefined}
-            onPointerUp={canDraw ? handlePointerUp : undefined}
-          >
-            <canvas ref={canvasRef} className="news-detail-crop-editor__canvas" />
-
-            {dimensions.width > 0 && dimensions.height > 0 && !editingCropId && (
-              <div
-                className="news-detail-crop-editor__overlay"
-                style={{ width: dimensions.width, height: dimensions.height }}
-              >
-                {pageCrops.map((crop, index) => {
-                  const info = cropDisplayIndex.get(crop.id)
-                  return (
-                    <ModalCropBox
-                      key={crop.id}
-                      crop={crop}
-                      selected={selectedCropId === crop.id}
-                      label={cropIndexLabel(crop.id, index)}
-                      accentColor={cropColor(info?.colorIndex ?? 0)}
-                      width={dimensions.width}
-                      height={dimensions.height}
-                      interactive={!drawMode}
-                      onSelect={() => handleSelectCrop(crop.id)}
-                    />
-                  )
-                })}
-
-                {draftRect && (
-                  <div
-                    className="modal-crop-box modal-crop-box--draft"
-                    style={{
-                      ...(() => {
-                        const px = percentToPx(draftRect, dimensions.width, dimensions.height)
-                        return { left: px.x, top: px.y, width: px.width, height: px.height }
-                      })(),
-                    }}
+        {sortedCrops.length > 0 && (
+          <div className="news-detail-crop-editor__filmstrip">
+              {sortedCrops.map((crop, index) => {
+                const pdfUrl = resolvePdfUrl(crop)
+                const info = cropDisplayIndex.get(crop.id)
+                if (!pdfUrl) return null
+                return (
+                  <CropThumbnailChip
+                    key={crop.id}
+                    crop={crop}
+                    pdfUrl={pdfUrl}
+                    label={cropIndexLabel(crop.id, index)}
+                    pageLabel={crop.pageNumber}
+                    selected={selectedCropId === crop.id}
+                    accentColor={cropColor(info?.colorIndex ?? 0)}
+                    onSelect={() => handleSelectCrop(crop.id)}
+                    onDelete={() => handleDeleteCrop(crop.id)}
                   />
-                )}
-              </div>
-            )}
-
-            {editingCrop && dimensions.width > 0 && (
-              <CropEditOverlay
-                key={editingCrop.id}
-                crop={editingCrop}
-                cropDisplayInfo={cropDisplayIndex.get(editingCrop.id)}
-                containerWidth={dimensions.width}
-                containerHeight={dimensions.height}
-                onSave={handleSaveEdit}
-                onCancel={handleCancelEdit}
-              />
-            )}
-          </div>
-        )}
-
-        {error && <p className="news-detail-crop-editor__error">{error}</p>}
-      </div>
-
-      {drawMode && (
-        <p className="news-detail-crop-editor__hint">
-          Arraste na página para desenhar um novo corte para esta notícia.
-        </p>
-      )}
-
-      {isPending && !drawMode && (
-        <p className="news-detail-crop-editor__hint">
-          Esta notícia ainda não tem corte. Clique em «Adicionar corte» e desenhe na página.
-        </p>
-      )}
-    </section>
-  )
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+    )
 }

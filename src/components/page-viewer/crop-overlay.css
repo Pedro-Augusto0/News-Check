@@ -36,54 +36,81 @@
 }
 
 .crop-box {
+  --crop-dash: 11px;
+  --crop-gap: 7px;
+  --crop-stroke: 2.5px;
   position: absolute;
-  border: 3px dashed var(--crop-accent, var(--color-primary));
-  border-radius: var(--radius-xs);
-  background-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 26%, transparent);
+  border: none;
+  border-radius: 2px;
+  background-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 22%, transparent);
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      var(--crop-accent, var(--color-primary)) 0 var(--crop-dash),
+      transparent var(--crop-dash) calc(var(--crop-dash) + var(--crop-gap))
+    ),
+    repeating-linear-gradient(
+      180deg,
+      var(--crop-accent, var(--color-primary)) 0 var(--crop-dash),
+      transparent var(--crop-dash) calc(var(--crop-dash) + var(--crop-gap))
+    ),
+    repeating-linear-gradient(
+      90deg,
+      var(--crop-accent, var(--color-primary)) 0 var(--crop-dash),
+      transparent var(--crop-dash) calc(var(--crop-dash) + var(--crop-gap))
+    ),
+    repeating-linear-gradient(
+      180deg,
+      var(--crop-accent, var(--color-primary)) 0 var(--crop-dash),
+      transparent var(--crop-dash) calc(var(--crop-dash) + var(--crop-gap))
+    );
+  background-size:
+    100% var(--crop-stroke),
+    var(--crop-stroke) 100%,
+    100% var(--crop-stroke),
+    var(--crop-stroke) 100%;
+  background-position: 0 0, 100% 0, 0 100%, 0 0;
+  background-repeat: repeat-x, repeat-y, repeat-x, repeat-y;
   pointer-events: auto;
   cursor: pointer;
   transition:
     background-color var(--transition),
-    box-shadow var(--transition),
-    border-color var(--transition);
+    box-shadow var(--transition);
+}
+
+.crop-box:hover:not(.crop-box--selected):not(.crop-box--finalized) {
+  background-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 28%, transparent);
 }
 
 .crop-box--selected {
   z-index: 2;
-  border-width: 2px;
-  background-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 38%, transparent);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--crop-accent, var(--color-primary)) 50%, transparent),
-    0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
+  background-image: none;
+  background-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 30%, transparent);
+  box-shadow: inset 0 0 0 2.5px var(--crop-accent, var(--color-primary));
 }
 
 .crop-box--finalized {
+  z-index: 1;
   border: none;
   box-shadow: none;
   border-radius: var(--radius-xs);
+  background-image: none;
   background-color: var(--color-crop-finalized-overlay);
   backdrop-filter: blur(var(--crop-finalized-blur)) saturate(0.9);
   -webkit-backdrop-filter: blur(var(--crop-finalized-blur)) saturate(0.9);
-  cursor: pointer;
-  transition:
-    background-color var(--transition-slow),
-    backdrop-filter var(--transition-slow),
-    -webkit-backdrop-filter var(--transition-slow);
+  cursor: default;
+  pointer-events: none;
 }
 
-.crop-box--finalized-selected {
-  z-index: 2;
-  background-color: var(--color-crop-finalized-overlay-hover);
-  backdrop-filter: blur(calc(var(--crop-finalized-blur) + 1px)) saturate(0.94);
-  -webkit-backdrop-filter: blur(calc(var(--crop-finalized-blur) + 1px)) saturate(0.94);
-  box-shadow:
-    0 0 0 2px var(--color-primary),
-    0 0 0 4px color-mix(in srgb, var(--color-primary) 18%, transparent);
+.crop-box--finalized .crop-box__actions,
+.crop-box--finalized .crop-box__merge-handle,
+.crop-box--finalized .crop-box__badge,
+.crop-box--finalized .crop-box__client-badge {
+  display: none !important;
 }
 
 .crop-box--draft {
-  border-style: dashed;
-  background-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 36%, transparent);
+  background-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 26%, transparent);
 }
 
 .crop-box--dragging {
@@ -98,7 +125,7 @@
 
 .crop-box--drop-target {
   z-index: 5;
-  background-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 48%, transparent);
+  background-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 34%, transparent);
   animation: crop-drop-target 0.75s ease-in-out infinite;
 }
 
@@ -344,19 +371,35 @@
   position: absolute;
   top: -1px;
   left: -1px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  display: flex;
+  max-width: calc(100% - 2px);
+  min-width: 20px;
+  height: 20px;
+  padding: 0 7px 0 6px;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-size: 11px;
+  gap: 6px;
+  font-size: 10px;
   font-weight: 700;
   color: #fff;
   background: var(--crop-accent, var(--color-primary));
-  border-radius: 3px 0 6px 0;
+  border-radius: 2px 0 5px 0;
   line-height: 1;
-  box-shadow: var(--shadow-sm);
+  letter-spacing: 0.04em;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+}
+
+.crop-box__badge-index {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.crop-box__badge-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  opacity: 0.95;
 }
 
 .crop-box__actions {

@@ -56,15 +56,14 @@ export function CropPagePreview({
               const px = percentToPx(crop.rect, dimensions.width, dimensions.height)
               const info = cropDisplayIndex.get(crop.id)
               const finalized = isNewsItemFinalized(crop.id)
-              const active = activeCropId === crop.id
+              const active = !finalized && activeCropId === crop.id
               return (
                 <div
                   key={crop.id}
                   className={cn(
                     'crop-page-preview__box',
-                    !finalized && active && 'crop-page-preview__box--active',
+                    active && 'crop-page-preview__box--active',
                     finalized && 'crop-page-preview__box--finalized',
-                    finalized && active && 'crop-page-preview__box--finalized-active',
                   )}
                   style={{
                     left: px.x,

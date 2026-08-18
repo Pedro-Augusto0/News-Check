@@ -32,6 +32,7 @@ interface NewsState {
   hasPageNewsHighlight: (pdfId: string, pageNumber: string) => boolean
   selectNewsHighlight: (newsId: string, multi: boolean, scope?: NewsHighlightScope) => void
   clearNewsHighlight: (scope?: NewsHighlightScope) => void
+  unhighlightNewsItems: (newsIds: string[]) => void
   addManualNewsItem: (params: {
     editionId: string
     pdfId: string
@@ -234,6 +235,17 @@ export const useNewsStore = create<NewsState>((set, get) => ({
   hasPageNewsHighlight: (pdfId, pageNumber) => {
     const pageSet = get().highlightedNewsByPage[pageScopeKey(pdfId, pageNumber)]
     return !!pageSet && Object.keys(pageSet).length > 0
+  },
+
+  unhighlightNewsItems: (newsIds: string[]) => {
+    if (newsIds.length === 0) return
+    const removeSet = new Set(newsIds)
+    set((state) => ({
+      selectedNewsItemId: removeSet.has(state.selectedNewsItemId ?? '')
+        ? null
+        : state.selectedNewsItemId,
+      highlightedNewsByPage: removeNewsIdsFromHighlights(state.highlightedNewsByPage, newsIds),
+    }))
   },
 
   selectNewsHighlight: (newsId, multi, scope) => {

@@ -13,7 +13,7 @@ import type { Crop, CropDisplayNode, CropGroup, StoredNewsItem } from '@/types/s
 import { CropListItem, CropGroupItem } from './CropListItem'
 import { PendingNewsListItem } from './PendingNewsListItem'
 import { ActiveNewsBanner } from './ActiveNewsBanner'
-import { buildNewsPageSections, isNewsItemPending, newsItemHasClient } from '@/utils/pendingNews'
+import { buildNewsPageSections, excludeFinalizedNewsSections, isNewsItemPending, newsItemHasClient } from '@/utils/pendingNews'
 import { canDeleteNewsItem } from '@/utils/newsItem'
 import { resolveNewsAccentColor } from '@/utils/newsAccentColor'
 import { pageScopeKey } from '@/utils/pageKey'
@@ -64,6 +64,7 @@ export function CropsTab() {
   const openTextModal = useCropsStore((s) => s.openTextModal)
   const openNewsTextModal = useNewsStore((s) => s.openNewsTextModal)
   const selectCrop = useCropsStore((s) => s.selectCrop)
+  const isNewsItemFinalized = useCropsStore((s) => s.isNewsItemFinalized)
 
   const newsItems = useNewsStore((s) => s.items)
   const isLoadingNews = useNewsStore((s) => s.isLoadingNews)
@@ -125,13 +126,17 @@ export function CropsTab() {
 
   const pageSections = useMemo(
     () =>
-      buildNewsPageSections(
-        buildCropsByPageSections(displayTree, pdfNews),
-        pdfNews,
-        currentPdf?.id ?? '',
+      excludeFinalizedNewsSections(
+        buildNewsPageSections(
+          buildCropsByPageSections(displayTree, pdfNews),
+          pdfNews,
+          currentPdf?.id ?? '',
+          crops,
+        ),
         crops,
+        groups,
       ),
-    [displayTree, pdfNews, currentPdf?.id, crops],
+    [displayTree, pdfNews, currentPdf?.id, crops, groups],
   )
 
   const filteredPageSections = useMemo(() => {
@@ -167,14 +172,44 @@ export function CropsTab() {
 
   const activeNewsAccent = useMemo(() => {
     if (!selectedNewsItem) return undefined
-    return resolveNewsAccentColor(selectedNewsItem, crops, groups, cropDisplayIndex)
-  }, [selectedNewsItem, crops, groups, cropDisplayIndex])
+    return resolveNewsAccentColor(selectedNewsItem)
+  }, [selectedNewsItem])
 
   const activeNewsHasCrop = useMemo(() => {
     if (!selectedNewsItem) return false
     if (selectedNewsItem.cropId && crops[selectedNewsItem.cropId]) return true
     return Object.values(crops).some((crop) => crop.newsItemId === selectedNewsItem.id)
   }, [selectedNewsItem, crops])
+
+  useEffect(() => {
+    if (!selectedNewsItemId && !selectedCropId) return
+
+    if (selectedCropId && isNewsItemFinalized(selectedCropId)) {
+      selectCrop(null)
+      selectNewsItem(null)
+      return
+    }
+
+    if (selectedNewsItemId) {
+      const item = getNewsItem(selectedNewsItemId)
+      if (!item || !currentPdf) return
+      const targetCropId = resolveNewsTargetCropId(item, crops, groups)
+      if (targetCropId && isNewsItemFinalized(targetCropId)) {
+        selectNewsItem(null)
+        selectCrop(null)
+      }
+    }
+  }, [
+    selectedNewsItemId,
+    selectedCropId,
+    crops,
+    groups,
+    currentPdf,
+    getNewsItem,
+    isNewsItemFinalized,
+    selectCrop,
+    selectNewsItem,
+  ])
 
   useEffect(() => {
     if (!selectedNewsItemId && !selectedCropId) return
