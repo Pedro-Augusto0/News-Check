@@ -1,0 +1,36 @@
+import { useState, useCallback } from 'react'
+import { cn } from '@/shared/ui/utils/cn'
+import type { TabsProps } from './tabs-types'
+import './tabs.css'
+
+export function Tabs({ items, defaultTab }: TabsProps) {
+  const [activeTab, setActiveTab] = useState(defaultTab ?? items[0]?.id ?? '')
+
+  const handleTabChange = useCallback((tabId: string) => {
+    setActiveTab(tabId)
+  }, [])
+
+  const activeContent = items.find((item) => item.id === activeTab)?.content
+
+  return (
+    <div className="tabs">
+      <div className="tabs__list" role="tablist">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            role="tab"
+            aria-selected={activeTab === item.id}
+            className={cn('tabs__tab', activeTab === item.id && 'tabs__tab--active')}
+            onClick={() => handleTabChange(item.id)}
+          >
+            {item.icon && <span className="tabs__tab-icon"></span>}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="tabs__content" role="tabpanel">
+        {activeContent}
+      </div>
+    </div>
+  )
+}
