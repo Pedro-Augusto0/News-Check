@@ -30,6 +30,7 @@
     "pdfjs-dist": "^5.4.54",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.2",
     "tesseract.js": "^7.0.0",
     "zustand": "^5.0.14"
   }
