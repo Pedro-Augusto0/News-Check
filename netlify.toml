@@ -10,11 +10,9 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-[[redirects]]
-  from = "/Info4AINews/*"
-  to = "https://prd-api.cservice.io/Info4AINews/:splat"
-  status = 200
-  force = true
+[[edge_functions]]
+  function = "api-proxy"
+  path = "/printed-clipping/*"
 
 [[redirects]]
   from = "/*"

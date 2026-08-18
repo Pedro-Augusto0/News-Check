@@ -11,10 +11,10 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/Info4AINews': {
+      '/printed-clipping': {
         target: 'https://prd-api.cservice.io',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
       '/scancontrol': {
         target: 'http://170.80.70.78',

@@ -17,7 +17,7 @@ function newsListPath(sourceName: string, publicationDate: string): string {
     sourceName,
     publicationDate: toDateOnly(publicationDate),
   })
-  return `/Info4AINews/news/list?${params.toString()}`
+  return `/printed-clipping/Info4AINews/news/list?${params.toString()}`
 }
 
 export async function fetchNewsByPublication(
