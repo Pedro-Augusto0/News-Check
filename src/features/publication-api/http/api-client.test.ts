@@ -17,7 +17,7 @@ describe('apiFetch', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    await apiFetch('/printed-clipping/Info4AINews/publications/list')
+    await apiFetch('/Info4AINews/publications/list')
 
     const headers = fetchMock.mock.calls[0]?.[1]?.headers as Headers
     expect(headers.get('Authorization')).toBe('Bearer stored-token')

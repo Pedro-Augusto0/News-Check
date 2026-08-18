@@ -11,7 +11,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/printed-clipping': {
+      '/Info4AINews': {
         target: 'https://prd-api.cservice.io',
         changeOrigin: true,
         secure: false,
