@@ -72,7 +72,7 @@
   background-position: 0 0, 100% 0, 0 100%, 0 0;
   background-repeat: repeat-x, repeat-y, repeat-x, repeat-y;
   pointer-events: auto;
-  cursor: pointer;
+  cursor: inherit;
   transition:
     background-color var(--transition),
     box-shadow var(--transition);

@@ -82,3 +82,24 @@ export function findCropAtPoint(
   const hit = hitTestCropsAtPoint(crops, px, py, width, height)
   return hit.kind === 'crop' && isInteractive(hit.cropId) ? hit.cropId : null
 }
+
+export type ImagePointerGesture = 'pointerdown' | 'dblclick'
+export type ImageInteractionAction = 'ignore' | 'pan' | 'draw' | 'select-news'
+
+export function resolveImageInteraction(input: {
+  gesture: ImagePointerGesture
+  isEditing: boolean
+  panMode: boolean
+  hitKind: CropPointHit['kind']
+}): ImageInteractionAction {
+  if (input.isEditing) return 'ignore'
+
+  if (input.gesture === 'dblclick') {
+    if (input.panMode) return 'ignore'
+    return input.hitKind === 'crop' ? 'select-news' : 'ignore'
+  }
+
+  if (input.panMode) return 'pan'
+  if (input.hitKind === 'finalized') return 'ignore'
+  return 'draw'
+}

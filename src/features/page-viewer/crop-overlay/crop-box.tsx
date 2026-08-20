@@ -20,6 +20,7 @@ interface CropBoxProps {
   mergeFlash?: boolean
   clientKeywords?: string[]
   onClick?: (event?: React.MouseEvent) => void
+  onDoubleClick?: (event?: React.MouseEvent) => void
   onViewText?: () => void
   onEdit?: () => void
   onFinalize?: () => void
@@ -81,6 +82,7 @@ export function CropBox({
   mergeFlash,
   clientKeywords,
   onClick,
+  onDoubleClick,
   onViewText,
   onEdit,
   onFinalize,
@@ -111,10 +113,13 @@ export function CropBox({
         height: px.height,
         ['--crop-accent' as string]: color,
       }}
-      onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation()
         onClick?.(e)
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation()
+        onDoubleClick?.(e)
       }}
       onDragOver={mergeEnabled ? onMergeDragOver : undefined}
       onDragEnter={mergeEnabled ? () => onMergeDragEnter?.(cropId) : undefined}
@@ -130,7 +135,11 @@ export function CropBox({
       onDrop={mergeEnabled ? (e) => onMergeDrop?.(e, cropId) : undefined}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
+      title={draft ? undefined : 'Duplo clique para selecionar a notícia'}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter') return
+        ;(onDoubleClick ?? onClick)?.()
+      }}
     >
       {(index !== undefined || caption) && (
         <span className="crop-box__badge">

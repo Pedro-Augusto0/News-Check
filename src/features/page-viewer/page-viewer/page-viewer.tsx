@@ -29,6 +29,7 @@ export function PageViewer() {
             onPointerDown={viewer.handleCanvasPointerDown}
             onPointerMove={viewer.handleCanvasPointerMove}
             onPointerUp={viewer.handleCanvasPointerUp}
+            onDoubleClick={viewer.handleCanvasDoubleClick}
           >
             <canvas ref={viewer.canvasRef} className="page-viewer__canvas" />
             <CropOverlay

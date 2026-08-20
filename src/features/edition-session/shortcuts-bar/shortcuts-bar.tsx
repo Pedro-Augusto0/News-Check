@@ -3,6 +3,7 @@ import './shortcuts-bar.css'
 const SHORTCUTS = [
   { keys: '↑ / ↓', label: 'Navegar páginas' },
   { keys: 'D', label: 'Modo desenho' },
+  { keys: '2× clique', label: 'Selecionar notícia na página' },
   { keys: 'Espaço', label: 'Modo pan' },
   { keys: 'Ctrl + +/-', label: 'Zoom' },
   { keys: 'Esc', label: 'Desselecionar corte' },

@@ -17,7 +17,7 @@
   min-height: 40px;
   padding: 0 var(--space-4);
   background: var(--color-bg-app);
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
@@ -142,7 +142,7 @@
   border: none;
   border-radius: var(--radius-sm);
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;

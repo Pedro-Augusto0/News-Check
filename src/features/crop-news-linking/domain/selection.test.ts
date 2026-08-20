@@ -7,6 +7,7 @@ import {
   hitTestCropsAtPoint,
   isMultiSelectEvent,
   resolveCropNewsId,
+  resolveImageInteraction,
 } from './selection'
 
 function crop(id: string, overrides: Partial<Crop> = {}): Crop {
@@ -66,5 +67,64 @@ describe('crop-news selection', () => {
     expect(isMultiSelectEvent({ ctrlKey: true })).toBe(true)
     expect(isMultiSelectEvent({ metaKey: true })).toBe(true)
     expect(isMultiSelectEvent({})).toBe(false)
+  })
+
+  it('draws on pointer-down even over a news crop, and selects only on double-click', () => {
+    expect(
+      resolveImageInteraction({
+        gesture: 'pointerdown',
+        isEditing: false,
+        panMode: false,
+        hitKind: 'crop',
+      }),
+    ).toBe('draw')
+    expect(
+      resolveImageInteraction({
+        gesture: 'pointerdown',
+        isEditing: false,
+        panMode: false,
+        hitKind: 'miss',
+      }),
+    ).toBe('draw')
+    expect(
+      resolveImageInteraction({
+        gesture: 'pointerdown',
+        isEditing: false,
+        panMode: false,
+        hitKind: 'finalized',
+      }),
+    ).toBe('ignore')
+    expect(
+      resolveImageInteraction({
+        gesture: 'pointerdown',
+        isEditing: false,
+        panMode: true,
+        hitKind: 'crop',
+      }),
+    ).toBe('pan')
+    expect(
+      resolveImageInteraction({
+        gesture: 'dblclick',
+        isEditing: false,
+        panMode: false,
+        hitKind: 'crop',
+      }),
+    ).toBe('select-news')
+    expect(
+      resolveImageInteraction({
+        gesture: 'dblclick',
+        isEditing: false,
+        panMode: false,
+        hitKind: 'miss',
+      }),
+    ).toBe('ignore')
+    expect(
+      resolveImageInteraction({
+        gesture: 'dblclick',
+        isEditing: true,
+        panMode: false,
+        hitKind: 'crop',
+      }),
+    ).toBe('ignore')
   })
 })

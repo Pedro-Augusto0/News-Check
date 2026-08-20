@@ -146,8 +146,8 @@
 }
 
 .news-detail-info__chip--blue {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .news-detail-info__chip--green {

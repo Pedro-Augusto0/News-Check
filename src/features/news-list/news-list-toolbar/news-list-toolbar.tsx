@@ -11,11 +11,11 @@ export function NewsListToolbar({ search, onSearchChange, onAddNews }: NewsListT
     <>
       <div className="crops-tab__toolbar">
         <div className="crops-tab__search-row">
-          <label className="crops-tab__search">
-            <Search size={15} className="crops-tab__search-icon" aria-hidden />
+          <label className="search-field">
+            <Search size={15} className="search-field__icon" aria-hidden />
             <input
               type="search"
-              className="crops-tab__search-input"
+              className="search-field__input"
               placeholder="Buscar notícia ou corte..."
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}

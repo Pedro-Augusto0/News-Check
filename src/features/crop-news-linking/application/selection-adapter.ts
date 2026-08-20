@@ -106,7 +106,7 @@ export function handleImageNewsHighlightAtPoint(
     (cropId) => useCropsStore.getState().isNewsItemFinalized(cropId),
   )
   if (hit.kind === 'finalized') return true
-  if (hit.kind === 'miss' || !hasActiveNewsHighlight(scope)) return false
+  if (hit.kind === 'miss') return false
   handleCropListSelection(hit.cropId, shouldUseMultiNewsSelection(event), scope)
   return true
 }

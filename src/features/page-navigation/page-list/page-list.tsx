@@ -91,28 +91,28 @@ export function PageList() {
   }
 
   return (
-    <div className="page-list">
-      <div className="page-list__header">
-        <h2 className="page-list__title">Páginas</h2>
-        <p className="page-list__progress">
+    <div className="page-list sidebar-panel">
+      <div className="page-list__header sidebar-panel__header">
+        <h2 className="page-list__title sidebar-panel__title">Páginas</h2>
+        <p className="page-list__progress sidebar-panel__meta">
           {pageProgress.finalized} de {pageProgress.total} finalizadas
         </p>
       </div>
 
-      <div className="page-list__toolbar">
+      <div className="page-list__toolbar sidebar-panel__toolbar">
         <div className="page-list__search-row">
-          <label className="page-list__search">
-            <Search size={15} className="page-list__search-icon" aria-hidden />
+          <label className="search-field">
+            <Search size={15} className="search-field__icon" aria-hidden />
             <input
               ref={searchRef}
               type="search"
-              className="page-list__search-input"
+              className="search-field__input"
               placeholder="Buscar página..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             {!search && (
-              <kbd className="page-list__shortcut" aria-hidden>
+              <kbd className="search-field__kbd" aria-hidden>
                 {isMac ? '⌘K' : 'Ctrl K'}
               </kbd>
             )}
@@ -120,7 +120,7 @@ export function PageList() {
         </div>
 
         <div
-          className="page-list__filters"
+          className="filter-segment"
           role="group"
           aria-label="Filtrar páginas"
         >
@@ -137,9 +137,8 @@ export function PageList() {
                 aria-label={`${opt.label} (${count})`}
                 title={`${opt.label} (${count})`}
                 className={cn(
-                  'page-list__filter-btn',
-                  `page-list__filter-btn--${opt.tone}`,
-                  isActive && 'page-list__filter-btn--active',
+                  'filter-segment__btn',
+                  isActive && 'filter-segment__btn--active',
                 )}
                 onClick={() => setPageFilter(opt.value)}
               >
@@ -147,14 +146,14 @@ export function PageList() {
                   <Icon size={11} strokeWidth={2.25} aria-hidden />
                   <span className="page-list__filter-label">{opt.shortLabel}</span>
                 </span>
-                <span className="page-list__filter-badge">{count}</span>
+                <span className="filter-segment__badge">{count}</span>
               </button>
             )
           })}
         </div>
       </div>
 
-      <ul className="page-list__items" role="listbox" aria-label="Lista de páginas">
+      <ul className="page-list__items sidebar-panel__body" role="listbox" aria-label="Lista de páginas">
         {visiblePages.map((page) => {
           const isActive = selectedPageNumber === page.pageNumber
           const newsCount = newsCountByPage.get(page.pageNumber) ?? 0

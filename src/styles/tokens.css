@@ -1,85 +1,104 @@
 :root {
-  /* Brand */
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-light: #eff6ff;
-  --color-primary-subtle: rgba(37, 99, 235, 0.06);
+  /*
+   * Design Language
+   * ─────────────────
+   * UI       → neutro + um único azul de identidade
+   * Conteúdo → cores semânticas dos recortes (nunca reutilizar o accent)
+   *
+   * Raio:  4px controles · 6px inputs/botões · 8px cards · 10px modal
+   * Estrutura via background, borda, espaçamento e tipografia — sombras mínimas.
+   */
 
-  /* Surfaces */
+  /* Accent — identidade da UI */
+  --color-primary: #1677ff;
+  --color-primary-hover: #0958d9;
+  --color-primary-light: #e6f4ff;
+  --color-primary-subtle: rgba(22, 119, 255, 0.06);
+  --color-on-primary: #ffffff;
+
+  /* Superfícies */
   --color-bg-app: #ffffff;
-  --color-bg-chrome: #fafbfc;
-  --color-bg-sidebar: #f9fafb;
-  --color-bg-canvas: #eef0f4;
+  --color-bg-chrome: #f7f8fa;
+  --color-bg-sidebar: #f7f8fa;
+  --color-bg-canvas: #f0f2f5;
   --color-bg-panel: #ffffff;
-  --color-bg-subtle: #f4f5f7;
-  --color-bg-inset: #eceef2;
+  --color-bg-subtle: #f0f2f5;
+  --color-bg-inset: #f0f2f5;
   --color-bg-elevated: #ffffff;
   --color-bg-control: #ffffff;
 
-  /* Borders */
+  /* Bordas */
   --color-border: #e4e7ec;
-  --color-border-subtle: #f0f1f4;
+  --color-border-subtle: #f0f2f5;
   --color-border-strong: #d0d5dd;
 
-  /* Text */
-  --color-text: #111827;
-  --color-text-secondary: #4b5563;
-  --color-text-muted: #9ca3af;
+  /* Tipografia */
+  --color-text: #101828;
+  --color-text-secondary: #1d2939;
+  --color-text-muted: #667085;
 
-  /* Semantic */
+  /* Semânticas da UI */
   --color-success: #059669;
   --color-success-bg: #ecfdf5;
   --color-warning: #d97706;
   --color-warning-bg: #fffbeb;
   --color-danger: #dc2626;
 
-  /* Crops — editorial hues, distinct but not neon */
+  /* Recortes — paleta editorial, sem o azul da UI */
   --color-keyword-highlight: rgba(250, 204, 21, 0.35);
-  --color-crop-1: #2563eb;
+  --color-crop-1: #7c3aed;
   --color-crop-2: #059669;
-  --color-crop-3: #7c3aed;
-  --color-crop-4: #d97706;
-  --color-crop-5: #db2777;
-  --color-crop-6: #0891b2;
-  --color-crop-7: #ea580c;
-  --color-crop-8: #4d7c0f;
-  --color-crop-9: #4f46e5;
-  --color-crop-10: #e11d48;
-  --color-crop-11: #0f766e;
-  --color-crop-12: #c026d3;
-  --color-crop-13: #0284c7;
-  --color-crop-14: #dc2626;
-  --color-crop-15: #9333ea;
-  --color-crop-16: #ca8a04;
+  --color-crop-3: #d97706;
+  --color-crop-4: #db2777;
+  --color-crop-5: #0891b2;
+  --color-crop-6: #ea580c;
+  --color-crop-7: #4d7c0f;
+  --color-crop-8: #e11d48;
+  --color-crop-9: #0f766e;
+  --color-crop-10: #c026d3;
+  --color-crop-11: #dc2626;
+  --color-crop-12: #9333ea;
+  --color-crop-13: #ca8a04;
+  --color-crop-14: #be123c;
+  --color-crop-15: #0369a1;
+  --color-crop-16: #4f46e5;
   --color-crop-finalized: #059669;
   --color-crop-finalized-hover: #047857;
   --color-crop-finalized-overlay: white;
   --color-crop-finalized-overlay-hover: white;
   --crop-finalized-blur: 6px;
 
-  /* Client match */
-  --color-client: #0369a1;
-  --color-client-strong: #0284c7;
-  --color-client-bg: #e0f2fe;
-  --color-client-border: rgba(2, 132, 199, 0.42);
-  --color-client-ring: rgba(14, 165, 233, 0.28);
+  /* Cliente — derivado do accent, não de outra cor */
+  --color-client: var(--color-primary);
+  --color-client-strong: var(--color-primary-hover);
+  --color-client-bg: var(--color-primary-light);
+  --color-client-border: rgba(22, 119, 255, 0.28);
+  --color-client-ring: rgba(22, 119, 255, 0.2);
 
-  /* Notícia sem corte / pendente */
-  --color-pending: #6366f1;
-  --color-pending-strong: #4f46e5;
-  --color-pending-bg: #f8fafc;
-  --color-pending-surface: #f1f5f9;
-  --color-pending-border: #cbd5e1;
-  --color-pending-muted: #64748b;
+  /* Pendente — neutro, sem indigo decorativo */
+  --color-pending: var(--color-text-muted);
+  --color-pending-strong: var(--color-text-secondary);
+  --color-pending-bg: var(--color-bg-subtle);
+  --color-pending-surface: var(--color-bg-inset);
+  --color-pending-border: var(--color-border);
+  --color-pending-muted: var(--color-text-muted);
+
+  /* Estrutura */
+  --accent-bar-width: 3px;
+  --color-backdrop: rgba(16, 24, 40, 0.4);
+  --color-backdrop-strong: rgba(16, 24, 40, 0.5);
 
   /* Layout */
   --header-height: 48px;
   --toolbar-height: 40px;
   --footer-height: 32px;
-  --sidebar-left-width: 240px;
-  --sidebar-right-width: 360px;
+  --sidebar-left-width: 300px;
+  --sidebar-right-width: 420px;
+  --panel-padding-x: 16px;
+  --panel-toolbar-gap: 12px;
+  --list-item-gap: 4px;
 
-  /* Typography */
+  /* Tipografia */
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-size-xs: 11px;
   --font-size-sm: 12px;
@@ -87,20 +106,20 @@
   --font-size-lg: 14px;
   --font-size-xl: 16px;
 
-  /* Controls */
+  /* Controles */
   --control-h-sm: 28px;
   --control-h-md: 32px;
   --control-h-lg: 34px;
 
-  /* Radius */
+  /* Raio — escala fechada */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 10px;
-  --radius-xl: 12px;
+  --radius-xl: 10px;
   --radius-full: 9999px;
 
-  /* Spacing */
+  /* Espaçamento */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -110,15 +129,17 @@
   --space-7: 32px;
   --space-8: 40px;
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
-  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
-  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.1);
-  --shadow-toolbar: 0 2px 8px rgba(16, 24, 40, 0.08), 0 0 0 1px rgba(16, 24, 40, 0.04);
-  --shadow-control: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --shadow-focus: 0 0 0 3px var(--color-primary-light);
-  --shadow-float: 0 4px 16px rgba(16, 24, 40, 0.12), 0 0 0 1px rgba(16, 24, 40, 0.06);
+  /* Sombras — mínimas; preferir borda */
+  --shadow-xs: none;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 0 0 1px var(--color-border);
+  --shadow-lg: 0 4px 12px rgba(16, 24, 40, 0.06);
+  --shadow-toolbar: none;
+  --shadow-control: none;
+  --shadow-focus: 0 0 0 2px var(--color-primary-light), 0 0 0 3px rgba(22, 119, 255, 0.24);
+  --shadow-float: var(--shadow-md);
+  --shadow-modal: var(--shadow-md);
+  --shadow-overlay: 0 8px 24px rgba(16, 24, 40, 0.08);
 
   --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 220ms cubic-bezier(0.4, 0, 0.2, 1);

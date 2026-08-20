@@ -106,7 +106,7 @@ export function CropOverlay({
             isDragging={merge.dragId === crop.id}
             isDropTarget={merge.dropTargetId === crop.id}
             mergeFlash={merge.mergeFlashId === crop.id}
-            onClick={(event) => merge.handleMergeCropClick(crop.id, onSelectCrop, event)}
+            onDoubleClick={(event) => merge.handleMergeCropClick(crop.id, onSelectCrop, event)}
             onViewText={() => onViewText(crop.id)}
             onEdit={() => onEditCrop(crop.id)}
             onFinalize={() => onFinalizeCrop(crop.id)}

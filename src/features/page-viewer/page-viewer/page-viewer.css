@@ -12,7 +12,7 @@
   justify-content: center;
   height: 100%;
   color: var(--color-text-muted);
-  font-size: 14px;
+  font-size: var(--font-size-lg);
 }
 
 .page-viewer__scroll {
@@ -34,16 +34,15 @@
 .page-viewer__canvas-wrap {
   position: relative;
   display: inline-block;
-  box-shadow: var(--shadow-md);
-  background: var(--color-bg-elevated);
+  background: var(--color-bg-app);
   border-radius: var(--radius-xs);
-  border: 1px solid rgba(16, 24, 40, 0.05);
+  border: 1px solid var(--color-border);
 }
 
 .page-viewer__canvas {
   display: block;
   vertical-align: top;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
 }
 
 .page-viewer__error {
@@ -52,6 +51,6 @@
   background: var(--color-warning-bg);
   color: var(--color-text-secondary);
   border-radius: var(--radius-md);
-  font-size: 12px;
-  border: 1px solid rgba(230, 119, 0, 0.15);
+  font-size: var(--font-size-sm);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 20%, transparent);
 }

@@ -1,7 +1,7 @@
 .validation-layout {
   display: grid;
   grid-template-rows: auto 1fr;
-  grid-template-columns: 300px 1fr 420px;
+  grid-template-columns: var(--sidebar-left-width) 1fr var(--sidebar-right-width);
   height: 100vh;
   overflow: hidden;
   background: var(--color-bg-canvas);
@@ -14,13 +14,12 @@
 }
 
 .validation-layout__left {
-  border-right: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--color-border);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--color-bg-app);
-  box-shadow: 1px 0 0 rgba(16, 24, 40, 0.02);
+  background: var(--color-bg-sidebar);
 }
 
 .validation-layout__center {
@@ -29,13 +28,12 @@
 }
 
 .validation-layout__right {
-  border-left: 1px solid var(--color-border-subtle);
+  border-left: 1px solid var(--color-border);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--color-bg-app);
-  box-shadow: -1px 0 0 rgba(16, 24, 40, 0.02);
+  background: var(--color-bg-sidebar);
 }
 
 @media (max-width: 1200px) {

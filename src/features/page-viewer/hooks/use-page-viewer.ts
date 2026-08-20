@@ -11,6 +11,7 @@ import {
   handleCropListSelection,
   handleImageNewsHighlightAtPoint,
   hitTestCropsAtPoint,
+  resolveImageInteraction,
   shouldUseMultiNewsSelection,
 } from '@/features/crop-news-linking'
 import { pageScopeKey } from '@/features/page-navigation/page-key'
@@ -217,45 +218,87 @@ export function usePageViewer() {
 
   const handleCanvasPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (isEditing) return
-
       const target = e.target as HTMLElement
-      const onCropBox = target.closest('.crop-box')
+      if (target.closest('.crop-box__actions, .crop-box__merge-handle')) return
 
-      if (!onCropBox && !panMode) {
-        const wrap = e.currentTarget
-        const bounds = wrap.getBoundingClientRect()
-        const px = e.clientX - bounds.left
-        const py = e.clientY - bounds.top
+      const wrap = e.currentTarget
+      const bounds = wrap.getBoundingClientRect()
+      const px = e.clientX - bounds.left
+      const py = e.clientY - bounds.top
+      const hit = hitTestCropsAtPoint(
+        crops,
+        px,
+        py,
+        dimensions.width,
+        dimensions.height,
+        isNewsItemFinalized,
+      )
+      const action = resolveImageInteraction({
+        gesture: 'pointerdown',
+        isEditing,
+        panMode,
+        hitKind: hit.kind,
+      })
 
-        const hit = hitTestCropsAtPoint(
-          crops,
-          px,
-          py,
-          dimensions.width,
-          dimensions.height,
-          isNewsItemFinalized,
-        )
-        if (hit.kind === 'finalized') return
-
-        const handled = handleImageNewsHighlightAtPoint(
-          crops,
-          px,
-          py,
-          dimensions.width,
-          dimensions.height,
-          e,
-          pageHighlightScope,
-        )
-        if (handled) return
+      if (action === 'ignore') return
+      if (action === 'pan') {
+        handlePanStart(e)
+        return
       }
 
-      if (!onCropBox) {
+      if (hit.kind === 'miss') {
         handleSelectCrop(null)
       }
 
-      if (panMode) handlePanStart(e)
-      else handlePointerDown(e)
+      handlePointerDown(e)
+    },
+    [
+      isEditing,
+      panMode,
+      crops,
+      dimensions.width,
+      dimensions.height,
+      isNewsItemFinalized,
+      handleSelectCrop,
+      handlePanStart,
+      handlePointerDown,
+    ],
+  )
+
+  const handleCanvasDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement
+      if (target.closest('.crop-box__actions, .crop-box__merge-handle')) return
+
+      const wrap = e.currentTarget
+      const bounds = wrap.getBoundingClientRect()
+      const px = e.clientX - bounds.left
+      const py = e.clientY - bounds.top
+      const hit = hitTestCropsAtPoint(
+        crops,
+        px,
+        py,
+        dimensions.width,
+        dimensions.height,
+        isNewsItemFinalized,
+      )
+      const action = resolveImageInteraction({
+        gesture: 'dblclick',
+        isEditing,
+        panMode,
+        hitKind: hit.kind,
+      })
+      if (action !== 'select-news') return
+
+      handleImageNewsHighlightAtPoint(
+        crops,
+        px,
+        py,
+        dimensions.width,
+        dimensions.height,
+        e,
+        pageHighlightScope,
+      )
     },
     [
       isEditing,
@@ -265,9 +308,6 @@ export function usePageViewer() {
       dimensions.height,
       isNewsItemFinalized,
       pageHighlightScope,
-      handleSelectCrop,
-      handlePanStart,
-      handlePointerDown,
     ],
   )
 
@@ -298,6 +338,7 @@ export function usePageViewer() {
     handleCanvasPointerDown,
     handleCanvasPointerMove,
     handleCanvasPointerUp,
+    handleCanvasDoubleClick,
     canvasRef,
     error,
     overlayInteractiveCrops,

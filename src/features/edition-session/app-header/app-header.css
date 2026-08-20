@@ -6,7 +6,7 @@
   min-height: var(--header-height);
   padding: 0 var(--space-5);
   background: var(--color-bg-app);
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .app-header__brand {
@@ -106,11 +106,11 @@
 .app-header__pagination {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px 4px;
-  background: var(--color-bg-app);
+  gap: 1px;
+  padding: 2px;
+  background: var(--color-bg-inset);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md);
 }
 
 .app-header__pagination-btn {
@@ -121,7 +121,7 @@
   height: 28px;
   color: var(--color-text-secondary);
   border: none;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
   transition: color var(--transition), background var(--transition);
