@@ -1,4 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Search } from 'lucide-react'
 import { cn } from '@/shared/ui/utils/cn'
 import type { ComboBoxProps } from './combo-box-types'
@@ -6,6 +7,12 @@ import './combo-box.css'
 
 function normalizeSearch(value: string): string {
   return value.trim().toLocaleLowerCase()
+}
+
+interface MenuPosition {
+  top: number
+  left: number
+  width: number
 }
 
 export function ComboBox({
@@ -18,15 +25,19 @@ export function ComboBox({
   hideLabel,
   searchable,
   searchPlaceholder = 'Buscar...',
+  menuPortal = false,
 }: ComboBoxProps) {
   const fallbackId = useId()
   const searchId = useId()
   const triggerId = id ?? fallbackId
   const rootRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [highlightIndex, setHighlightIndex] = useState(-1)
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null)
 
   const showSearch = searchable ?? options.length >= 6
 
@@ -43,14 +54,41 @@ export function ComboBox({
     if (!open) return
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false)
-      }
+      const target = event.target as Node
+      if (rootRef.current?.contains(target)) return
+      if (menuRef.current?.contains(target)) return
+      setOpen(false)
     }
 
     document.addEventListener('mousedown', handlePointerDown)
     return () => document.removeEventListener('mousedown', handlePointerDown)
   }, [open])
+
+  useLayoutEffect(() => {
+    if (!open || !menuPortal) {
+      setMenuPosition(null)
+      return
+    }
+
+    const updatePosition = () => {
+      const trigger = triggerRef.current
+      if (!trigger) return
+      const rect = trigger.getBoundingClientRect()
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      })
+    }
+
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [open, menuPortal])
 
   useEffect(() => {
     if (!open) {
@@ -148,6 +186,74 @@ export function ComboBox({
     }
   }
 
+  const menuStyle: CSSProperties | undefined =
+    menuPortal && menuPosition
+      ? {
+          position: 'fixed',
+          top: menuPosition.top,
+          left: menuPosition.left,
+          width: menuPosition.width,
+        }
+      : undefined
+
+  const menu = (
+    <div
+      ref={menuRef}
+      className={cn('combobox__menu', menuPortal && 'combobox__menu--portal')}
+      style={menuStyle}
+    >
+      {showSearch && (
+        <div className="combobox__search">
+          <Search size={14} className="combobox__search-icon" aria-hidden />
+          <input
+            ref={searchRef}
+            id={searchId}
+            type="search"
+            className="combobox__search-input"
+            value={query}
+            placeholder={searchPlaceholder}
+            aria-label={`Buscar em ${label}`}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={handleSearchKeyDown}
+          />
+        </div>
+      )}
+
+      {filteredOptions.length > 0 ? (
+        <ul className="combobox__options" role="listbox" aria-label={label}>
+          {filteredOptions.map((opt, index) => {
+            const isSelected = opt.value === value
+            const isHighlighted = index === highlightIndex
+
+            return (
+              <li key={opt.value} role="none">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  className={cn(
+                    'combobox__option',
+                    isSelected && 'combobox__option--selected',
+                    isHighlighted && 'combobox__option--highlighted',
+                  )}
+                  onMouseEnter={() => setHighlightIndex(index)}
+                  onClick={() => selectOption(opt.value)}
+                >
+                  <span className="combobox__option-label">{opt.label}</span>
+                  {isSelected && (
+                    <Check className="combobox__option-check" size={14} strokeWidth={2.5} aria-hidden />
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <p className="combobox__empty">Nenhum resultado encontrado</p>
+      )}
+    </div>
+  )
+
   return (
     <div
       ref={rootRef}
@@ -162,6 +268,7 @@ export function ComboBox({
 
       <div className="combobox__control">
         <button
+          ref={triggerRef}
           id={triggerId}
           type="button"
           className="combobox__trigger"
@@ -177,59 +284,12 @@ export function ComboBox({
           </span>
         </button>
 
-        {open && (
-          <div className="combobox__menu">
-            {showSearch && (
-              <div className="combobox__search">
-                <Search size={14} className="combobox__search-icon" aria-hidden />
-                <input
-                  ref={searchRef}
-                  id={searchId}
-                  type="search"
-                  className="combobox__search-input"
-                  value={query}
-                  placeholder={searchPlaceholder}
-                  aria-label={`Buscar em ${label}`}
-                  onChange={(event) => setQuery(event.target.value)}
-                  onKeyDown={handleSearchKeyDown}
-                />
-              </div>
-            )}
-
-            {filteredOptions.length > 0 ? (
-              <ul className="combobox__options" role="listbox" aria-label={label}>
-                {filteredOptions.map((opt, index) => {
-                  const isSelected = opt.value === value
-                  const isHighlighted = index === highlightIndex
-
-                  return (
-                    <li key={opt.value} role="none">
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        className={cn(
-                          'combobox__option',
-                          isSelected && 'combobox__option--selected',
-                          isHighlighted && 'combobox__option--highlighted',
-                        )}
-                        onMouseEnter={() => setHighlightIndex(index)}
-                        onClick={() => selectOption(opt.value)}
-                      >
-                        <span className="combobox__option-label">{opt.label}</span>
-                        {isSelected && (
-                          <Check className="combobox__option-check" size={14} strokeWidth={2.5} aria-hidden />
-                        )}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            ) : (
-              <p className="combobox__empty">Nenhum resultado encontrado</p>
-            )}
-          </div>
-        )}
+        {open &&
+          (menuPortal
+            ? menuPosition
+              ? createPortal(menu, document.body)
+              : null
+            : menu)}
       </div>
     </div>
   )

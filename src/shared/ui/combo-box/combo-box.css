@@ -103,6 +103,13 @@
   box-shadow: var(--shadow-overlay);
 }
 
+.combobox__menu--portal {
+  position: fixed;
+  z-index: 1000;
+  min-width: unset;
+  max-width: min(360px, calc(100vw - 16px));
+}
+
 .combobox__search {
   display: flex;
   align-items: center;

@@ -5,7 +5,15 @@ import { cn } from '@/shared/ui/utils/cn'
 import type { ModalProps } from './modal-types'
 import './modal.css'
 
-export function Modal({ open, title = '', onClose, children, size = 'md', hideHeader = false }: ModalProps) {
+export function Modal({
+  open,
+  title = '',
+  onClose,
+  children,
+  size = 'md',
+  hideHeader = false,
+  className,
+}: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -16,9 +24,14 @@ export function Modal({ open, title = '', onClose, children, size = 'md', hideHe
   }, [open])
 
   return (
-    <dialog ref={dialogRef} className={`modal modal--${size}`} onClose={onClose} onClick={(e) => {
-      if (e.target === dialogRef.current) onClose()
-    }}>
+    <dialog
+      ref={dialogRef}
+      className={cn('modal', `modal--${size}`, className)}
+      onClose={onClose}
+      onClick={(e) => {
+        if (e.target === dialogRef.current) onClose()
+      }}
+    >
       <div className="modal__content">
         {!hideHeader && (
           <header className="modal__header">

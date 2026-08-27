@@ -21,7 +21,7 @@ export function useCropDrawing({
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent) => {
-      if (!enabled || containerWidth <= 0 || containerHeight <= 0) return
+      if (!enabled || event.button !== 0 || containerWidth <= 0 || containerHeight <= 0) return
       const target = event.currentTarget as HTMLElement
       target.setPointerCapture(event.pointerId)
       const bounds = target.getBoundingClientRect()

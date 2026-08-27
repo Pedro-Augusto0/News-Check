@@ -7,4 +7,5 @@ export interface ModalProps {
   children: ReactNode
   size?: 'md' | 'lg' | 'fullscreen'
   hideHeader?: boolean
+  className?: string
 }

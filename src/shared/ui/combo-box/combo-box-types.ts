@@ -13,4 +13,5 @@ export interface ComboBoxProps {
   hideLabel?: boolean
   searchable?: boolean
   searchPlaceholder?: string
+  menuPortal?: boolean
 }

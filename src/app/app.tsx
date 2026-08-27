@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { LoginPage } from '@/app/login-page'
 import { ValidatorPage } from '@/app/validator-page'
+import { ValidatorV2Page } from '@/app/validator-v2'
 import { useAuthStore } from '@/features/auth'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -15,6 +16,14 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/v2"
+          element={
+            <ProtectedRoute>
+              <ValidatorV2Page />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/*"
           element={

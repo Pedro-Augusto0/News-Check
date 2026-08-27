@@ -1,0 +1,120 @@
+.review-active-crop {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.review-active-crop__box {
+  --crop-dash: 12px;
+  --crop-gap: 7px;
+  --crop-stroke: 3px;
+  position: absolute;
+  border: none;
+  border-radius: 2px;
+  background-color:
+    color-mix(in srgb, var(--crop-accent, var(--color-primary)) 22%, transparent);
+  background-image: repeating-linear-gradient(90deg, var(--crop-accent, var(--color-primary)) 0 var(--crop-dash), transparent var(--crop-dash) calc(var(--crop-dash) + var(--crop-gap))), repeating-linear-gradient(180deg, var(--crop-accent, var(--color-primary)) 0 var(--crop-dash), transparent var(--crop-dash) calc(var(--crop-dash) + var(--crop-gap))), repeating-linear-gradient(90deg, var(--crop-accent, var(--color-primary)) 0 var(--crop-dash), transparent var(--crop-dash) calc(var(--crop-dash) + var(--crop-gap))), repeating-linear-gradient(180deg, var(--crop-accent, var(--color-primary)) 0 var(--crop-dash), transparent var(--crop-dash) calc(var(--crop-dash) + var(--crop-gap)));
+  background-size: 100% var(--crop-stroke), var(--crop-stroke) 100%, 100% var(--crop-stroke), var(--crop-stroke) 100%;
+  background-position: 0 0, 100% 0, 0 100%, 0 0;
+  background-repeat: repeat-x, repeat-y, repeat-x, repeat-y;
+  pointer-events: auto;
+  cursor: inherit;
+  transition: background-color var(--transition), box-shadow var(--transition);
+}
+
+.review-active-crop__box--inspect {
+  --crop-accent: var(--color-primary);
+}
+
+.review-active-crop__box--inspect .review-active-crop__badge,
+.review-active-crop__box--inspect .review-active-crop__handle {
+  background: var(--color-primary);
+}
+
+.review-active-crop__box--locked {
+  cursor: default;
+  pointer-events: none;
+}
+
+.review-active-crop__badge {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  z-index: 2;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--crop-accent, var(--color-primary));
+  border-radius: 0 0 var(--radius-xs) 0;
+  pointer-events: none;
+}
+
+.review-active-crop__handle {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  background: var(--crop-accent, var(--color-primary));
+  border: 1.5px solid #fff;
+  border-radius: 1px;
+  z-index: 1;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.15);
+}
+
+.review-active-crop__handle--nw {
+  top: -4px;
+  left: -4px;
+  cursor: nwse-resize;
+}
+
+.review-active-crop__handle--n {
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.review-active-crop__handle--ne {
+  top: -4px;
+  right: -4px;
+  cursor: nesw-resize;
+}
+
+.review-active-crop__handle--e {
+  top: 50%;
+  right: -4px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+.review-active-crop__handle--se {
+  bottom: -4px;
+  right: -4px;
+  cursor: nwse-resize;
+}
+
+.review-active-crop__handle--s {
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.review-active-crop__handle--sw {
+  bottom: -4px;
+  left: -4px;
+  cursor: nesw-resize;
+}
+
+.review-active-crop__handle--w {
+  top: 50%;
+  left: -4px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}

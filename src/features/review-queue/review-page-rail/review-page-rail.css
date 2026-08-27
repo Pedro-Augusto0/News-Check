@@ -1,0 +1,287 @@
+.review-page-rail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--review-panel-bg, var(--color-bg-app));
+}
+
+.review-page-rail__edition {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--review-border, var(--color-border));
+}
+
+.review-page-rail__edition-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--review-kicker, var(--color-text-muted));
+}
+
+.review-page-rail__edition .combobox {
+  width: 100%;
+  min-width: 0;
+}
+
+.review-page-rail__edition .combobox__trigger {
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--review-border, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: var(--review-sidebar-bg, var(--color-bg-chrome));
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.review-page-rail__edition .combobox__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-page-rail__edition .combobox__trigger:hover {
+  border-color: var(--color-border-strong);
+}
+
+.review-page-rail__edition .combobox--open .combobox__trigger,
+.review-page-rail__edition .combobox__trigger:focus-visible {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.review-page-rail__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 12px 14px 6px;
+  flex-shrink: 0;
+}
+
+.review-page-rail__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--review-kicker, var(--color-text-muted));
+}
+
+.review-page-rail__head-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-page-rail__progress-label {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.review-page-rail__filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+  background: transparent;
+  transition: color var(--transition), background var(--transition);
+}
+
+.review-page-rail__filter:hover {
+  color: var(--color-text);
+  background: var(--color-bg-chrome);
+}
+
+.review-page-rail__filter--on {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.review-page-rail__legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 14px 10px;
+  flex-shrink: 0;
+}
+
+.review-page-rail__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.review-page-rail__track {
+  display: block;
+  height: 3px;
+  margin: 0 14px 10px;
+  border-radius: var(--radius-full);
+  background: var(--review-border-subtle, var(--color-bg-subtle));
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.review-page-rail__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+  transition: width var(--transition-slow);
+}
+
+.review-page-rail__list {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 4px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.review-page-rail__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px 6px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+}
+
+.review-page-rail__item:hover {
+  background: var(--review-sidebar-bg, var(--color-bg-chrome));
+  color: var(--color-text);
+}
+
+.review-page-rail__item--active,
+.review-page-rail__item--active:hover {
+  background: var(--review-panel-bg, var(--color-bg-app));
+  color: var(--color-text);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 18%, var(--review-border, var(--color-border)));
+}
+
+.review-page-rail__item--active::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+.review-page-rail__item--reviewed {
+  color: var(--color-text-muted);
+}
+
+.review-page-rail__item--reviewed:hover {
+  color: var(--color-text-secondary);
+}
+
+.review-page-rail__page-number {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.review-page-rail__item--active .review-page-rail__page-number {
+  color: var(--color-primary);
+}
+
+.review-page-rail__stats {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.review-page-rail__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.review-page-rail__stat--news {
+  color: var(--color-text-muted);
+  background: var(--review-border-subtle, var(--color-bg-subtle));
+}
+
+.review-page-rail__item--active .review-page-rail__stat--news {
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--review-border-subtle, var(--color-bg-subtle)));
+}
+
+.review-page-rail__stat--client {
+  color: var(--color-primary-hover);
+  background: var(--color-primary-light);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.review-page-rail__stat--done {
+  width: 20px;
+  padding: 0;
+  justify-content: center;
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.combobox--rail.combobox--edition .combobox__menu {
+  min-width: unset;
+}
+
+.combobox--rail .combobox__option {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.combobox--rail .combobox__search {
+  height: 32px;
+}
+
+.combobox--rail.combobox--searchable .combobox__options {
+  max-height: min(240px, 40vh);
+}
