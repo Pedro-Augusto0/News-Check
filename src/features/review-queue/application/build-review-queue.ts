@@ -51,6 +51,18 @@ function pageCropsOf(crops: Record<string, Crop>, pdfId: string, pageNumber: str
   )
 }
 
+function occupiedPagesOf(items: ReviewQueueItem[], crops: Record<string, Crop>): Set<string> {
+  const pages = new Set<string>()
+  for (const item of items) {
+    pages.add(item.pageNumber)
+    for (const cropId of item.cropIds) {
+      const pageNumber = crops[cropId]?.pageNumber
+      if (pageNumber) pages.add(pageNumber)
+    }
+  }
+  return pages
+}
+
 function uniqueReasons(reasons: ReviewSuspectReason[]): ReviewSuspectReason[] {
   return [...new Set(reasons)]
 }
@@ -136,7 +148,7 @@ export function buildReviewQueue(input: {
     })
   }
 
-  const occupiedPages = new Set(items.map((item) => item.pageNumber))
+  const occupiedPages = occupiedPagesOf(items, input.crops)
   for (const page of input.pages) {
     if (occupiedPages.has(page.pageNumber)) continue
     items.push({

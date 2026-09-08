@@ -265,6 +265,7 @@ export function ReviewQueuePanel({
                         mergeModeSegment={selectionLocked && item.id === inspectId}
                         activeCropId={activeCropId}
                         onSelect={() => onSelect(item.id)}
+                        onViewDetails={() => onViewDetails(item)}
                         onDiscard={() => onDiscard(item.id)}
                         onUngroupCrop={onUngroupCrop}
                         onEditCrop={onEditCrop}

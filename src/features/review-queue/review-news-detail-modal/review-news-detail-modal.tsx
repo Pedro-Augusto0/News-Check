@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Clock,
   FilePlus2,
@@ -35,6 +36,7 @@ import { type ReviewQueueItem, type ReviewStatus } from '../model'
 import './review-news-detail-modal.css'
 
 const CLIPPING_RENDER_WIDTH = 560
+const CLIPPING_FULLSCREEN_WIDTH = 1600
 const PAGE_RENDER_WIDTH = 720
 const isMac =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
@@ -148,7 +150,15 @@ function HighlightedText({
   )
 }
 
-function ModalClipping({ imageUrl, crop }: { imageUrl?: string; crop: CropModel }) {
+function ModalClipping({
+  imageUrl,
+  crop,
+  renderWidth = CLIPPING_RENDER_WIDTH,
+}: {
+  imageUrl?: string
+  crop: CropModel
+  renderWidth?: number
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ready, setReady] = useState(false)
 
@@ -159,7 +169,7 @@ function ModalClipping({ imageUrl, crop }: { imageUrl?: string; crop: CropModel 
     let cancelled = false
     setReady(false)
 
-    void renderImageRegionToCanvas(imageUrl, crop.rect, canvas, CLIPPING_RENDER_WIDTH)
+    void renderImageRegionToCanvas(imageUrl, crop.rect, canvas, renderWidth)
       .then((dims) => {
         if (!cancelled) setReady(dims.width > 0 && dims.height > 0)
       })
@@ -170,7 +180,7 @@ function ModalClipping({ imageUrl, crop }: { imageUrl?: string; crop: CropModel 
     return () => {
       cancelled = true
     }
-  }, [imageUrl, crop.rect])
+  }, [imageUrl, crop.rect, renderWidth])
 
   if (!imageUrl) {
     return <div className="review-news-detail-modal__clipping-missing">Prévia indisponível</div>
@@ -194,12 +204,20 @@ function ModalPagePreview({
   imageUrl,
   entries,
   activeCropId,
+  canStepCrops,
   onSelectCrop,
+  onPrevCrop,
+  onNextCrop,
+  onMaximize,
 }: {
   imageUrl?: string
   entries: CropEntry[]
   activeCropId?: string
+  canStepCrops?: boolean
   onSelectCrop: (cropId: string) => void
+  onPrevCrop?: () => void
+  onNextCrop?: () => void
+  onMaximize?: () => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ready, setReady] = useState(false)
@@ -289,6 +307,28 @@ function ModalPagePreview({
           </div>
         </div>
       </div>
+      {canStepCrops && (
+        <>
+          <button
+            type="button"
+            className="review-news-detail-modal__crop-nav review-news-detail-modal__crop-nav--prev"
+            onClick={onPrevCrop}
+            aria-label="Recorte anterior"
+            title="Recorte anterior"
+          >
+            <ChevronLeft size={18} strokeWidth={2.2} />
+          </button>
+          <button
+            type="button"
+            className="review-news-detail-modal__crop-nav review-news-detail-modal__crop-nav--next"
+            onClick={onNextCrop}
+            aria-label="Próximo recorte"
+            title="Próximo recorte"
+          >
+            <ChevronRight size={18} strokeWidth={2.2} />
+          </button>
+        </>
+      )}
       <div className="review-news-detail-modal__zoom" role="group" aria-label="Zoom do recorte">
         <button
           type="button"
@@ -308,15 +348,17 @@ function ModalPagePreview({
           <Plus size={12} strokeWidth={2.2} />
         </button>
         <span className="review-news-detail-modal__zoom-rule" aria-hidden />
-        <button
-          type="button"
-          className="review-news-detail-modal__zoom-btn"
-          onClick={() => setZoom(1)}
-          title="Ajustar à área"
-          aria-label="Ajustar à área"
-        >
-          <Maximize2 size={12} strokeWidth={2.1} />
-        </button>
+        {onMaximize && (
+          <button
+            type="button"
+            className="review-news-detail-modal__zoom-btn"
+            onClick={onMaximize}
+            title="Ver recorte em tela cheia"
+            aria-label="Ver recorte em tela cheia"
+          >
+            <Maximize2 size={12} strokeWidth={2.1} />
+          </button>
+        )}
         <button
           type="button"
           className="review-news-detail-modal__zoom-btn"
@@ -326,6 +368,96 @@ function ModalPagePreview({
         >
           <X size={12} strokeWidth={2.2} />
         </button>
+      </div>
+    </div>
+  )
+}
+
+function CropFullscreen({
+  entry,
+  total,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  entry: CropEntry
+  total: number
+  onClose: () => void
+  onPrev: () => void
+  onNext: () => void
+}) {
+  const canStep = total > 1
+
+  return (
+    <div
+      className="review-news-detail-modal__crop-fs"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Recorte ${entry.label} em tela cheia`}
+    >
+      <header className="review-news-detail-modal__crop-fs-bar">
+        <p className="review-news-detail-modal__crop-fs-title">
+          Recorte {entry.label} de {total}
+          <span>Pág. {entry.crop.pageNumber}</span>
+        </p>
+        <div className="review-news-detail-modal__crop-fs-actions">
+          {canStep && (
+            <>
+              <button
+                type="button"
+                className="review-news-detail-modal__crop-fs-btn"
+                onClick={onPrev}
+                aria-label="Recorte anterior"
+              >
+                <ChevronLeft size={18} strokeWidth={2.2} />
+              </button>
+              <button
+                type="button"
+                className="review-news-detail-modal__crop-fs-btn"
+                onClick={onNext}
+                aria-label="Próximo recorte"
+              >
+                <ChevronRight size={18} strokeWidth={2.2} />
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="review-news-detail-modal__crop-fs-btn"
+            onClick={onClose}
+            aria-label="Fechar tela cheia"
+            title="Fechar tela cheia (Esc)"
+          >
+            <X size={16} strokeWidth={2.2} />
+          </button>
+        </div>
+      </header>
+      <div className="review-news-detail-modal__crop-fs-stage">
+        {canStep && (
+          <button
+            type="button"
+            className="review-news-detail-modal__crop-nav review-news-detail-modal__crop-nav--prev"
+            onClick={onPrev}
+            aria-label="Recorte anterior"
+          >
+            <ChevronLeft size={22} strokeWidth={2.2} />
+          </button>
+        )}
+        <ModalClipping
+          imageUrl={entry.imageUrl}
+          crop={entry.crop}
+          renderWidth={CLIPPING_FULLSCREEN_WIDTH}
+        />
+        {canStep && (
+          <button
+            type="button"
+            className="review-news-detail-modal__crop-nav review-news-detail-modal__crop-nav--next"
+            onClick={onNext}
+            aria-label="Próximo recorte"
+          >
+            <ChevronRight size={22} strokeWidth={2.2} />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -386,6 +518,7 @@ export function ReviewNewsDetailModal({
     [item],
   )
   const [activeCropId, setActiveCropId] = useState<string | null>(null)
+  const [cropFullscreen, setCropFullscreen] = useState(false)
   const [activeTab, setActiveTab] = useState<DetailTab>('news')
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
   const [titleDraft, setTitleDraft] = useState(item?.title ?? '')
@@ -420,7 +553,18 @@ export function ReviewNewsDetailModal({
   }, [cropEntries, activeCropId])
 
   const activeEntry = cropEntries.find((entry) => entry.crop.id === activeCropId) ?? cropEntries[0]
+  const activeCropIndex = activeEntry
+    ? Math.max(0, cropEntries.findIndex((entry) => entry.crop.id === activeEntry.crop.id))
+    : 0
   const hasSidebar = clientGroups.length > 0
+  const canStepCrops = cropEntries.length > 1
+
+  const stepActiveCrop = (delta: number) => {
+    if (cropEntries.length === 0) return
+    const nextIndex = (activeCropIndex + delta + cropEntries.length) % cropEntries.length
+    const next = cropEntries[nextIndex]
+    if (next) setActiveCropId(next.crop.id)
+  }
 
   useEffect(() => {
     setTitleDraft(item?.title ?? '')
@@ -429,7 +573,40 @@ export function ReviewNewsDetailModal({
     setEditingParagraph(null)
     setActiveTab('news')
     setActiveCropId(null)
+    setCropFullscreen(false)
   }, [item?.id, item?.title, item?.text])
+
+  useEffect(() => {
+    if (!open) return
+
+    const isTypingTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+      const tag = target.tagName
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && cropFullscreen) {
+        event.preventDefault()
+        event.stopPropagation()
+        setCropFullscreen(false)
+        return
+      }
+      if (isTypingTarget(event.target)) return
+      if (event.key === 'ArrowLeft' && canStepCrops) {
+        event.preventDefault()
+        stepActiveCrop(-1)
+        return
+      }
+      if (event.key === 'ArrowRight' && canStepCrops) {
+        event.preventDefault()
+        stepActiveCrop(1)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [open, cropFullscreen, canStepCrops, activeCropIndex, cropEntries])
 
   if (!item) return null
 
@@ -627,18 +804,55 @@ export function ReviewNewsDetailModal({
                     >
                       Recorte atual
                     </p>
-                    <span
-                      className="review-news-detail-modal__blotter-badge"
+                    <div
+                      className="review-news-detail-modal__crop-pager"
                       style={{ ['--crop-accent' as string]: activeEntry.accentColor }}
                     >
-                      {activeEntry.label} de {clipCount}
-                    </span>
+                      {canStepCrops && (
+                        <button
+                          type="button"
+                          className="review-news-detail-modal__crop-pager-btn"
+                          onClick={() => stepActiveCrop(-1)}
+                          aria-label="Recorte anterior"
+                          title="Recorte anterior"
+                        >
+                          <ChevronLeft size={14} strokeWidth={2.4} />
+                        </button>
+                      )}
+                      <span className="review-news-detail-modal__blotter-badge">
+                        {activeEntry.label} de {clipCount}
+                      </span>
+                      {canStepCrops && (
+                        <button
+                          type="button"
+                          className="review-news-detail-modal__crop-pager-btn"
+                          onClick={() => stepActiveCrop(1)}
+                          aria-label="Próximo recorte"
+                          title="Próximo recorte"
+                        >
+                          <ChevronRight size={14} strokeWidth={2.4} />
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="review-news-detail-modal__crop-pager-btn review-news-detail-modal__crop-pager-btn--max"
+                      onClick={() => setCropFullscreen(true)}
+                      aria-label="Ver recorte em tela cheia"
+                      title="Ver recorte em tela cheia"
+                    >
+                      <Maximize2 size={14} strokeWidth={2.2} />
+                    </button>
                   </div>
                   <ModalPagePreview
                     imageUrl={activeEntry.imageUrl}
                     entries={samePageEntries}
                     activeCropId={activeEntry.crop.id}
+                    canStepCrops={canStepCrops}
                     onSelectCrop={setActiveCropId}
+                    onPrevCrop={() => stepActiveCrop(-1)}
+                    onNextCrop={() => stepActiveCrop(1)}
+                    onMaximize={() => setCropFullscreen(true)}
                   />
                 </>
               ) : (
@@ -805,7 +1019,7 @@ export function ReviewNewsDetailModal({
 
         <footer className="review-news-detail-modal__footer">
           <p className="review-news-detail-modal__tip">
-            Dica: navegue entre os recortes na aba &apos;Recortes&apos; ou pelos marcadores coloridos.
+            Dica: use as setas para trocar de recorte ou maximize o corte para ver em tela cheia.
           </p>
           <div className="review-news-detail-modal__footer-actions">
             <Button
@@ -830,6 +1044,16 @@ export function ReviewNewsDetailModal({
             )}
           </div>
         </footer>
+
+        {cropFullscreen && activeEntry && (
+          <CropFullscreen
+            entry={activeEntry}
+            total={clipCount}
+            onClose={() => setCropFullscreen(false)}
+            onPrev={() => stepActiveCrop(-1)}
+            onNext={() => stepActiveCrop(1)}
+          />
+        )}
       </article>
     </Modal>
   )

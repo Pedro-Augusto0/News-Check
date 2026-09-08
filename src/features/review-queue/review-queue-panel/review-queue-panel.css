@@ -405,6 +405,10 @@
   min-width: 0;
 }
 
+.review-queue-list-item .crop-list-item__action-btn--view {
+  opacity: 1;
+}
+
 .review-queue-list-item.crop-list-item--active-news .crop-list-item__action-btn,
 .review-queue-list-item:hover .crop-list-item__action-btn,
 .review-queue-list-item:focus-within .crop-list-item__action-btn {

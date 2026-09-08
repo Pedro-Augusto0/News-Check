@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Crop, Lock, ScanEye, Scissors, Trash2, Unlink, UserRound } from 'lucide-react'
+import { ChevronDown, ChevronRight, Crop, FileText, Lock, ScanEye, Scissors, Trash2, Unlink, UserRound } from 'lucide-react'
 import { cropColor, stableColorIndex } from '@/features/crops/colors'
 import { useCropsStore, type Crop as CropModel } from '@/features/crops'
 import type { VehicleEdition } from '@/features/edition-session'
@@ -24,6 +24,7 @@ interface ReviewQueueListItemProps {
   mergeModeSegment?: boolean
   activeCropId?: string | null
   onSelect: () => void
+  onViewDetails?: () => void
   onDiscard: () => void
   onUngroupCrop?: (cropId: string) => void
   onEditCrop?: (cropId: string) => void
@@ -112,6 +113,7 @@ export function ReviewQueueListItem({
   mergeModeSegment = false,
   activeCropId = null,
   onSelect,
+  onViewDetails,
   onDiscard,
   onUngroupCrop,
   onEditCrop,
@@ -202,6 +204,20 @@ export function ReviewQueueListItem({
       </div>
 
       <div className="crop-list-item__actions">
+        {onViewDetails && item.kind !== 'empty-page' && (
+          <button
+            type="button"
+            className="crop-list-item__action-btn crop-list-item__action-btn--view"
+            aria-label="Ver texto da notícia"
+            title="Ver texto da notícia (F2)"
+            onClick={(event) => {
+              event.stopPropagation()
+              onViewDetails()
+            }}
+          >
+            <FileText size={14} strokeWidth={2} />
+          </button>
+        )}
         {!isDone && (
           <button
             type="button"

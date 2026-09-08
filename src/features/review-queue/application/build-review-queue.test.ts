@@ -83,6 +83,26 @@ describe('buildReviewQueue', () => {
     expect(items[0]?.hasClient).toBe(true)
   })
 
+  it('does not treat a continuation page as empty when the merged news still has a crop there', () => {
+    const items = buildReviewQueue({
+      editionId: 'ed-1',
+      pdfId: 'pdf-1',
+      pages,
+      newsItems: {
+        n1: news({ id: 'n1', pageNumber: '1', title: 'Base', cropId: 'c1' }),
+      },
+      crops: {
+        c1: crop({ id: 'c1', pageNumber: '1', newsItemId: 'n1' }),
+        c2: crop({ id: 'c2', pageNumber: '2', newsItemId: 'n1' }),
+      },
+      groups: {},
+    })
+
+    expect(items.map((item) => item.newsId ?? item.kind)).toEqual(['n1'])
+    expect(items[0]?.cropIds).toEqual(expect.arrayContaining(['c1', 'c2']))
+    expect(items[0]?.cropIds).toHaveLength(2)
+  })
+
   it('keeps the newspaper section on each news item', () => {
     const items = buildReviewQueue({
       editionId: 'ed-1',
