@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCropsStore } from '@/features/crops'
 import { buildClientCountByPage } from '@/features/crops/client-stats'
 import { canMergeCrops } from '@/features/crops/merge'
 import { useNewsStore } from '@/features/news'
 import { useCurrentEdition, useCurrentPdf, useSessionStore } from '@/features/edition-session'
 import { useCurrentPage } from '@/features/page-navigation'
+import { useNotificationStore } from '@/features/notifications'
 import { buildNewsCountByPage } from '@/features/page-navigation/stats'
 import {
   buildReviewQueue,
@@ -14,10 +15,13 @@ import {
   findMergeCandidate,
   firstPendingId,
   rankQueueForReview,
+  resolvePageSection,
   resolveReviewItemClick,
+  saveApprovedNews,
+  commitDiscardNews,
 } from '../application'
 import { useReviewQueueStore } from '../store'
-import type { ReviewStatus, ReviewWorkMode } from '../model'
+import type { ReviewQueueItem, ReviewWorkMode } from '../model'
 
 export function useReviewSession() {
   const edition = useCurrentEdition()
@@ -31,6 +35,10 @@ export function useReviewSession() {
   const newsItems = useNewsStore((state) => state.items)
   const isLoadingNews = useNewsStore((state) => state.isLoadingNews)
   const getNewsItem = useNewsStore((state) => state.getNewsItem)
+  const updateNewsItemTitle = useNewsStore((state) => state.updateNewsItemTitle)
+  const updateNewsItemText = useNewsStore((state) => state.updateNewsItemText)
+  const updateCropTitle = useCropsStore((state) => state.updateCropTitle)
+  const updateCropText = useCropsStore((state) => state.updateCropText)
   const addCropToNews = useCropsStore((state) => state.addCropToNews)
   const updateCropRect = useCropsStore((state) => state.updateCropRect)
   const mergeCrops = useCropsStore((state) => state.mergeCrops)
@@ -55,6 +63,9 @@ export function useReviewSession() {
   const activeCropIndex = useReviewQueueStore((state) => state.activeCropIndex)
   const setActiveCropIndex = useReviewQueueStore((state) => state.setActiveCropIndex)
   const markStatus = useReviewQueueStore((state) => state.markStatus)
+  const markSaved = useReviewQueueStore((state) => state.markSaved)
+  const clearStatus = useReviewQueueStore((state) => state.clearStatus)
+  const savedIds = useReviewQueueStore((state) => state.savedIds)
   const toggleClientOnly = useReviewQueueStore((state) => state.toggleClientOnly)
   const undo = useReviewQueueStore((state) => state.undo)
   const undoStack = useReviewQueueStore((state) => state.undoStack)
@@ -122,6 +133,10 @@ export function useReviewSession() {
   // Clearing inspect (e.g. after attach) must not snap back to news 1.
   useEffect(() => {
     if (!currentNewsKey || !newsPageNumber) return
+    if (skipPageFollowRef.current) {
+      skipPageFollowRef.current = false
+      return
+    }
     selectPage(newsPageNumber)
   }, [currentNewsKey, newsPageNumber, selectPage])
 
@@ -160,6 +175,8 @@ export function useReviewSession() {
   }, [inspectItem, crops])
 
   const [inspectCropIndex, setInspectCropIndex] = useState(0)
+  const savingItemIdsRef = useRef(new Set<string>())
+  const skipPageFollowRef = useRef(false)
 
   const activeCrop = currentCrops[Math.min(activeCropIndex, Math.max(0, currentCrops.length - 1))]
   const inspectCrop = inspectCrops[Math.min(inspectCropIndex, Math.max(0, inspectCrops.length - 1))]
@@ -204,6 +221,8 @@ export function useReviewSession() {
         hasClient: clientNewsCount > 0,
         hasSuspect: pendingItems.some((item) => item.suspectReasons.length > 0),
         reviewed: pageItems.length > 0 && pendingItems.length === 0,
+        section: resolvePageSection(pageItems.map((item) => item.section)),
+        itemCount: pageItems.length,
       }
     })
   }, [pdf, queue, statuses, newsItems, crops])
@@ -224,15 +243,18 @@ export function useReviewSession() {
   }, [setInspectId])
 
   const goTo = useCallback(
-    (id: string) => {
+    (id: string, cropId?: string) => {
       if (resolveReviewItemClick(workMode, currentId, id) === 'preview') {
-        inspectNews(id)
+        inspectNews(id, cropId)
         return
       }
+      const item = queue.find((entry) => entry.id === id)
+      const cropIndex = cropId && item ? item.cropIds.indexOf(cropId) : 0
       setInspectId(null)
       setCurrentId(id)
+      setActiveCropIndex(cropIndex >= 0 ? cropIndex : 0)
     },
-    [workMode, currentId, inspectNews, setCurrentId, setInspectId],
+    [workMode, currentId, inspectNews, queue, setCurrentId, setInspectId, setActiveCropIndex],
   )
 
   const setWorkMode = useCallback(
@@ -268,28 +290,131 @@ export function useReviewSession() {
     [rankedQueue, statuses, setCurrentId],
   )
 
-  const applyStatus = useCallback(
-    (status: ReviewStatus) => {
-      if (!currentItem) return
-      markStatus(currentItem.id, status)
+  const approveNewsItem = useCallback(
+    async (item: ReviewQueueItem) => {
+      const status = statuses[item.id]
+      if (status === 'approved' || status === 'rejected') return
+
+      let savedToApi = false
+      if (edition && pdf && !savedIds[item.id]) {
+        if (savingItemIdsRef.current.has(item.id)) return
+        savingItemIdsRef.current.add(item.id)
+        try {
+          const saved = await saveApprovedNews({
+            item,
+            crops,
+            newsItems,
+            edition,
+            pages: pdf.pages,
+          })
+          if (saved) {
+            markSaved(item.id)
+            savedToApi = true
+          }
+        } catch (error) {
+          useNotificationStore.getState().show(
+            error instanceof Error ? error.message : 'Erro ao gravar notícia no servidor',
+            { tone: 'error' },
+          )
+          return
+        } finally {
+          savingItemIdsRef.current.delete(item.id)
+        }
+      }
+
+      markStatus(item.id, 'approved')
+      useNotificationStore.getState().show(
+        savedToApi ? 'Notícia finalizada e gravada com sucesso' : 'Notícia finalizada',
+        { tone: 'success' },
+      )
       if (workMode === 'focus') setWorkModeStore('free')
-      advanceAfter(currentItem.id)
+      skipPageFollowRef.current = true
+      if (currentId === item.id) advanceAfter(item.id)
     },
-    [currentItem, markStatus, workMode, setWorkModeStore, advanceAfter],
+    [
+      statuses,
+      edition,
+      pdf,
+      savedIds,
+      crops,
+      newsItems,
+      markSaved,
+      markStatus,
+      workMode,
+      setWorkModeStore,
+      currentId,
+      advanceAfter,
+    ],
   )
 
-  const approve = useCallback(() => applyStatus('approved'), [applyStatus])
-  const reject = useCallback(() => applyStatus('rejected'), [applyStatus])
+  const approve = useCallback(() => {
+    if (currentItem) void approveNewsItem(currentItem)
+  }, [currentItem, approveNewsItem])
+
+  const approveItem = useCallback(
+    (itemId: string) => {
+      const item = queue.find((entry) => entry.id === itemId)
+      if (!item) return
+      void approveNewsItem(item)
+    },
+    [queue, approveNewsItem],
+  )
+
+  const rejectNewsItem = useCallback(
+    (item: ReviewQueueItem) => {
+      const status = statuses[item.id]
+      if (status === 'approved' || status === 'rejected') return
+
+      markStatus(item.id, 'rejected')
+
+      useNotificationStore.getState().show('Notícia descartada', {
+        durationMs: 4000,
+        tone: 'info',
+        action: {
+          label: 'Reverter',
+          onClick: () => {
+            clearStatus(item.id)
+          },
+        },
+        onExpire: () => {
+          void commitDiscardNews(item, newsItems).catch((error) => {
+            useNotificationStore.getState().show(
+              error instanceof Error ? error.message : 'Erro ao descartar notícia no servidor',
+              { tone: 'error' },
+            )
+          })
+        },
+      })
+
+      if (inspectId === item.id) setInspectId(null)
+      if (currentId === item.id) {
+        skipPageFollowRef.current = true
+        advanceAfter(item.id)
+      }
+    },
+    [
+      statuses,
+      markStatus,
+      newsItems,
+      clearStatus,
+      inspectId,
+      setInspectId,
+      currentId,
+      advanceAfter,
+    ],
+  )
+
+  const reject = useCallback(() => {
+    if (currentItem) rejectNewsItem(currentItem)
+  }, [currentItem, rejectNewsItem])
 
   const rejectItem = useCallback(
     (itemId: string) => {
-      const status = statuses[itemId]
-      if (status === 'approved' || status === 'rejected') return
-      markStatus(itemId, 'rejected')
-      if (inspectId === itemId) setInspectId(null)
-      if (currentId === itemId) advanceAfter(itemId)
+      const item = queue.find((entry) => entry.id === itemId)
+      if (!item) return
+      rejectNewsItem(item)
     },
-    [statuses, markStatus, inspectId, setInspectId, currentId, advanceAfter],
+    [queue, rejectNewsItem],
   )
 
   const cycleCrop = useCallback(() => {
@@ -313,19 +438,10 @@ export function useReviewSession() {
         }
         return
       }
-      const nextInspectIndex = inspectCrops.findIndex((crop) => crop.id === cropId)
-      if (nextInspectIndex >= 0) {
-        setInspectCropIndex(nextInspectIndex)
-        const crop = inspectCrops[nextInspectIndex]
-        if (crop && crop.pageNumber !== selectedPageNumber) {
-          selectPage(crop.pageNumber)
-        }
-        return
-      }
       const owner = listItems.find((item) => item.cropIds.includes(cropId))
-      if (owner) inspectNews(owner.id, cropId)
+      if (owner) goTo(owner.id, cropId)
     },
-    [currentCrops, inspectCrops, setActiveCropIndex, selectedPageNumber, selectPage, listItems, inspectNews],
+    [currentCrops, setActiveCropIndex, selectedPageNumber, selectPage, listItems, goTo],
   )
 
   const attachInspected = useCallback(() => {
@@ -465,6 +581,21 @@ export function useReviewSession() {
   const needsCrop =
     currentItem?.kind === 'news' && currentCrops.length === 0 && drawMode === 'off'
 
+  const updateItemContent = useCallback(
+    (item: ReviewQueueItem, next: { title?: string; text?: string }) => {
+      if (item.newsId) {
+        if (next.title !== undefined) updateNewsItemTitle(item.newsId, next.title)
+        if (next.text !== undefined) updateNewsItemText(item.newsId, next.text)
+        return
+      }
+      const cropId = item.cropIds[0]
+      if (!cropId) return
+      if (next.title !== undefined) updateCropTitle(cropId, next.title)
+      if (next.text !== undefined) updateCropText(cropId, next.text)
+    },
+    [updateNewsItemTitle, updateNewsItemText, updateCropTitle, updateCropText],
+  )
+
   return {
     edition,
     pdf,
@@ -499,6 +630,7 @@ export function useReviewSession() {
     next: () => step(1),
     prev: () => step(-1),
     approve,
+    approveItem,
     reject,
     rejectItem,
     undo,
@@ -514,5 +646,6 @@ export function useReviewSession() {
     updateCropRect,
     ungroupRelatedCrop,
     editRelatedCrop: selectCrop,
+    updateItemContent,
   }
 }

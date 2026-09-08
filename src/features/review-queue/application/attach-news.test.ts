@@ -13,6 +13,8 @@ function item(overrides: Partial<ReviewQueueItem> & Pick<ReviewQueueItem, 'id'>)
     title: overrides.id,
     text: '',
     clientKeywords: [],
+    customerNames: [],
+    clientMatches: [],
     hasClient: false,
     suspectReasons: [],
     sortY: 0,

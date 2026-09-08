@@ -9,6 +9,8 @@ import {
   ReviewActiveNewsBar,
   ReviewLayout,
   ReviewLeftRail,
+  ReviewLoadingOverlay,
+  ReviewMergeModeBanner,
   ReviewNewsAreasRail,
   ReviewNewsDetailModal,
   ReviewPageRail,
@@ -40,6 +42,8 @@ export function ValidatorV2Page() {
     review.queue.findIndex((item) => item.id === review.currentItem?.id),
   )
   const activeNewsPosition = review.currentItem ? activeNewsIndex + 1 : 0
+  const coverPageNumber = review.pdf?.pages[0]?.pageNumber ?? null
+  const isOnCover = !!coverPageNumber && review.selectedPageNumber === coverPageNumber
 
   const viewCurrentDetails = useCallback(() => {
     if (review.currentItem) setDetailItem(review.currentItem)
@@ -79,12 +83,12 @@ export function ValidatorV2Page() {
 
   const handleEditionChange = useCallback(
     async (id: string) => {
-      selectEdition(id)
       const edition = editions.find((item) => item.id === id)
       if (!edition) return
+      setLoadingNews(true)
+      selectEdition(id)
       hydrateFromEdition(edition)
       hydrateNewsFromEdition(edition)
-      setLoadingNews(true)
       try {
         await hydrateEditionNews(edition)
       } catch (err: unknown) {
@@ -116,10 +120,10 @@ export function ValidatorV2Page() {
 
   if (isLoading) {
     return (
-      <div className="validator-v2-page validator-v2-page--loading">
-        <div className="validator-v2-page__spinner" />
-        <p>Carregando sessão...</p>
-      </div>
+      <ReviewLoadingOverlay
+        className="review-loading-overlay--page"
+        label="Carregando sessão…"
+      />
     )
   }
 
@@ -134,6 +138,8 @@ export function ValidatorV2Page() {
   return (
     <>
       <ReviewLayout
+        loading={review.isLoadingNews}
+        loadingLabel="Carregando edição…"
         header={
           <ReviewActiveNewsBar
             item={review.currentItem}
@@ -144,9 +150,32 @@ export function ValidatorV2Page() {
                 ? cropColor(stableColorIndex(review.currentItem.newsId ?? review.currentItem.id))
                 : undefined
             }
+            focusLocked={review.workMode === 'focus'}
+            coverPageNumber={coverPageNumber}
+            isOnCover={isOnCover}
+            onAddSegment={() => review.setWorkMode('focus')}
             onApprove={review.approve}
+            onViewCover={
+              coverPageNumber ? () => review.viewPage(coverPageNumber) : undefined
+            }
             onViewDetails={viewCurrentDetails}
           />
+        }
+        banner={
+          review.currentItem ? (
+            <ReviewMergeModeBanner
+              open={review.workMode === 'focus'}
+              baseTitle={review.currentItem.title}
+              segmentTitle={review.inspectItem?.title ?? null}
+              relatedPage={review.currentItem.relatedPage}
+              currentPageNumber={review.selectedPageNumber}
+              onGoToRelatedPage={() => {
+                const relatedPage = review.currentItem?.relatedPage
+                if (relatedPage) review.viewPage(relatedPage)
+              }}
+              onExit={() => review.setWorkMode('free')}
+            />
+          ) : undefined
         }
         rail={
           <ReviewLeftRail
@@ -233,6 +262,24 @@ export function ValidatorV2Page() {
         status={detailItem ? review.statuses[detailItem.id] : undefined}
         open={!!detailItem}
         onClose={() => setDetailItem(null)}
+        onApprove={
+          detailItem && (!review.statuses[detailItem.id] || review.statuses[detailItem.id] === 'pending')
+            ? () => {
+                review.approveItem(detailItem.id)
+                setDetailItem(null)
+              }
+            : undefined
+        }
+        onChangeTitle={(title) => {
+          if (!detailItem) return
+          review.updateItemContent(detailItem, { title })
+          setDetailItem({ ...detailItem, title })
+        }}
+        onChangeText={(text) => {
+          if (!detailItem) return
+          review.updateItemContent(detailItem, { text })
+          setDetailItem({ ...detailItem, text })
+        }}
       />
       <NotificationToast />
     </>

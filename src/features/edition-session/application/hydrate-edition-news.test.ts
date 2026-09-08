@@ -16,6 +16,9 @@ const mocks = vi.hoisted(() => ({
   updateEditionPages: vi.fn(() => {
     mocks.events.push('update-pages')
   }),
+  seedDoneFromApi: vi.fn(() => {
+    mocks.events.push('seed-done')
+  }),
 }))
 
 vi.mock('@/features/publication-api/news/news-api', () => ({
@@ -36,6 +39,11 @@ vi.mock('../store', () => ({
 }))
 vi.mock('./seed-api-crops', () => ({
   seedCropsFromApiCoordinates: mocks.seedCropsFromApiCoordinates,
+}))
+vi.mock('@/features/review-queue/store', () => ({
+  useReviewQueueStore: {
+    getState: () => ({ seedDoneFromApi: mocks.seedDoneFromApi }),
+  },
 }))
 
 import { hydrateEditionNews } from './hydrate-edition-news'
@@ -65,7 +73,7 @@ describe('hydrateEditionNews', () => {
 
   it('hydrates pages, news and crops in order', async () => {
     mocks.loadNewsForEdition.mockResolvedValue({
-      items: [],
+      items: [{ id: '1', done: true, title: 'Done', cropId: null, pdfId: 'pdf-1', pageNumber: '1', editionId: edition.id }],
       pages: [],
       cropSeeds: [],
     })
@@ -77,8 +85,25 @@ describe('hydrateEditionNews', () => {
       'update-pages',
       'hydrate-news',
       'seed-crops',
+      'seed-done',
       'loading:false',
     ])
+    expect(mocks.seedDoneFromApi).toHaveBeenCalledWith('edition-1', ['1'])
+  })
+
+  it('deduplicates concurrent hydrations for the same edition', async () => {
+    mocks.loadNewsForEdition.mockResolvedValue({
+      items: [],
+      pages: [],
+      cropSeeds: [],
+    })
+
+    await Promise.all([hydrateEditionNews(edition), hydrateEditionNews(edition)])
+
+    expect(mocks.loadNewsForEdition).toHaveBeenCalledTimes(1)
+    expect(mocks.updateEditionPages).toHaveBeenCalledTimes(1)
+    expect(mocks.hydrateFromApiItems).toHaveBeenCalledTimes(1)
+    expect(mocks.seedCropsFromApiCoordinates).toHaveBeenCalledTimes(1)
   })
 
   it('ignores a stale response when a newer request finishes first', async () => {

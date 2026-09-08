@@ -176,6 +176,70 @@ describe('store persistence and integration', () => {
     })
   })
 
+  it('merges client metadata when consolidating news after crop merge', () => {
+    const secondNews: StoredNewsItem = {
+      ...apiNews,
+      id: 'news-2',
+      title: 'Second',
+      text: 'Second text',
+      clientKeywordsFound: ['obra'],
+      customerNames: ['Banco X'],
+      clientMatches: [
+        {
+          customerName: 'Banco X',
+          channelName: 'TV',
+          keywords: ['credito'],
+        },
+      ],
+    }
+    const firstNews: StoredNewsItem = {
+      ...apiNews,
+      customerNames: ['Acme Ltda'],
+      clientMatches: [
+        {
+          customerName: 'Acme Ltda',
+          channelName: 'Rádio',
+          keywords: ['client'],
+        },
+      ],
+    }
+
+    useNewsStore.getState().hydrateFromApiItems(edition, [firstNews, secondNews])
+    const firstCrop = useCropsStore.getState().addCropToNews({
+      editionId: edition.id,
+      pdfId: 'pdf-1',
+      pageNumber: '1',
+      rect: { x: 0, y: 10, width: 20, height: 20 },
+      newsItem: firstNews,
+    })!
+    const secondCrop = useCropsStore.getState().addCropToNews({
+      editionId: edition.id,
+      pdfId: 'pdf-1',
+      pageNumber: '1',
+      rect: { x: 0, y: 40, width: 20, height: 20 },
+      newsItem: secondNews,
+    })!
+
+    useCropsStore.getState().mergeCrops(secondCrop, firstCrop)
+
+    expect(useNewsStore.getState().items['news-1']).toMatchObject({
+      clientKeywordsFound: ['client', 'obra'],
+      customerNames: ['Acme Ltda', 'Banco X'],
+      clientMatches: [
+        {
+          customerName: 'Acme Ltda',
+          channelName: 'Rádio',
+          keywords: ['client'],
+        },
+        {
+          customerName: 'Banco X',
+          channelName: 'TV',
+          keywords: ['credito'],
+        },
+      ],
+    })
+  })
+
   it('splits the news link when a crop is ungrouped', () => {
     useNewsStore.getState().hydrateFromApiItems(edition, [apiNews])
     const firstCrop = useCropsStore.getState().addCropToNews({

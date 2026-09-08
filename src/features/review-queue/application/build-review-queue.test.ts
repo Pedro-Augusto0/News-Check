@@ -83,6 +83,116 @@ describe('buildReviewQueue', () => {
     expect(items[0]?.hasClient).toBe(true)
   })
 
+  it('keeps the newspaper section on each news item', () => {
+    const items = buildReviewQueue({
+      editionId: 'ed-1',
+      pdfId: 'pdf-1',
+      pages,
+      newsItems: {
+        n1: news({ id: 'n1', pageNumber: '1', title: 'Normal', cropId: 'c1', section: 'Cidades' }),
+      },
+      crops: {
+        c1: crop({ id: 'c1', pageNumber: '1', newsItemId: 'n1' }),
+      },
+      groups: {},
+    })
+
+    expect(items.find((item) => item.newsId === 'n1')?.section).toBe('Cidades')
+  })
+
+  it('copies relatedPage from the stored news item', () => {
+    const items = buildReviewQueue({
+      editionId: 'ed-1',
+      pdfId: 'pdf-1',
+      pages,
+      newsItems: {
+        n1: news({ id: 'n1', pageNumber: '1', title: 'Normal', cropId: 'c1', relatedPage: 'A3' }),
+      },
+      crops: {
+        c1: crop({ id: 'c1', pageNumber: '1', newsItemId: 'n1' }),
+      },
+      groups: {},
+    })
+
+    expect(items.find((item) => item.newsId === 'n1')?.relatedPage).toBe('A3')
+  })
+
+  it('copies customer names from the stored news item', () => {
+    const items = buildReviewQueue({
+      editionId: 'ed-1',
+      pdfId: 'pdf-1',
+      pages,
+      newsItems: {
+        n1: news({
+          id: 'n1',
+          pageNumber: '1',
+          cropId: 'c1',
+          customerNames: ['Acme Ltda', 'Banco X'],
+        }),
+      },
+      crops: {
+        c1: crop({ id: 'c1', pageNumber: '1', newsItemId: 'n1' }),
+      },
+      groups: {},
+    })
+
+    expect(items.find((item) => item.newsId === 'n1')?.customerNames).toEqual(['Acme Ltda', 'Banco X'])
+    expect(items.find((item) => item.newsId === 'n1')?.hasClient).toBe(true)
+  })
+
+  it('copies client matches from the stored news item', () => {
+    const matches = [
+      { customerName: 'Acme Ltda', channelName: 'Impresso', keywords: ['obra'] },
+    ]
+    const items = buildReviewQueue({
+      editionId: 'ed-1',
+      pdfId: 'pdf-1',
+      pages,
+      newsItems: {
+        n1: news({
+          id: 'n1',
+          pageNumber: '1',
+          cropId: 'c1',
+          clientMatches: matches,
+        }),
+      },
+      crops: {
+        c1: crop({ id: 'c1', pageNumber: '1', newsItemId: 'n1' }),
+      },
+      groups: {},
+    })
+
+    expect(items.find((item) => item.newsId === 'n1')?.clientMatches).toEqual(matches)
+    expect(items.find((item) => item.newsId === 'n1')?.hasClient).toBe(true)
+  })
+
+  it('unions unique client keywords from the news and its crops', () => {
+    const items = buildReviewQueue({
+      editionId: 'ed-1',
+      pdfId: 'pdf-1',
+      pages,
+      newsItems: {
+        n1: news({
+          id: 'n1',
+          pageNumber: '1',
+          cropId: 'c1',
+          clientKeywordsFound: ['Acme', 'Beta'],
+        }),
+      },
+      crops: {
+        c1: crop({
+          id: 'c1',
+          pageNumber: '1',
+          newsItemId: 'n1',
+          clientKeywordsFound: ['Beta', 'Gama'],
+        }),
+      },
+      groups: {},
+    })
+
+    expect(items[0]?.clientKeywords).toEqual(['Acme', 'Beta', 'Gama'])
+  })
+
   it('resumes at the first pending item', () => {
     const queue = [
       { id: 'a', hasClient: false },

@@ -1,4 +1,5 @@
 .review-layout {
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-columns: 375px minmax(0, 1fr) 380px;
@@ -9,7 +10,18 @@
 
 .review-layout__header {
   grid-column: 1 / -1;
+  position: relative;
   z-index: 4;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-layout__header--with-banner .review-active-news-bar {
+  border-bottom: none;
+}
+
+.review-layout--v2 .review-layout__header {
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.12);
 }
 
 .review-layout__rail {

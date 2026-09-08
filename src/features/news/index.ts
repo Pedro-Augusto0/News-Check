@@ -1,4 +1,4 @@
-export type { NewsItem, NewsViewFilter, StoredNewsItem } from './model'
+export type { NewsClientMatch, NewsItem, NewsViewFilter, StoredNewsItem } from './model'
 export { isManualNewsItem, canDeleteNewsItem } from './model'
 export { useNewsStore } from './store'
 export type {

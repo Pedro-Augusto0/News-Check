@@ -26,6 +26,7 @@ export function ComboBox({
   searchable,
   searchPlaceholder = 'Buscar...',
   menuPortal = false,
+  renderValue,
 }: ComboBoxProps) {
   const fallbackId = useId()
   const searchId = useId()
@@ -271,14 +272,18 @@ export function ComboBox({
           ref={triggerRef}
           id={triggerId}
           type="button"
-          className="combobox__trigger"
+          className={cn('combobox__trigger', renderValue && 'combobox__trigger--custom')}
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-label={hideLabel ? label : undefined}
           onClick={() => setOpen((current) => !current)}
           onKeyDown={handleTriggerKeyDown}
         >
-          <span className="combobox__value">{selectedLabel}</span>
+          {renderValue ? (
+            renderValue(selected)
+          ) : (
+            <span className="combobox__value">{selectedLabel}</span>
+          )}
           <span className="combobox__chevron" aria-hidden>
             <ChevronDown size={13} strokeWidth={2.25} />
           </span>

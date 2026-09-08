@@ -16,7 +16,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   if (existingToken) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/v2" replace />
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -32,7 +32,7 @@ export function LoginPage() {
     try {
       await validateAccessToken(trimmed)
       setToken(trimmed)
-      navigate('/', { replace: true })
+      navigate('/v2', { replace: true })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Não foi possível validar o token')
     } finally {

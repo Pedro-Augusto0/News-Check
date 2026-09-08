@@ -53,6 +53,18 @@
   white-space: nowrap;
 }
 
+.combobox__trigger--custom {
+  align-items: flex-start;
+  height: auto;
+  min-height: var(--control-h-lg);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.combobox__trigger--custom .combobox__chevron {
+  margin-top: 2px;
+}
+
 .combobox__chevron {
   display: flex;
   align-items: center;

@@ -12,9 +12,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/printed-clipping': {
-        target: 'https://prd-api.cservice.io',
+        target: 'https://localhost:44344',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
       '/scancontrol': {
         target: 'http://170.80.70.78',

@@ -4,6 +4,7 @@ import { computeReviewPageScale, REVIEW_FIT_SCALE } from '../application'
 
 const FALLBACK_WIDTH = 595
 const FALLBACK_HEIGHT = 842
+const MIN_VIEWPORT_WIDTH = 40
 
 interface UseReviewPageImageOptions {
   imageUrl: string | undefined
@@ -15,21 +16,24 @@ interface UseReviewPageImageOptions {
 export function useReviewPageImage({
   imageUrl,
   viewportWidth,
-  viewportHeight,
+  viewportHeight: _viewportHeight,
   zoom,
 }: UseReviewPageImageOptions) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const renderGenerationRef = useRef(0)
   const [dimensions, setDimensions] = useState({ width: FALLBACK_WIDTH, height: FALLBACK_HEIGHT })
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || viewportWidth < 40 || viewportHeight < 40) return
+    if (viewportWidth < MIN_VIEWPORT_WIDTH) return
 
+    const generation = ++renderGenerationRef.current
     let cancelled = false
-    const usableWidth = Math.max(240, viewportWidth - 8)
+    let frameId = 0
 
-    const paintFallback = (message: string) => {
+    const paintFallback = (canvas: HTMLCanvasElement, message: string) => {
+      const usableWidth = Math.max(240, viewportWidth - 8)
       const width = Math.round(Math.min(FALLBACK_WIDTH, usableWidth) * REVIEW_FIT_SCALE * zoom)
       const height = Math.round((FALLBACK_HEIGHT / FALLBACK_WIDTH) * width)
       canvas.width = width
@@ -46,14 +50,26 @@ export function useReviewPageImage({
     }
 
     const render = async () => {
-      if (!imageUrl) {
-        if (!cancelled) {
-          paintFallback('Imagem da página indisponível')
-        }
+      const canvas = canvasRef.current
+      if (!canvas) {
+        frameId = window.requestAnimationFrame(() => {
+          if (!cancelled) void render()
+        })
         return
       }
 
+      setLoading(true)
+      const usableWidth = Math.max(240, viewportWidth - 8)
+
       try {
+        if (!imageUrl) {
+          if (!cancelled) {
+            paintFallback(canvas, 'Imagem da página indisponível')
+            setError(null)
+          }
+          return
+        }
+
         const image = await loadPageImage(imageUrl)
         if (cancelled) return
 
@@ -72,17 +88,23 @@ export function useReviewPageImage({
         }
       } catch (cause) {
         if (!cancelled) {
-          paintFallback('Falha ao carregar imagem')
+          paintFallback(canvas, 'Falha ao carregar imagem')
           setError(cause instanceof Error ? cause.message : 'Erro ao carregar imagem')
+        }
+      } finally {
+        if (!cancelled && generation === renderGenerationRef.current) {
+          setLoading(false)
         }
       }
     }
 
     void render()
+
     return () => {
       cancelled = true
+      window.cancelAnimationFrame(frameId)
     }
-  }, [imageUrl, viewportWidth, viewportHeight, zoom])
+  }, [imageUrl, viewportWidth, zoom])
 
-  return { canvasRef, dimensions, error }
+  return { canvasRef, dimensions, error, loading }
 }

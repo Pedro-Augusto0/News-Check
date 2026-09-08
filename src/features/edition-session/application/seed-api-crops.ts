@@ -4,7 +4,7 @@ import { useCropsStore } from '@/features/crops'
 import { useNewsStore } from '@/features/news'
 import { apiCropIdForNews, parseApiCoordinates } from '@/features/crops/api-coordinates'
 
-/** Recria cortes a partir de `coordinates` (escala 0–1000) e vincula às notícias. */
+/** Recria cortes a partir de `coordinates` (lista, escala 0–1000) e vincula às notícias. */
 export async function seedCropsFromApiCoordinates(
   edition: VehicleEdition,
   seeds: ApiNewsCropSeed[],
@@ -17,8 +17,9 @@ export async function seedCropsFromApiCoordinates(
 
   if (seeds.length === 0) return
 
-  const { upsertApiCrop } = useCropsStore.getState()
+  const { upsertApiCrop, mergeCrops } = useCropsStore.getState()
   const { linkCropToNews, getNewsItem } = useNewsStore.getState()
+  const firstCropIdByNews = new Map<string, string>()
 
   for (const seed of seeds) {
     const news = getNewsItem(seed.newsId)
@@ -27,7 +28,8 @@ export async function seedCropsFromApiCoordinates(
     const rect = parseApiCoordinates(seed.coordinates)
     if (!rect) continue
 
-    const cropId = apiCropIdForNews(seed.newsId)
+    const hasFirst = firstCropIdByNews.has(seed.newsId)
+    const cropId = apiCropIdForNews(seed.newsId, seed.index)
     upsertApiCrop({
       id: cropId,
       editionId: edition.id,
@@ -35,10 +37,18 @@ export async function seedCropsFromApiCoordinates(
       pageNumber: seed.pageNumber,
       rect,
       title: seed.title,
-      text: seed.text,
+      text: hasFirst ? '' : seed.text,
       newsItemId: seed.newsId,
       clientKeywordsFound: seed.clientKeywordsFound,
     })
+
+    const firstCropId = firstCropIdByNews.get(seed.newsId)
+    if (firstCropId) {
+      mergeCrops(cropId, firstCropId)
+      continue
+    }
+
     linkCropToNews(seed.newsId, cropId)
+    firstCropIdByNews.set(seed.newsId, cropId)
   }
 }

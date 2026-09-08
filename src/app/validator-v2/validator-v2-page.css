@@ -35,14 +35,19 @@
 /* ── Review v2 visual theme ── */
 
 .review-layout--v2 {
-  --review-sidebar-bg: #f8f9fb;
+  --review-header-bg: #0c1a2e;
+  --review-sidebar-bg: #f4f7fb;
   --review-panel-bg: #ffffff;
-  --review-canvas-bg: #eceff3;
-  --review-border: #e4e8ee;
-  --review-border-subtle: #eef1f5;
-  --review-kicker: #98a2b3;
+  --review-canvas-bg: #e8edf3;
+  --review-border: #dce3ec;
+  --review-border-subtle: #eef2f6;
+  --review-kicker: #8b97a8;
   --review-shadow-panel: 0 1px 2px rgba(16, 24, 40, 0.04);
   --review-shadow-canvas: 0 2px 8px rgba(16, 24, 40, 0.08), 0 12px 32px rgba(16, 24, 40, 0.06);
+}
+
+.review-layout--v2 .review-layout__header {
+  background: var(--review-header-bg);
 }
 
 .review-layout--v2 .review-layout__rail,
@@ -53,63 +58,6 @@
 
 .review-layout--v2 .review-layout__stage {
   background: var(--review-canvas-bg);
-}
-
-.review-layout--v2 .review-active-news-bar {
-  min-height: 52px;
-  padding: 8px var(--space-4);
-  background: var(--review-panel-bg);
-  border-bottom: 1px solid var(--review-border);
-  box-shadow: var(--review-shadow-panel);
-}
-
-.review-layout--v2 .review-active-news-bar__accent {
-  display: none;
-}
-
-.review-layout--v2 .review-active-news-bar__title {
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-}
-
-.review-layout--v2 .review-active-news-bar__meta {
-  font-size: 11px;
-  gap: 8px;
-}
-
-.review-layout--v2 .review-active-news-bar__client {
-  height: 18px;
-  padding: 0 7px;
-  background: color-mix(in srgb, var(--color-primary) 8%, white);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 14%, var(--review-border));
-}
-
-.review-layout--v2 .review-active-news-bar__actions {
-  gap: 8px;
-}
-
-.review-layout--v2 .review-active-news-bar__details.btn {
-  width: 34px;
-  height: 34px;
-  background: var(--review-panel-bg);
-  border: 1px solid var(--review-border);
-  color: var(--color-text-muted);
-  box-shadow: none;
-}
-
-.review-layout--v2 .review-active-news-bar__details.btn:hover {
-  color: var(--color-text);
-  background: var(--review-sidebar-bg);
-  border-color: var(--review-border);
-}
-
-.review-layout--v2 .review-active-news-bar__approve.btn {
-  height: 34px;
-  min-height: 34px;
-  padding: 0 10px 0 14px;
-  font-size: 13px;
-  box-shadow: none;
 }
 
 /* Left rail — edition + pages */
@@ -124,16 +72,12 @@
 }
 
 .review-layout--v2 .review-page-rail {
-  background: transparent;
+  background: var(--review-panel-bg);
 }
 
 .review-layout--v2 .review-page-rail__edition {
   background: var(--review-panel-bg);
   border-bottom-color: var(--review-border);
-}
-
-.review-layout--v2 .review-page-rail__legend {
-  padding-inline: 10px;
 }
 
 .review-layout--v2 .review-areas-rail {
@@ -216,8 +160,19 @@
 }
 
 .review-layout--v2 .review-queue-list-item.crop-list-item--active-news {
-  border-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 28%, var(--review-border));
-  background: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 4%, var(--review-panel-bg));
+  border-color: color-mix(in srgb, var(--color-primary) 55%, var(--review-border));
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--review-panel-bg));
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.review-layout--v2 .review-queue-list-item.crop-list-item--active-news::before {
+  background: var(--color-primary);
+  width: 3px;
+}
+
+.review-layout--v2 .review-queue-list-item.crop-list-item--active-news .crop-list-item__title {
+  color: var(--color-primary-hover);
+  font-weight: 700;
 }
 
 .review-layout--v2 .review-queue-list-item .crop-list-item__title {
@@ -230,12 +185,36 @@
 }
 
 .review-layout--v2 .review-queue-panel__card--inspect {
-  height: 195px;
-  margin: 0 10px 8px;
+  height: auto;
+  margin: 10px 10px 8px;
+  gap: 12px;
   padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--review-border));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--review-border));
+  border-left: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--review-border));
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-primary) 4%, var(--review-panel-bg));
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--review-panel-bg));
+  box-shadow: none;
+}
+
+.review-layout--v2 .review-queue-panel__kicker--segment {
+  color: var(--color-primary-hover);
+}
+
+.review-layout--v2 .review-queue-panel__inspect-page {
+  color: var(--color-primary-hover);
+  background: var(--color-primary-light);
+  border-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.review-layout--v2 .review-queue-list-item__merge-badge--segment {
+  color: var(--color-primary-hover);
+  background: var(--color-primary-light);
+  border-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.review-layout--v2 .review-queue-list-item--merge-segment.crop-list-item--selected {
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--review-panel-bg));
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--review-border));
 }
 
 /* Stage */
@@ -256,14 +235,17 @@
 }
 
 .review-layout--v2 .review-stage__toolbar-inner {
-  background: rgba(255, 255, 255, 0.96);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.review-layout--v2 .review-stage__lock-btn,
+.review-layout--v2 .review-stage__control-group {
   border-color: var(--review-border);
-  box-shadow: var(--review-shadow-panel);
 }
 
 .review-layout--v2 .review-stage__hint {
-  font-size: 11px;
-  padding: 6px 12px;
-  border-color: var(--review-border);
-  box-shadow: var(--review-shadow-panel);
+  font-size: 12px;
+  padding: 8px 14px;
 }

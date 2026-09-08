@@ -2,8 +2,8 @@ import type { Crop, CropGroup } from '@/features/crops'
 import type { PageData } from '@/features/page-navigation'
 import { comparePageKeys } from '@/features/page-navigation/page-key'
 import type { StoredNewsItem } from '@/features/news'
-import { newsItemHasClient } from '@/features/news/view-model'
 import type { ReviewQueueItem, ReviewSuspectReason } from '../model'
+import { uniqueKeywords } from './highlight-keywords'
 import { detectCropSuspects } from './suspect-heuristics'
 
 function newsCropsFor(
@@ -81,7 +81,10 @@ export function buildReviewQueue(input: {
       suspectReasons.push(...detectCropSuspects(crop, pageCrops))
     }
 
-    const keywords = news.clientKeywordsFound ?? []
+    const keywords = uniqueKeywords([
+      news.clientKeywordsFound,
+      ...newsCrops.map((crop) => crop.clientKeywordsFound),
+    ])
     items.push({
       id: `news:${news.id}`,
       kind: 'news',
@@ -92,8 +95,15 @@ export function buildReviewQueue(input: {
       cropIds: newsCrops.map((crop) => crop.id),
       title: news.title || newsCrops[0]?.title || 'Notícia sem título',
       text: news.text || newsCrops[0]?.text || '',
+      section: news.section,
       clientKeywords: keywords,
-      hasClient: newsItemHasClient(news) || newsCrops.some((crop) => (crop.clientKeywordsFound?.length ?? 0) > 0),
+      customerNames: news.customerNames ?? [],
+      clientMatches: news.clientMatches ?? [],
+      hasClient:
+        keywords.length > 0 ||
+        (news.customerNames?.length ?? 0) > 0 ||
+        (news.clientMatches?.length ?? 0) > 0,
+      relatedPage: news.relatedPage,
       suspectReasons: uniqueReasons(suspectReasons),
       sortY: newsCrops[0]?.rect.y ?? 900 + (news.listOrder ?? 0),
       previewRect: unionRect(newsCrops),
@@ -117,6 +127,8 @@ export function buildReviewQueue(input: {
       title: crop.title || 'Recorte sem notícia',
       text: crop.text,
       clientKeywords: crop.clientKeywordsFound ?? [],
+      customerNames: [],
+      clientMatches: [],
       hasClient: (crop.clientKeywordsFound?.length ?? 0) > 0,
       suspectReasons: uniqueReasons(['orphan-crop', ...detectCropSuspects(crop, pageCrops)]),
       sortY: crop.rect.y,
@@ -138,6 +150,8 @@ export function buildReviewQueue(input: {
       title: `Página ${page.pageNumber}`,
       text: '',
       clientKeywords: [],
+      customerNames: [],
+      clientMatches: [],
       hasClient: false,
       suspectReasons: ['empty-page'],
       sortY: 0,

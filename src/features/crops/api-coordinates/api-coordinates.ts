@@ -13,6 +13,33 @@ import type { CropRect } from '@/features/crops/geometry'
  *
  * Em %: valorNorm / 10  (equivale a /1000 * 100).
  */
+/** Converte retângulo percentual (0–100) para coordenadas normalizadas da API (0–1000). */
+export function formatCropRectToApiCoordinates(rect: CropRect): string {
+  const ymin = Math.round((rect.y / 100) * 1000)
+  const xmin = Math.round((rect.x / 100) * 1000)
+  const ymax = Math.round(((rect.y + rect.height) / 100) * 1000)
+  const xmax = Math.round(((rect.x + rect.width) / 100) * 1000)
+  return `${ymin},${xmin},${ymax},${xmax}`
+}
+
+/** Padding visual ao exibir áreas da API na página (%). */
+export const CROP_DISPLAY_PADDING_PERCENT = 0.75
+
+/** Expande levemente para esquerda e para baixo, mantendo topo e direita. */
+export function expandCropRectForDisplay(
+  rect: CropRect,
+  paddingPercent = CROP_DISPLAY_PADDING_PERCENT,
+): CropRect {
+  const pad = Math.max(0, paddingPercent)
+  const x = Math.max(0, rect.x - pad)
+  const y = rect.y
+  const width = Math.min(100 - x, rect.width + (rect.x - x))
+  const height = Math.min(100 - y, rect.height + pad)
+  if (width <= 0.1 || height <= 0.1) return rect
+  const round = (value: number) => Math.round(value * 10000) / 10000
+  return { x: round(x), y: round(y), width: round(width), height: round(height) }
+}
+
 export function parseApiCoordinates(coordinates: string | null | undefined): CropRect | null {
   if (!coordinates?.trim()) return null
 
@@ -30,21 +57,32 @@ export function parseApiCoordinates(coordinates: string | null | undefined): Cro
   const height = (bottom - top) * 100
   if (width <= 0.1 || height <= 0.1) return null
 
-  return {
+  return expandCropRectForDisplay({
     x: left * 100,
     y: top * 100,
     width,
     height,
-  }
+  })
 }
 
 /** Prefixos antigos também são limpos no re-seed. */
 export const API_CROP_ID_PREFIX = 'crop-api-v3-'
 
-export function apiCropIdForNews(newsId: string): string {
-  return `${API_CROP_ID_PREFIX}${newsId}`
+export function apiCropIdForNews(newsId: string, index = 0): string {
+  return `${API_CROP_ID_PREFIX}${newsId}-${index}`
 }
 
 export function isApiSeededCropId(cropId: string): boolean {
   return cropId.startsWith('crop-api-')
+}
+
+export function normalizeApiCoordinateList(value: unknown): string[] {
+  const list = Array.isArray(value) ? value : value == null || value === '' ? [] : [value]
+  const coordinates: string[] = []
+  for (const entry of list) {
+    if (typeof entry !== 'string') continue
+    const trimmed = entry.trim()
+    if (trimmed) coordinates.push(trimmed)
+  }
+  return coordinates
 }

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 export interface ComboBoxOption {
   value: string
   label: string
@@ -14,4 +16,5 @@ export interface ComboBoxProps {
   searchable?: boolean
   searchPlaceholder?: string
   menuPortal?: boolean
+  renderValue?: (selected: ComboBoxOption | undefined) => ReactNode
 }

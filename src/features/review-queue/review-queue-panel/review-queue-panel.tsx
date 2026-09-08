@@ -7,12 +7,14 @@ import {
   EyeOff,
   FileText,
   Link2,
+  Search,
+  X,
 } from 'lucide-react'
 import type { Crop as CropModel } from '@/features/crops'
 import type { VehicleEdition } from '@/features/edition-session'
 import { Button } from '@/shared/ui/button'
 import { cn } from '@/shared/ui/utils/cn'
-import { groupReviewQueueByPage } from '../application'
+import { filterReviewQueueByTitle, groupReviewQueueByPage } from '../application'
 import { type ReviewQueueItem, type ReviewStatus } from '../model'
 import { ReviewQueueListItem } from './review-queue-list-item'
 import './review-queue-panel.css'
@@ -71,36 +73,41 @@ export function ReviewQueuePanel({
   onEditCrop,
 }: ReviewQueuePanelProps) {
   const inspectId = inspectItem?.id ?? null
-  const currentNewsPage = items.find((item) => item.id === currentId)?.pageNumber
+  const [search, setSearch] = useState('')
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({})
   const menuRef = useRef<HTMLDivElement>(null)
-  const pageGroups = useMemo(() => groupReviewQueueByPage(items), [items])
+  const isSearching = search.trim().length > 0
+  const visibleItems = useMemo(() => filterReviewQueueByTitle(items, search), [items, search])
+  const pageGroups = useMemo(() => groupReviewQueueByPage(visibleItems), [visibleItems])
 
   const isPageExpanded = useCallback(
     (pageNumber: string) => {
+      if (isSearching) return true
       if (pageNumber in collapsedPages) return !collapsedPages[pageNumber]
-      return pageNumber === viewPageNumber || pageNumber === currentNewsPage
+      return pageNumber === viewPageNumber
     },
-    [collapsedPages, viewPageNumber, currentNewsPage],
+    [collapsedPages, viewPageNumber, isSearching],
   )
 
   const togglePage = useCallback(
     (pageNumber: string) => {
       setCollapsedPages((prev) => {
         const currentlyExpanded =
-          pageNumber in prev
-            ? !prev[pageNumber]
-            : pageNumber === viewPageNumber || pageNumber === currentNewsPage
+          pageNumber in prev ? !prev[pageNumber] : pageNumber === viewPageNumber
         return { ...prev, [pageNumber]: currentlyExpanded }
       })
     },
-    [viewPageNumber, currentNewsPage],
+    [viewPageNumber],
   )
 
   useEffect(() => {
     setCollapsedPages({})
   }, [viewPageNumber, edition?.id])
+
+  useEffect(() => {
+    setSearch('')
+  }, [edition?.id])
 
   useEffect(() => {
     if (!menu) return
@@ -123,14 +130,15 @@ export function ReviewQueuePanel({
     <div className="review-queue-panel">
       {inspectItem && (
         <section className="review-queue-panel__card review-queue-panel__card--inspect">
-          <div className="review-queue-panel__current-top">
-            <p className="review-queue-panel__kicker">Visualizando</p>
-            <span className="review-queue-panel__inspect-page">Pág. {inspectItem.pageNumber}</span>
+          <div className="review-queue-panel__inspect-head">
+            <div className="review-queue-panel__current-top">
+              <p className="review-queue-panel__kicker review-queue-panel__kicker--segment">Segmento</p>
+              <span className="review-queue-panel__inspect-page">Pág. {inspectItem.pageNumber}</span>
+            </div>
+            <h2 className="review-queue-panel__title review-queue-panel__title--inspect">
+              {inspectItem.title}
+            </h2>
           </div>
-          <h2 className="review-queue-panel__title">{inspectItem.title}</h2>
-          <p className="review-queue-panel__inspect-copy">
-            Ajuste o recorte ou desenhe outro nesta notícia; depois junte à notícia ativa.
-          </p>
           <div className="review-queue-panel__inspect-actions">
             <Button
               variant="primary"
@@ -159,9 +167,39 @@ export function ReviewQueuePanel({
 
       <div className="review-queue-panel__card review-queue-panel__card--list">
         <p className="review-queue-panel__kicker review-queue-panel__kicker--list">Notícias</p>
+        <label className="search-field review-queue-panel__search">
+          <Search size={15} className="search-field__icon" aria-hidden />
+          <input
+            type="search"
+            className="search-field__input"
+            placeholder="Buscar por título..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Escape') return
+              event.stopPropagation()
+              if (search) setSearch('')
+              else (event.currentTarget as HTMLInputElement).blur()
+            }}
+            aria-label="Buscar notícia por título"
+          />
+          {isSearching && (
+            <button
+              type="button"
+              className="review-queue-panel__search-clear"
+              aria-label="Limpar busca"
+              title="Limpar busca"
+              onClick={() => setSearch('')}
+            >
+              <X size={13} strokeWidth={2.2} aria-hidden />
+            </button>
+          )}
+        </label>
         <div className="review-queue-panel__list">
           {pageGroups.length === 0 && (
-            <p className="review-queue-panel__empty">Nenhuma notícia nesta edição</p>
+            <p className="review-queue-panel__empty">
+              {isSearching ? 'Nenhuma notícia com esse título' : 'Nenhuma notícia nesta edição'}
+            </p>
           )}
 
           {pageGroups.map((section) => {
@@ -223,6 +261,8 @@ export function ReviewQueuePanel({
                         isInspect={item.id === inspectId}
                         isDone={isDoneStatus(statuses[item.id])}
                         selectionLocked={selectionLocked}
+                        mergeModeBase={selectionLocked && item.id === currentId}
+                        mergeModeSegment={selectionLocked && item.id === inspectId}
                         activeCropId={activeCropId}
                         onSelect={() => onSelect(item.id)}
                         onDiscard={() => onDiscard(item.id)}

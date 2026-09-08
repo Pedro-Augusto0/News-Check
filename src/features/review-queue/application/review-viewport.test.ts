@@ -3,6 +3,7 @@ import {
   REVIEW_DEFAULT_ZOOM,
   REVIEW_FIT_SCALE,
   clampReviewZoom,
+  computeReviewPageDisplaySize,
   computeReviewPageScale,
   nextStableViewport,
   stepReviewZoom,
@@ -40,6 +41,24 @@ describe('computeReviewPageScale', () => {
     const at100 = computeReviewPageScale(tallScan)
     const at200 = computeReviewPageScale({ ...tallScan, zoom: 2 })
     expect(at200).toBeCloseTo(at100 * 2, 5)
+  })
+})
+
+describe('computeReviewPageDisplaySize', () => {
+  it('matches the fitted page size used by the stage canvas', () => {
+    const { width, height } = computeReviewPageDisplaySize(900, 1)
+    const scale = computeReviewPageScale({
+      naturalWidth: 595,
+      usableWidth: 892,
+      zoom: 1,
+    })
+
+    expect(width).toBe(Math.round(595 * scale))
+    expect(height).toBe(Math.round(842 * scale))
+  })
+
+  it('returns zero before the viewport is measured', () => {
+    expect(computeReviewPageDisplaySize(0, 1)).toEqual({ width: 0, height: 0 })
   })
 })
 

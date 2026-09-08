@@ -25,7 +25,7 @@ function apiNews(id: number, overrides: Partial<ApiNewsItemDto> = {}): ApiNewsIt
     text: `Text ${id}`,
     author: '',
     publication: 'Gazeta',
-    coordinates: '100,100,500,500',
+    coordinates: ['100,100,500,500'],
     section: '',
     filePath: `http://170.80.70.78/pages/${id}.jpg`,
     page: '1',
@@ -43,7 +43,7 @@ describe('news API mappers', () => {
         title: ' ',
         text: ' fallback title ',
         searchResults: [
-          { channelId: 1, customerId: 1, highlights: [' client ', '', 'client'], searchedIds: [] },
+          { channelId: 1, channelName: 'Impresso', customerId: 1, customerName: 'Acme Ltda', highlights: [' client ', '', 'client'], searchedIds: [] },
         ],
       }),
       apiNews(3, { page: 'A2', title: '', text: '.' }),
@@ -58,11 +58,129 @@ describe('news API mappers', () => {
       title: 'fallback title',
       text: 'fallback title',
       clientKeywordsFound: ['client'],
+      customerNames: ['Acme Ltda'],
+      clientMatches: [
+        {
+          customerId: 1,
+          customerName: 'Acme Ltda',
+          channelId: 1,
+          channelName: 'Impresso',
+          keywords: ['client'],
+        },
+      ],
       cropId: null,
       pdfId: 'pdf-1',
       editionId: 'edition-1',
     })
     expect(items[1]).toMatchObject({ title: 'Sem título', text: '' })
+  })
+
+  it('maps relatedPage from camelCase or PascalCase and ignores blanks', () => {
+    expect(mapApiNewsToStoredItems(edition, [apiNews(1, { relatedPage: ' A3 ' })])[0]?.relatedPage).toBe(
+      'A3',
+    )
+    expect(mapApiNewsToStoredItems(edition, [apiNews(1, { relatedPage: '   ' })])[0]?.relatedPage).toBeUndefined()
+    expect(mapApiNewsToStoredItems(edition, [apiNews(1, { relatedPage: null })])[0]?.relatedPage).toBeUndefined()
+    expect(
+      mapApiNewsToStoredItems(edition, [
+        { ...apiNews(1), relatedPage: undefined, RelatedPage: 'B4' } as ApiNewsItemDto & {
+          RelatedPage: string
+        },
+      ])[0]?.relatedPage,
+    ).toBe('B4')
+  })
+
+  it('collects unique customer names from search results', () => {
+    const items = mapApiNewsToStoredItems(edition, [
+      apiNews(1, {
+        searchResults: [
+          { channelId: 1, channelName: 'Impresso', customerId: 10, customerName: ' Banco X ', highlights: ['x'], searchedIds: [] },
+          { channelId: 2, channelName: 'Digital', customerId: 11, customerName: 'Banco X', highlights: ['y'], searchedIds: [] },
+          { channelId: 3, customerId: 12, customerName: '  ', highlights: [], searchedIds: [] },
+          { channelId: 4, customerId: 13, customerName: 'Seguradora Y', highlights: [], searchedIds: [] },
+        ],
+      }),
+    ])
+
+    expect(items[0]?.customerNames).toEqual(['Banco X', 'Seguradora Y'])
+  })
+
+  it('maps search results into client matches by customer and channel', () => {
+    const items = mapApiNewsToStoredItems(edition, [
+      apiNews(1, {
+        searchResults: [
+          { channelId: 1, channelName: 'Impresso', customerId: 10, customerName: ' Banco X ', highlights: [' juros ', 'Juros'], searchedIds: [] },
+          { channelId: 1, channelName: 'Impresso', customerId: 10, customerName: 'Banco X', highlights: ['selic'], searchedIds: [] },
+          { channelId: 2, channelName: 'Digital', customerId: 10, customerName: 'Banco X', highlights: ['app'], searchedIds: [] },
+          { channelId: 3, customerId: 12, customerName: '  ', highlights: [], searchedIds: [] },
+        ],
+      }),
+    ])
+
+    expect(items[0]?.clientMatches).toEqual([
+      {
+        customerId: 10,
+        customerName: 'Banco X',
+        channelId: 1,
+        channelName: 'Impresso',
+        keywords: ['juros', 'selic'],
+      },
+      {
+        customerId: 10,
+        customerName: 'Banco X',
+        channelId: 2,
+        channelName: 'Digital',
+        keywords: ['app'],
+      },
+    ])
+  })
+
+  it('keeps keywords on each customer even when ids are missing or shared', () => {
+    const items = mapApiNewsToStoredItems(edition, [
+      apiNews(1, {
+        searchResults: [
+          { channelId: 0, channelName: 'InterClip', customerId: 0, customerName: 'Compartilhamento InterClip', highlights: ['vereadores'], searchedIds: [] },
+          { channelId: 0, customerName: 'SINICESP', customerId: 0, highlights: ['sindicato'], searchedIds: [] },
+          { channelId: 0, customerName: 'Veolia Brasil', customerId: 0, keyword: 'energia', highlights: [], searchedIds: [] },
+        ],
+      }),
+    ])
+
+    expect(items[0]?.clientMatches).toEqual([
+      {
+        customerId: 0,
+        customerName: 'Compartilhamento InterClip',
+        channelId: 0,
+        channelName: 'InterClip',
+        keywords: ['vereadores'],
+      },
+      {
+        customerId: 0,
+        customerName: 'SINICESP',
+        channelId: 0,
+        channelName: '',
+        keywords: ['sindicato'],
+      },
+      {
+        customerId: 0,
+        customerName: 'Veolia Brasil',
+        channelId: 0,
+        channelName: '',
+        keywords: ['energia'],
+      },
+    ])
+  })
+
+  it('maps done flag from API', () => {
+    const items = mapApiNewsToStoredItems(edition, [
+      apiNews(1, { done: true }),
+      apiNews(2, { done: false }),
+      apiNews(3),
+    ])
+
+    expect(items.find((item) => item.id === '1')?.done).toBe(true)
+    expect(items.find((item) => item.id === '2')?.done).toBe(false)
+    expect(items.find((item) => item.id === '3')?.done).toBe(false)
   })
 
   it('returns no stored items when the edition has no PDF', () => {
@@ -82,8 +200,9 @@ describe('news API mappers', () => {
   it('creates crop seeds only when coordinates and image are present', () => {
     const seeds = buildCropSeedsFromApiNews([
       apiNews(1),
-      apiNews(2, { coordinates: ' ' }),
+      apiNews(2, { coordinates: [] }),
       apiNews(3, { filePath: null }),
+      apiNews(4, { coordinates: ['100,100,500,500', ' 200,200,600,700 ', ''] }),
     ])
 
     expect(seeds).toEqual([
@@ -92,10 +211,124 @@ describe('news API mappers', () => {
         pageNumber: '1',
         imageUrl: '/pages/1.jpg',
         coordinates: '100,100,500,500',
+        index: 0,
         title: 'Title 1',
         text: 'Text 1',
         clientKeywordsFound: [],
       },
+      {
+        newsId: '4',
+        pageNumber: '1',
+        imageUrl: '/pages/4.jpg',
+        coordinates: '100,100,500,500',
+        index: 0,
+        title: 'Title 4',
+        text: 'Text 4',
+        clientKeywordsFound: [],
+      },
+      {
+        newsId: '4',
+        pageNumber: '1',
+        imageUrl: '/pages/4.jpg',
+        coordinates: '200,200,600,700',
+        index: 1,
+        title: 'Title 4',
+        text: 'Text 4',
+        clientKeywordsFound: [],
+      },
+    ])
+  })
+
+  it('prefers populated clippings over item coordinates', () => {
+    const seeds = buildCropSeedsFromApiNews([
+      apiNews(1, {
+        coordinates: '1,2,3,4',
+        page: '1',
+        filePath: 'http://170.80.70.78/pages/1.jpg',
+        clippings: [
+          {
+            articleId: 0,
+            coordinates: '',
+            page: '1',
+            filePath: 'http://170.80.70.78/pages/1.jpg',
+          },
+          {
+            articleId: 0,
+            coordinates: '100,200,600,800',
+            page: '1',
+            filePath: 'http://170.80.70.78/pages/1.jpg',
+          },
+          {
+            articleId: 0,
+            coordinates: ' 150,250,700,900 ',
+            page: '2',
+            filePath: 'http://170.80.70.78/pages/2.jpg',
+          },
+        ],
+      }),
+    ])
+
+    expect(seeds).toEqual([
+      {
+        newsId: '1',
+        pageNumber: '1',
+        imageUrl: '/pages/1.jpg',
+        coordinates: '100,200,600,800',
+        index: 0,
+        title: 'Title 1',
+        text: 'Text 1',
+        clientKeywordsFound: [],
+      },
+      {
+        newsId: '1',
+        pageNumber: '2',
+        imageUrl: '/pages/2.jpg',
+        coordinates: '150,250,700,900',
+        index: 1,
+        title: 'Title 1',
+        text: 'Text 1',
+        clientKeywordsFound: [],
+      },
+    ])
+  })
+
+  it('falls back to item coordinates when clippings are empty', () => {
+    const seeds = buildCropSeedsFromApiNews([
+      apiNews(1, {
+        coordinates: '100,100,500,500',
+        clippings: [],
+      }),
+      apiNews(2, {
+        coordinates: '200,200,600,600',
+        clippings: [{ articleId: 0, coordinates: '   ', page: '1', filePath: '' }],
+      }),
+    ])
+
+    expect(seeds.map((seed) => [seed.newsId, seed.coordinates, seed.index])).toEqual([
+      ['1', '100,100,500,500', 0],
+      ['2', '200,200,600,600', 0],
+    ])
+  })
+
+  it('includes clipping pages in the page image map', () => {
+    const map = buildPageImageMap([
+      apiNews(1, {
+        page: '1',
+        filePath: 'http://170.80.70.78/pages/1.jpg',
+        clippings: [
+          {
+            articleId: 0,
+            coordinates: '100,200,600,800',
+            page: '2',
+            filePath: 'http://170.80.70.78/pages/2.jpg',
+          },
+        ],
+      }),
+    ])
+
+    expect([...map.entries()]).toEqual([
+      ['1', '/pages/1.jpg'],
+      ['2', '/pages/2.jpg'],
     ])
   })
 

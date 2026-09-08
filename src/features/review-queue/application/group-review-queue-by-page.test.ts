@@ -14,6 +14,8 @@ function item(id: string, pageNumber: string): ReviewQueueItem {
     title: id,
     text: '',
     clientKeywords: [],
+    customerNames: [],
+    clientMatches: [],
     hasClient: false,
     suspectReasons: [],
     sortY: 0,

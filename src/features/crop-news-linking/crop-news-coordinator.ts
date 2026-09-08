@@ -1,12 +1,101 @@
 import type { Crop } from '@/features/crops/model'
 import type { CropsState } from '@/features/crops/store/state-types'
-import type { StoredNewsItem } from '@/features/news/model'
+import type { NewsClientMatch, StoredNewsItem } from '@/features/news/model'
 import { createManualNewsFromCrop, createManualNewsItem } from '@/features/news/store/manual-items'
 import { savePersistedNews } from '@/features/news/store/persistence'
 import type { NewsState } from '@/features/news/store/state-types'
 import { removeNewsIdsFromHighlights } from '@/features/news/store/highlights'
 import { comparePageKeys } from '@/features/page-navigation/page-key'
 import { isManualNewsItem } from '@/features/news/model'
+import { parseArticleId } from '@/features/publication-api/news/create-news-request'
+import { concatUniqueTexts } from '@/features/crops/store/transformations'
+
+function mergeArticleIds(items: Record<string, StoredNewsItem>, newsIds: string[]): number[] {
+  const merged = new Set<number>()
+  for (const id of newsIds) {
+    const item = items[id]
+    if (item?.articleIds?.length) {
+      for (const articleId of item.articleIds) merged.add(articleId)
+      continue
+    }
+    const parsed = parseArticleId(id)
+    if (parsed !== null) merged.add(parsed)
+  }
+  return [...merged]
+}
+
+function mergeUniqueStrings(values: string[]): string[] {
+  const seen = new Set<string>()
+  const merged: string[] = []
+  for (const value of values) {
+    const trimmed = value.trim()
+    if (!trimmed) continue
+    const key = trimmed.toLocaleLowerCase('pt-BR')
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push(trimmed)
+  }
+  return merged
+}
+
+function mergeClientMatchKeywords(current: string[], incoming: string[]): string[] {
+  return mergeUniqueStrings([...current, ...incoming])
+}
+
+function mergeClientMatches(matches: NewsClientMatch[]): NewsClientMatch[] {
+  const merged: NewsClientMatch[] = []
+  const index = new Map<string, NewsClientMatch>()
+
+  for (const match of matches) {
+    const customerName = match.customerName.trim() || 'Cliente'
+    const channelName = match.channelName.trim()
+    const key = `${customerName.toLocaleLowerCase('pt-BR')}\0${channelName.toLocaleLowerCase('pt-BR')}`
+    const existing = index.get(key)
+    if (existing) {
+      existing.keywords = mergeClientMatchKeywords(existing.keywords, match.keywords)
+      if (existing.customerId === undefined && match.customerId !== undefined) {
+        existing.customerId = match.customerId
+      }
+      if (existing.channelId === undefined && match.channelId !== undefined) {
+        existing.channelId = match.channelId
+      }
+      continue
+    }
+
+    const copy: NewsClientMatch = {
+      ...match,
+      customerName,
+      channelName,
+      keywords: mergeClientMatchKeywords([], match.keywords),
+    }
+    index.set(key, copy)
+    merged.push(copy)
+  }
+
+  return merged
+}
+
+function mergeNewsClientFields(items: Record<string, StoredNewsItem>, newsIds: string[]) {
+  const mergedItems = newsIds
+    .map((id) => items[id])
+    .filter((item): item is StoredNewsItem => !!item)
+
+  const clientKeywordsFound = mergeUniqueStrings(
+    mergedItems.flatMap((item) => item.clientKeywordsFound ?? []),
+  )
+  const customerNames = mergeUniqueStrings(
+    mergedItems.flatMap((item) => item.customerNames ?? []),
+  )
+  const clientMatches = mergeClientMatches(
+    mergedItems.flatMap((item) => item.clientMatches ?? []),
+  )
+
+  return {
+    ...(clientKeywordsFound.length > 0 ? { clientKeywordsFound } : {}),
+    ...(customerNames.length > 0 ? { customerNames } : {}),
+    ...(clientMatches.length > 0 ? { clientMatches } : {}),
+  }
+}
 
 interface StorePort<State> {
   getState: () => State
@@ -122,22 +211,16 @@ export function consolidateNewsAfterCropMerge(params: {
     const fromCrops = keepCrop?.groupId
       ? crops.getGroupText(keepCrop.groupId).trim()
       : keepCrop?.text.trim() || ''
-    const parts: string[] = []
-    const seen = new Set<string>()
-    if (fromCrops) {
-      parts.push(fromCrops)
-    } else {
-      for (const id of keepNewsId ? [keepNewsId, ...toRemove] : toRemove) {
-        const text = items[id]?.text?.trim()
-        if (text && !seen.has(text)) {
-          seen.add(text)
-          parts.push(text)
-        }
+    const newsIds = keepNewsId ? [keepNewsId, ...toRemove] : toRemove
+    const combined =
+      concatUniqueTexts(newsIds.map((id) => items[id]?.text)) || fromCrops
+    if (keepNewsId && items[keepNewsId]) {
+      items[keepNewsId] = {
+        ...items[keepNewsId],
+        ...(combined ? { text: combined } : {}),
+        articleIds: mergeArticleIds(items, newsIds),
+        ...mergeNewsClientFields(items, newsIds),
       }
-    }
-    const combined = parts.join('\n\n')
-    if (keepNewsId && items[keepNewsId] && combined) {
-      items[keepNewsId] = { ...items[keepNewsId], text: combined }
     }
     let editionId: string | undefined
     for (const id of toRemove) {

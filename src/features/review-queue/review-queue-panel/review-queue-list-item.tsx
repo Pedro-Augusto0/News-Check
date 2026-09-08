@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Crop, Scissors, Trash2, Unlink, UserRound } from 'lucide-react'
+import { ChevronDown, ChevronRight, Crop, Lock, ScanEye, Scissors, Trash2, Unlink, UserRound } from 'lucide-react'
 import { cropColor, stableColorIndex } from '@/features/crops/colors'
 import { useCropsStore, type Crop as CropModel } from '@/features/crops'
 import type { VehicleEdition } from '@/features/edition-session'
@@ -20,6 +20,8 @@ interface ReviewQueueListItemProps {
   isInspect: boolean
   isDone: boolean
   selectionLocked?: boolean
+  mergeModeBase?: boolean
+  mergeModeSegment?: boolean
   activeCropId?: string | null
   onSelect: () => void
   onDiscard: () => void
@@ -29,14 +31,20 @@ interface ReviewQueueListItemProps {
 }
 
 function ClientBadge({ keywords }: { keywords: string[] }) {
+  const count = keywords.length
   const label = formatClientKeywords(keywords)
   return (
     <span
-      className="crop-list-item__client-badge"
-      title={`Palavra-chave do cliente encontrada: ${label}`}
-      aria-label={`Cliente: ${label}`}
+      className="crop-list-item__client-badge crop-list-item__client-badge--count"
+      title={
+        count === 1
+          ? `1 cliente: ${label}`
+          : `${count} clientes: ${label}`
+      }
+      aria-label={count === 1 ? `1 cliente: ${label}` : `${count} clientes: ${label}`}
     >
       <UserRound size={11} strokeWidth={2.3} aria-hidden />
+      <span className="crop-list-item__client-count">{count}</span>
     </span>
   )
 }
@@ -49,6 +57,26 @@ function NeedsCropBadge() {
       aria-label="Precisa de recorte"
     >
       <Scissors size={11} strokeWidth={2.3} aria-hidden />
+    </span>
+  )
+}
+
+function MergeModeBadge({ kind }: { kind: 'base' | 'segment' }) {
+  const isBase = kind === 'base'
+  const label = isBase ? 'Base' : 'Segmento'
+  const Icon = isBase ? Lock : ScanEye
+  return (
+    <span
+      className={cn(
+        'review-queue-list-item__merge-badge',
+        isBase && 'review-queue-list-item__merge-badge--base',
+        !isBase && 'review-queue-list-item__merge-badge--segment',
+      )}
+      title={isBase ? 'Notícia base no modo junção' : 'Segmento em visualização'}
+      aria-label={label}
+    >
+      <Icon size={10} strokeWidth={2.4} aria-hidden />
+      {label}
     </span>
   )
 }
@@ -80,6 +108,8 @@ export function ReviewQueueListItem({
   isInspect,
   isDone,
   selectionLocked = false,
+  mergeModeBase = false,
+  mergeModeSegment = false,
   activeCropId = null,
   onSelect,
   onDiscard,
@@ -117,6 +147,8 @@ export function ReviewQueueListItem({
         isDone && 'crop-list-item--finalized',
         isCurrent && 'crop-list-item--active-news',
         isInspect && 'crop-list-item--selected',
+        mergeModeBase && 'review-queue-list-item--merge-base',
+        mergeModeSegment && 'review-queue-list-item--merge-segment',
       )}
       style={{ ['--crop-accent' as string]: accentColor }}
       data-active-news={isCurrent ? 'true' : undefined}
@@ -155,6 +187,8 @@ export function ReviewQueueListItem({
       <div className="crop-list-item__body">
         <div className="crop-list-item__title-row">
           <span className="crop-list-item__title crop-list-item__title--readonly">{item.title}</span>
+          {mergeModeBase && <MergeModeBadge kind="base" />}
+          {mergeModeSegment && <MergeModeBadge kind="segment" />}
           {needsCrop && <NeedsCropBadge />}
           {item.hasClient && <ClientBadge keywords={item.clientKeywords} />}
         </div>
@@ -162,7 +196,7 @@ export function ReviewQueueListItem({
           {multiPage && <span className="crop-list-item__cross-page">várias páginas</span>}
           {hasRelated && !multiPage && `${children.length + 1} cortes`}
           {needsCrop && !multiPage && !hasRelated && 'Sem recorte'}
-          {needsReview && !needsCrop && !multiPage && !hasRelated && 'Revisar'}
+          {needsReview && !needsCrop && !multiPage && !hasRelated && ''}
           {isDone && !needsCrop && !needsReview && !multiPage && !hasRelated && 'Revisada'}
         </span>
       </div>

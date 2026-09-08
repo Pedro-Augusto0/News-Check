@@ -381,6 +381,8 @@ export const useCropsStore = create<CropsState>((set, get) => ({
       null
     const keepNewsId = newsItemId ?? relatedNewsIds[0] ?? null
 
+    newCrops = combineGroupCropTexts(newCrops, mergedIds, getLinkedNewsItems())
+
     for (const id of mergedIds) {
       if (newCrops[id]) {
         newCrops[id] = {
@@ -392,8 +394,6 @@ export const useCropsStore = create<CropsState>((set, get) => ({
         }
       }
     }
-
-    newCrops = combineGroupCropTexts(newCrops, mergedIds, getLinkedNewsItems())
 
     let nextFinalizedPages = finalizedPages
     for (const id of mergedIds) {

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { resolveReviewShortcut } from '../application'
 import type { ReviewDrawMode } from '../model'
 
 export interface ReviewKeyboardActions {
@@ -32,84 +33,64 @@ export function useReviewKeyboard(actions: ReviewKeyboardActions) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isTypingTarget(event.target)) return
-      if (event.ctrlKey || event.metaKey || event.altKey) return
       const current = actionsRef.current
+      const action = resolveReviewShortcut({
+        key: event.key,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        altKey: event.altKey,
+        typing: isTypingTarget(event.target),
+        detailsOpen: current.detailsOpen,
+      })
+      if (!action) return
 
-      if (current.detailsOpen) {
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          current.closeDetails()
-        }
-        return
-      }
+      event.preventDefault()
 
-      switch (event.key) {
-        case ' ':
-        case 'Enter':
-          event.preventDefault()
+      switch (action) {
+        case 'approve':
           current.approve()
           break
-        case 'n':
-        case 'N':
-          event.preventDefault()
+        case 'reject':
           current.reject()
           break
-        case 'j':
-        case 'J':
-        case 'ArrowDown':
-          event.preventDefault()
+        case 'next':
           current.next()
           break
-        case 'k':
-        case 'K':
-        case 'ArrowUp':
-          event.preventDefault()
+        case 'prev':
           current.prev()
           break
-        case 'u':
-        case 'U':
-          event.preventDefault()
+        case 'undo':
           current.undo()
           break
-        case 'c':
-        case 'C':
-          event.preventDefault()
+        case 'toggleClientOnly':
           current.toggleClientOnly()
           break
-        case 'r':
-        case 'R':
-          event.preventDefault()
+        case 'toggleRedraw':
           current.setDrawMode(current.drawMode === 'redraw' ? 'off' : 'redraw')
           break
-        case 'a':
-        case 'A':
-          event.preventDefault()
+        case 'attachInspected':
           current.attachInspected()
           break
-        case ']':
-          event.preventDefault()
+        case 'cycleCrop':
           current.cycleCrop()
           break
-        case 'm':
-        case 'M':
-          event.preventDefault()
+        case 'mergeSuggested':
           current.mergeSuggested()
           break
-        case 'x':
-        case 'X':
-          event.preventDefault()
+        case 'splitActive':
           current.splitActive()
           break
-        case 't':
-        case 'T':
-          event.preventDefault()
+        case 'openDetails':
           current.openDetails()
           break
-        case 'Escape':
-          event.preventDefault()
+        case 'closeDetails':
+          current.closeDetails()
+          break
+        case 'clearOrCancel':
           if (current.drawMode !== 'off') current.setDrawMode('off')
           else current.clearInspect()
+          break
+        case 'preventBrowserSave':
           break
         default:
           break

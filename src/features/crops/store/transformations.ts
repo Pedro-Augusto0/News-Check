@@ -1,37 +1,36 @@
 import type { Crop } from '../model'
 import type { StoredNewsItem } from '@/features/news'
 
+export function concatUniqueTexts(values: Array<string | undefined | null>): string {
+  const parts: string[] = []
+  const seen = new Set<string>()
+  for (const value of values) {
+    const text = value?.trim()
+    if (!text || seen.has(text)) continue
+    seen.add(text)
+    parts.push(text)
+  }
+  return parts.join('\n\n')
+}
+
 export function combineGroupCropTexts(
   crops: Record<string, Crop>,
   cropIds: string[],
   newsItems?: Record<string, StoredNewsItem>,
 ): Record<string, Crop> {
-  const parts: string[] = []
+  const values: Array<string | undefined> = []
   const seenNews = new Set<string>()
-  const seenText = new Set<string>()
 
   for (const id of cropIds) {
     const crop = crops[id]
     if (!crop) continue
-    const cropText = crop.text.trim()
-    if (cropText) {
-      if (!seenText.has(cropText)) {
-        parts.push(cropText)
-        seenText.add(cropText)
-      }
-      if (crop.newsItemId) seenNews.add(crop.newsItemId)
-      continue
-    }
+    values.push(crop.text)
     if (!newsItems || !crop.newsItemId || seenNews.has(crop.newsItemId)) continue
     seenNews.add(crop.newsItemId)
-    const newsText = newsItems[crop.newsItemId]?.text?.trim()
-    if (newsText && !seenText.has(newsText)) {
-      parts.push(newsText)
-      seenText.add(newsText)
-    }
+    values.push(newsItems[crop.newsItemId]?.text)
   }
 
-  const combined = parts.join('\n\n')
+  const combined = concatUniqueTexts(values)
   if (!combined) return crops
   const next = { ...crops }
   const [firstId, ...restIds] = cropIds

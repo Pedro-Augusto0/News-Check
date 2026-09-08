@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type PointerEvent } from 'react'
-import { Focus, Hand, Maximize2, Minus, Plus } from 'lucide-react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Lock, Maximize2, Minus, Plus } from 'lucide-react'
 import type { Crop } from '@/features/crops'
 import type { CropRect } from '@/features/crops/geometry'
 import { percentToPx } from '@/features/crops/geometry'
@@ -7,8 +7,9 @@ import { FinalizedCropBox } from '@/features/page-viewer/crop-overlay/crop-box'
 import { useCropDrawing } from '@/features/page-viewer/hooks/use-crop-drawing'
 import '@/features/page-viewer/crop-overlay/crop-overlay.css'
 import { cn } from '@/shared/ui/utils/cn'
-import { nextStableViewport, REVIEW_DEFAULT_ZOOM, stepReviewZoom } from '../application'
+import { computeReviewPageDisplaySize, nextStableViewport, REVIEW_DEFAULT_ZOOM, stepReviewZoom } from '../application'
 import { ReviewActiveCrop } from '../review-active-crop'
+import { ReviewLoadingOverlay } from '../review-loading-overlay'
 import { useReviewPageImage } from '../hooks'
 import type { ReviewDrawMode, ReviewQueueItem, ReviewWorkMode } from '../model'
 import './review-stage.css'
@@ -62,39 +63,49 @@ export function ReviewStage({
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeRef = useRef<HTMLDivElement>(null)
   const inspectRef = useRef<HTMLDivElement>(null)
-  const panRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
   const sessionKeyRef = useRef('')
   const [viewport, setViewport] = useState({ width: 0, height: 0 })
   const [zoom, setZoom] = useState(REVIEW_DEFAULT_ZOOM)
-  const [panning, setPanning] = useState(false)
   const redrawing = drawMode === 'redraw' && activeCrop?.pageNumber === viewedPageNumber
-  const canDraw = !!currentItem?.newsId && !panning
+  const canDraw = !!currentItem?.newsId
   const sessionKey = `${currentItem?.id ?? ''}:${imageUrl ?? ''}`
   if (sessionKeyRef.current !== sessionKey) {
     sessionKeyRef.current = sessionKey
     if (zoom !== REVIEW_DEFAULT_ZOOM) setZoom(REVIEW_DEFAULT_ZOOM)
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const target = scrollRef.current ?? stageRef.current
     if (!target) return
+
     const update = () => {
       setViewport((prev) =>
         nextStableViewport(prev, { width: target.clientWidth, height: target.clientHeight }),
       )
     }
+
     update()
+    const frame = window.requestAnimationFrame(update)
     const observer = new ResizeObserver(update)
     observer.observe(target)
-    return () => observer.disconnect()
-  }, [currentItem?.id])
 
-  const { canvasRef, dimensions, error } = useReviewPageImage({
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [currentItem?.id, imageUrl, viewedPageNumber])
+
+  const { canvasRef, dimensions, error, loading } = useReviewPageImage({
     imageUrl,
     viewportWidth: viewport.width,
     viewportHeight: viewport.height,
     zoom,
   })
+
+  const skeletonSize = useMemo(
+    () => computeReviewPageDisplaySize(viewport.width, zoom),
+    [viewport.width, zoom],
+  )
 
   const cropDrawing = useCropDrawing({
     enabled: canDraw,
@@ -124,29 +135,6 @@ export function ReviewStage({
     return () => el.removeEventListener('wheel', onWheel)
   }, [currentItem?.id])
 
-  const handlePanPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (!panning || event.button !== 0) return
-    const el = scrollRef.current
-    if (!el) return
-    panRef.current = {
-      x: event.clientX,
-      y: event.clientY,
-      left: el.scrollLeft,
-      top: el.scrollTop,
-    }
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  const handlePanPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (!panRef.current || !scrollRef.current) return
-    scrollRef.current.scrollLeft = panRef.current.left - (event.clientX - panRef.current.x)
-    scrollRef.current.scrollTop = panRef.current.top - (event.clientY - panRef.current.y)
-  }
-
-  const handlePanPointerUp = () => {
-    panRef.current = null
-  }
-
   if (!currentItem) {
     return (
       <div className="review-stage review-stage--empty" ref={stageRef}>
@@ -160,32 +148,33 @@ export function ReviewStage({
       <div className="review-stage__toolbar">
         <div className="review-stage__toolbar-inner">
           {onWorkModeChange && (
-            <>
-              <button
-                type="button"
-                className={cn('review-stage__mode', workMode === 'focus' && 'review-stage__mode--on')}
-                aria-pressed={workMode === 'focus'}
-                onClick={() => onWorkModeChange(workMode === 'focus' ? 'free' : 'focus')}
-                title={
-                  workMode === 'focus'
-                    ? 'Sair do modo foco'
-                    : 'Modo foco nesta notícia — outras só visualizam o recorte'
-                }
-              >
-                <Focus size={12} strokeWidth={2.2} />
-                Foco
-              </button>
-              <span className="review-stage__rule" aria-hidden />
-            </>
+            <button
+              type="button"
+              className={cn(
+                'review-stage__lock-btn',
+                workMode === 'focus' && 'review-stage__lock-btn--on',
+              )}
+              aria-pressed={workMode === 'focus'}
+              onClick={() => onWorkModeChange(workMode === 'focus' ? 'free' : 'focus')}
+              title={
+                workMode === 'focus'
+                  ? 'Sair do modo foco'
+                  : 'Modo foco nesta notícia — outras só visualizam o recorte'
+              }
+            >
+              <Lock size={11} strokeWidth={2.3} />
+              Travar notícia
+            </button>
           )}
-          <div className="review-stage__zoom">
+
+          <div className="review-stage__control-group">
             <button
               type="button"
               className="review-stage__tool"
               onClick={() => setZoom((value) => stepReviewZoom(value, -1))}
               aria-label="Diminuir zoom"
             >
-              <Minus size={13} strokeWidth={2.2} />
+              <Minus size={12} strokeWidth={2.2} />
             </button>
             <span className="review-stage__zoom-label">{Math.round(zoom * 100)}%</span>
             <button
@@ -194,45 +183,46 @@ export function ReviewStage({
               onClick={() => setZoom((value) => stepReviewZoom(value, 1))}
               aria-label="Aumentar zoom"
             >
-              <Plus size={13} strokeWidth={2.2} />
+              <Plus size={12} strokeWidth={2.2} />
+            </button>
+            <span className="review-stage__rule" aria-hidden />
+            <button
+              type="button"
+              className="review-stage__tool"
+              onClick={() => setZoom(1)}
+              title="Zoom 100%"
+              aria-label="Zoom 100%"
+            >
+              <Maximize2 size={12} strokeWidth={2.1} />
             </button>
           </div>
-
-          <span className="review-stage__rule" aria-hidden />
-
-          <button
-            type="button"
-            className={cn('review-stage__tool', panning && 'review-stage__tool--on')}
-            onClick={() => setPanning((value) => !value)}
-            aria-pressed={panning}
-            title="Mover página"
-            aria-label="Mover página"
-          >
-            <Hand size={13} strokeWidth={2.1} />
-          </button>
-          <button
-            type="button"
-            className="review-stage__tool"
-            onClick={() => setZoom(1)}
-            title="Zoom 100%"
-            aria-label="Zoom 100%"
-          >
-            <Maximize2 size={13} strokeWidth={2.1} />
-          </button>
         </div>
       </div>
 
       <div className="review-stage__scroll" ref={scrollRef}>
         <div
           className={cn(
-            'review-stage__canvas-wrap',
-            panning && 'review-stage__canvas-wrap--pan',
+            'review-stage__page-slot',
+            loading && skeletonSize.width > 0 && 'review-stage__page-slot--loading',
           )}
-          style={{ cursor: panning ? 'grab' : canDraw ? 'crosshair' : 'default' }}
-          onPointerDown={panning ? handlePanPointerDown : canDraw ? cropDrawing.handlePointerDown : undefined}
-          onPointerMove={panning ? handlePanPointerMove : canDraw ? cropDrawing.handlePointerMove : undefined}
-          onPointerUp={panning ? handlePanPointerUp : canDraw ? cropDrawing.handlePointerUp : undefined}
-          onPointerCancel={panning ? handlePanPointerUp : undefined}
+        >
+          {loading && skeletonSize.width > 0 && (
+            <ReviewLoadingOverlay
+              stage
+              width={skeletonSize.width}
+              height={skeletonSize.height}
+              label={`Carregando página ${viewedPageNumber}…`}
+            />
+          )}
+          <div
+            className={cn(
+              'review-stage__canvas-wrap',
+              loading && 'review-stage__canvas-wrap--loading',
+            )}
+          style={{ cursor: canDraw ? 'crosshair' : 'default' }}
+          onPointerDown={canDraw ? cropDrawing.handlePointerDown : undefined}
+          onPointerMove={canDraw ? cropDrawing.handlePointerMove : undefined}
+          onPointerUp={canDraw ? cropDrawing.handlePointerUp : undefined}
           onContextMenu={(event) => event.preventDefault()}
         >
           <canvas ref={canvasRef} className="review-stage__canvas" />
@@ -266,10 +256,8 @@ export function ReviewStage({
                     'review-stage__crop',
                     isInspect && 'review-stage__crop--inspect',
                     isMerge && 'review-stage__crop--merge',
-                    panning && 'review-stage__crop--static',
                   )}
                   style={{ left: px.x, top: px.y, width: px.width, height: px.height }}
-                  disabled={panning}
                   onPointerDown={(event) => {
                     if (event.button !== 0) event.stopPropagation()
                   }}
@@ -306,7 +294,11 @@ export function ReviewStage({
                   event.stopPropagation()
                   onSelectCrop(crop.id)
                 }}
-                title="Botão direito para visualizar esta notícia. Esquerdo desenha um recorte."
+                title={
+                  workMode === 'focus'
+                    ? 'Botão direito para visualizar esta notícia. Esquerdo desenha um recorte.'
+                    : 'Botão direito seleciona esta notícia. Esquerdo desenha um recorte.'
+                }
               />
             ) : (
               <div
@@ -323,7 +315,7 @@ export function ReviewStage({
               label={`${Math.max(1, currentCropIds.indexOf(activeCrop.id) + 1)}/${Math.max(1, currentCropIds.length)}`}
               containerWidth={dimensions.width}
               containerHeight={dimensions.height}
-              enabled={!panning}
+              enabled
               boxRef={activeRef}
               onCommit={(rect) => onCommitRect(activeCrop.id, rect)}
               onDelete={() => onDeleteCrop(activeCrop.id)}
@@ -333,11 +325,11 @@ export function ReviewStage({
           {inspectCrop && !redrawing && inspectCrop.pageNumber === viewedPageNumber && (
             <ReviewActiveCrop
               crop={inspectCrop}
-              label="Visualizando"
+              label={`Visualizando ${inspectCrop.pageNumber}`}
               tone="inspect"
               containerWidth={dimensions.width}
               containerHeight={dimensions.height}
-              enabled={!panning}
+              enabled
               boxRef={inspectRef}
               onCommit={(rect) => onCommitRect(inspectCrop.id, rect)}
               onDelete={() => onDeleteCrop(inspectCrop.id)}
@@ -354,6 +346,7 @@ export function ReviewStage({
             />
           )}
         </div>
+        </div>
         {error && <p className="review-stage__error">{error}</p>}
       </div>
 
@@ -362,7 +355,7 @@ export function ReviewStage({
           {inspecting && inspectCropIds.length === 0
             ? 'Desenhe o recorte da notícia visualizada — ele fica nela para juntar depois'
             : inspecting
-              ? 'Visualizando outra notícia. Ajuste, apague ou desenhe outro recorte nela; depois junte.'
+              ? 'Visualizando outra notícia • Ajuste, apague ou desenhe outro recorte nela; depois junte.'
               : needsCrop
                 ? 'Desenhe o recorte desta notícia'
                 : 'Redesenhe o recorte atual'}

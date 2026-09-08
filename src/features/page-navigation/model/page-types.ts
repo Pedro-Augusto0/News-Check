@@ -12,6 +12,8 @@ export interface PageData {
   pageNumber: string
   /** URL da imagem scaneada desta página. */
   imageUrl: string
+  /** Caminho original do arquivo no scancontrol (para persistência na API). */
+  filePath?: string
   hasClient: boolean
   keywordsFound: string[]
   keywordsMissing: string[]

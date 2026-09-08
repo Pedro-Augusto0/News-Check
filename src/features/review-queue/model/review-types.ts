@@ -1,4 +1,5 @@
 import type { CropRect } from '@/features/crops/geometry'
+import type { NewsClientMatch } from '@/features/news'
 
 export type ReviewStatus = 'pending' | 'approved' | 'rejected'
 
@@ -27,8 +28,13 @@ export interface ReviewQueueItem {
   cropIds: string[]
   title: string
   text: string
+  section?: string
   clientKeywords: string[]
+  customerNames: string[]
+  clientMatches: NewsClientMatch[]
   hasClient: boolean
+  /** Página da continuação, quando a API envia RelatedPage. */
+  relatedPage?: string
   suspectReasons: ReviewSuspectReason[]
   sortY: number
   previewRect: CropRect | null

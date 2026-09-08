@@ -46,6 +46,7 @@ export function buildItemsFromApi(
       cropId,
       listOrder: news.listOrder ?? index,
       title: persistedItem?.title && persistedItem.manual ? persistedItem.title : news.title,
+      done: news.done === true,
     }
   }
   return mergeManualPersistedItems(edition.id, items, persisted)

@@ -32,10 +32,10 @@ export function ReviewActionBar({
   return (
     <div className="review-action-bar">
       <div className="review-action-bar__primary">
-        <Button variant="primary" onClick={onApprove} title="Aprovar e ir à próxima (Space)">
+        <Button variant="primary" onClick={onApprove} title="Aprovar e ir à próxima (Ctrl+S)">
           <CheckCircle2 size={15} strokeWidth={2.2} />
           Aprovar e próxima
-          <kbd>Space</kbd>
+          <kbd>Ctrl+S</kbd>
         </Button>
       </div>
 

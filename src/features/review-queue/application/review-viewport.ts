@@ -26,6 +26,26 @@ export function nextStableViewport(
   return { width, height }
 }
 
+export const REVIEW_PAGE_ASPECT_WIDTH = 595
+export const REVIEW_PAGE_ASPECT_HEIGHT = 842
+
+export function computeReviewPageDisplaySize(
+  viewportWidth: number,
+  zoom: number,
+  naturalWidth = REVIEW_PAGE_ASPECT_WIDTH,
+  naturalHeight = REVIEW_PAGE_ASPECT_HEIGHT,
+): { width: number; height: number } {
+  if (viewportWidth < 40) return { width: 0, height: 0 }
+
+  const usableWidth = Math.max(240, viewportWidth - 8)
+  const scale = computeReviewPageScale({ naturalWidth, usableWidth, zoom })
+
+  return {
+    width: Math.max(1, Math.round(naturalWidth * scale)),
+    height: Math.max(1, Math.round(naturalHeight * scale)),
+  }
+}
+
 export function clampReviewZoom(zoom: number): number {
   return Math.min(REVIEW_MAX_ZOOM, Math.max(REVIEW_MIN_ZOOM, Number(zoom.toFixed(2))))
 }
