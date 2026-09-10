@@ -425,10 +425,6 @@
   min-width: 0;
 }
 
-.review-queue-list-item__child .crop-list-item__action-btn {
-  opacity: 1;
-}
-
 .review-queue-list-item .crop-list-item__body {
   flex: 1;
   min-width: 0;
@@ -450,14 +446,24 @@
   margin-top: 0;
 }
 
-.review-queue-list-item .crop-list-item__action-btn--view {
-  opacity: 1;
+.review-queue-list-item .crop-list-item__action-btn,
+.review-queue-list-item .crop-list-item__action-btn--view,
+.review-queue-list-item .crop-list-item__action-btn--toggle,
+.review-queue-list-item__child .crop-list-item__action-btn,
+.review-queue-list-item__child.crop-list-item--child .crop-list-item__action-btn {
+  opacity: 0;
+  pointer-events: none;
 }
 
-.review-queue-list-item.crop-list-item--active-news .crop-list-item__action-btn,
 .review-queue-list-item:hover .crop-list-item__action-btn,
-.review-queue-list-item:focus-within .crop-list-item__action-btn {
+.review-queue-list-item:focus-within .crop-list-item__action-btn,
+.review-queue-list-item.crop-list-item--active-news .crop-list-item__action-btn,
+.review-queue-list-item.crop-list-item--selected .crop-list-item__action-btn,
+.review-queue-list-item__child:hover .crop-list-item__action-btn,
+.review-queue-list-item__child:focus-within .crop-list-item__action-btn,
+.review-queue-list-item__child.crop-list-item--selected .crop-list-item__action-btn {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .review-queue-list-item.crop-list-item--finalized:not(.crop-list-item--active-news) {

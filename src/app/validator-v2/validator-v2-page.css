@@ -151,7 +151,7 @@
 }
 
 .review-layout--v2 .review-queue-list-item.crop-list-item::before {
-  width: 2px;
+  width: 5px;
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
 
@@ -225,7 +225,7 @@
 
 .review-layout--v2 .review-stage__scroll {
   padding: var(--space-4);
-  background-image: radial-gradient(circle at 1px 1px, rgba(16, 24, 40, 0.035) 1px, transparent 0);
+  background-image:radial-gradient(circle at 1px 1px, rgba(16, 24, 40, 7%) 2px, transparent 0);
   background-size: 18px 18px;
 }
 
