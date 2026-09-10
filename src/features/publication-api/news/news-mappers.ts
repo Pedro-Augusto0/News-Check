@@ -100,7 +100,7 @@ function isOwnChannelFlag(value: unknown): boolean {
 }
 
 function resolveOwnChannel(result: NewsSearchResultDto): boolean {
-  const record = result as Record<string, unknown>
+  const record = result as NewsSearchResultDto & Record<string, unknown>
   for (const [key, value] of Object.entries(record)) {
     if (key.replace(/_/g, '').toLowerCase() === 'ownchannel' && isOwnChannelFlag(value)) {
       return true
