@@ -470,7 +470,13 @@ function ClientMatchesIndex({ groups }: { groups: GroupedClientMatch[] }) {
     <ul className="review-news-detail-modal__match-list">
       {groups.map((group) => (
         <li key={group.customerName} className="review-news-detail-modal__match">
-          <h4 className="review-news-detail-modal__match-name" title={group.customerName}>
+          <h4
+            className={cn(
+              'review-news-detail-modal__match-name',
+              group.ownChannel && 'review-news-detail-modal__match-name--own',
+            )}
+            title={group.ownChannel ? `${group.customerName} · canal próprio` : group.customerName}
+          >
             {group.customerName}
           </h4>
           {group.channels.map((channel) => (

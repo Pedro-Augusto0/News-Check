@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Crop, FileText, Lock, ScanEye, Scissors, Trash2, Unlink, UserRound } from 'lucide-react'
-import { cropColor, stableColorIndex } from '@/features/crops/colors'
+import { ChevronDown, ChevronRight, Crop, FileText, Lock, ScanEye, Scissors, Trash2, Unlink, Users } from 'lucide-react'
 import { useCropsStore, type Crop as CropModel } from '@/features/crops'
 import type { VehicleEdition } from '@/features/edition-session'
-import { formatClientKeywords } from '@/features/crops/client-stats'
+import { resolveClientMatchGroups } from '../application'
 import { ListCropThumbnail } from '@/features/news-list/list-crop-thumbnail'
 import { resolveCropImageUrl } from '@/features/text-extraction'
 import { cn } from '@/shared/ui/utils/cn'
@@ -31,20 +30,25 @@ interface ReviewQueueListItemProps {
   onContextMenu?: (event: React.MouseEvent) => void
 }
 
-function ClientBadge({ keywords }: { keywords: string[] }) {
-  const count = keywords.length
-  const label = formatClientKeywords(keywords)
+function ClientBadge({
+  item,
+  ownChannel = false,
+}: {
+  item: Pick<ReviewQueueItem, 'clientMatches' | 'clientKeywords' | 'customerNames'>
+  ownChannel?: boolean
+}) {
+  const groups = resolveClientMatchGroups(item)
+  const count = groups.length
+  const names = groups.map((group) => group.customerName).join(' · ')
+  const countLabel = count === 1 ? '1 cliente' : `${count} clientes`
+  const title = ownChannel ? `${countLabel}: ${names} · canal próprio` : `${countLabel}: ${names}`
   return (
     <span
       className="crop-list-item__client-badge crop-list-item__client-badge--count"
-      title={
-        count === 1
-          ? `1 cliente: ${label}`
-          : `${count} clientes: ${label}`
-      }
-      aria-label={count === 1 ? `1 cliente: ${label}` : `${count} clientes: ${label}`}
+      title={title}
+      aria-label={title}
     >
-      <UserRound size={11} strokeWidth={2.3} aria-hidden />
+      <Users size={12} strokeWidth={2.3} aria-hidden />
       <span className="crop-list-item__client-count">{count}</span>
     </span>
   )
@@ -60,7 +64,7 @@ function NeedsCropBadge() {
       <Scissors size={11} strokeWidth={2.3} aria-hidden />
     </span>
   )
-}
+} 
 
 function MergeModeBadge({ kind }: { kind: 'base' | 'segment' }) {
   const isBase = kind === 'base'
@@ -122,7 +126,6 @@ export function ReviewQueueListItem({
   const groups = useCropsStore((state) => state.groups)
   const { root, children } = useMemo(() => relatedCropsOf(item, crops, groups), [item, crops, groups])
   const [expanded, setExpanded] = useState(true)
-  const accentColor = cropColor(stableColorIndex(item.newsId ?? item.id))
   const previewCrop = root ?? (item.cropIds[0] ? crops[item.cropIds[0]] : undefined)
   const imageUrl = previewCrop && edition ? resolveCropImageUrl(previewCrop, [edition]) : undefined
   const needsCrop = item.suspectReasons.includes('no-crop') || item.cropIds.length === 0
@@ -132,6 +135,9 @@ export function ReviewQueueListItem({
   const multiPage = cropPages.size > 1
   const needsReview = item.suspectReasons.length > 0 && !needsCrop
   const hasRelated = children.length > 0
+  const hasOwnChannel =
+    item.hasOwnChannel === true ||
+    item.clientMatches.some((match) => match.ownChannel === true)
 
   useEffect(() => {
     if (children.length > 0) setExpanded(true)
@@ -151,15 +157,19 @@ export function ReviewQueueListItem({
         isInspect && 'crop-list-item--selected',
         mergeModeBase && 'review-queue-list-item--merge-base',
         mergeModeSegment && 'review-queue-list-item--merge-segment',
+        item.hasClient && 'review-queue-list-item--has-client',
+        hasOwnChannel && 'review-queue-list-item--own-channel',
       )}
-      style={{ ['--crop-accent' as string]: accentColor }}
+      data-own-channel={hasOwnChannel ? 'true' : undefined}
       data-active-news={isCurrent ? 'true' : undefined}
       aria-current={isCurrent ? 'true' : undefined}
       aria-pressed={isInspect || isCurrent}
       title={
         selectionLocked && !isCurrent
           ? 'Botão direito: visualizar recorte. A notícia ativa não muda.'
-          : undefined
+          : hasOwnChannel
+            ? 'Canal próprio'
+            : undefined
       }
       onClick={onSelect}
       onContextMenu={onContextMenu}
@@ -175,7 +185,6 @@ export function ReviewQueueListItem({
           pdfUrl={imageUrl}
           crop={previewCrop}
           displayIndex={index}
-          accentColor={accentColor}
         />
       ) : (
         <div className="list-thumbnail list-thumbnail--crop list-thumbnail--pending" aria-hidden>
@@ -192,7 +201,6 @@ export function ReviewQueueListItem({
           {mergeModeBase && <MergeModeBadge kind="base" />}
           {mergeModeSegment && <MergeModeBadge kind="segment" />}
           {needsCrop && <NeedsCropBadge />}
-          {item.hasClient && <ClientBadge keywords={item.clientKeywords} />}
         </div>
         <span className="crop-list-item__meta">
           {multiPage && <span className="crop-list-item__cross-page">várias páginas</span>}
@@ -202,6 +210,8 @@ export function ReviewQueueListItem({
           {isDone && !needsCrop && !needsReview && !multiPage && !hasRelated && 'Revisada'}
         </span>
       </div>
+
+      {item.hasClient && <ClientBadge item={item} ownChannel={hasOwnChannel} />}
 
       <div className="crop-list-item__actions">
         {onViewDetails && item.kind !== 'empty-page' && (
@@ -272,8 +282,9 @@ export function ReviewQueueListItem({
                   'crop-list-item--child',
                   'review-queue-list-item__child',
                   isChildActive && 'crop-list-item--selected',
+                  item.hasClient && 'review-queue-list-item--has-client',
+                  hasOwnChannel && 'review-queue-list-item--own-channel',
                 )}
-                style={{ ['--crop-accent' as string]: accentColor }}
                 onClick={(event) => {
                   event.stopPropagation()
                   onEditCrop?.(crop.id)
@@ -290,7 +301,6 @@ export function ReviewQueueListItem({
                     pdfUrl={childImageUrl}
                     crop={crop}
                     displayIndex={`${index}.${childIndex + 1}`}
-                    accentColor={accentColor}
                   />
                 ) : (
                   <div className="list-thumbnail list-thumbnail--crop" aria-hidden>

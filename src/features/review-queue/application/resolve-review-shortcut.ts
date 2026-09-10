@@ -10,6 +10,7 @@ export type ReviewShortcutAction =
   | 'cycleCrop'
   | 'mergeSuggested'
   | 'splitActive'
+  | 'addSegment'
   | 'openDetails'
   | 'closeDetails'
   | 'clearOrCancel'
@@ -20,20 +21,28 @@ export interface ReviewShortcutInput {
   ctrlKey: boolean
   metaKey: boolean
   altKey: boolean
+  shiftKey: boolean
   typing: boolean
   detailsOpen: boolean
 }
 
 export function resolveReviewShortcut(input: ReviewShortcutInput): ReviewShortcutAction | null {
+  const modifier = input.ctrlKey || input.metaKey
   const saveCombo =
-    (input.ctrlKey || input.metaKey) && input.key.toLowerCase() === 's' && !input.altKey
+    modifier && input.key.toLowerCase() === 's' && !input.altKey && !input.shiftKey
+  const addSegmentCombo =
+    modifier && input.key.toLowerCase() === 'q' && !input.altKey && !input.shiftKey
 
   if (saveCombo) {
     return input.detailsOpen ? 'preventBrowserSave' : 'approve'
   }
 
+  if (addSegmentCombo) {
+    return input.typing || input.detailsOpen ? null : 'addSegment'
+  }
+
   if (input.typing) return null
-  if (input.ctrlKey || input.metaKey || input.altKey) return null
+  if (modifier || input.altKey) return null
 
   if (input.detailsOpen) {
     return input.key === 'Escape' ? 'closeDetails' : null

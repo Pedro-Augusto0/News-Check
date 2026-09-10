@@ -186,6 +186,55 @@ describe('buildReviewQueue', () => {
     expect(items.find((item) => item.newsId === 'n1')?.hasClient).toBe(true)
   })
 
+  it('marks news with an own channel match', () => {
+    const items = buildReviewQueue({
+      editionId: 'ed-1',
+      pdfId: 'pdf-1',
+      pages,
+      newsItems: {
+        n1: news({
+          id: 'n1',
+          pageNumber: '1',
+          cropId: 'c1',
+          clientMatches: [
+            { customerName: 'Acme', channelName: 'Impresso', keywords: ['obra'], ownChannel: true },
+          ],
+        }),
+        n2: news({
+          id: 'n2',
+          pageNumber: '1',
+          cropId: 'c2',
+          clientMatches: [{ customerName: 'Acme', channelName: 'Digital', keywords: ['app'] }],
+        }),
+      },
+      crops: {
+        c1: crop({ id: 'c1', pageNumber: '1', newsItemId: 'n1' }),
+        c2: crop({ id: 'c2', pageNumber: '1', newsItemId: 'n2' }),
+      },
+      groups: {},
+    })
+
+    expect(items.find((item) => item.newsId === 'n1')?.hasOwnChannel).toBe(true)
+    expect(items.find((item) => item.newsId === 'n2')?.hasOwnChannel).toBe(false)
+  })
+
+  it('keeps own-channel when the flag is on the stored news even without match.ownChannel', () => {
+    const items = buildReviewQueue({
+      editionId: 'ed-1',
+      pdfId: 'pdf-1',
+      pages,
+      newsItems: {
+        n1: news({ id: 'n1', pageNumber: '1', cropId: 'c1', hasOwnChannel: true }),
+      },
+      crops: {
+        c1: crop({ id: 'c1', pageNumber: '1', newsItemId: 'n1' }),
+      },
+      groups: {},
+    })
+
+    expect(items.find((item) => item.newsId === 'n1')?.hasOwnChannel).toBe(true)
+  })
+
   it('unions unique client keywords from the news and its crops', () => {
     const items = buildReviewQueue({
       editionId: 'ed-1',

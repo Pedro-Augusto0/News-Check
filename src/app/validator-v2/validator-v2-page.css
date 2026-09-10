@@ -160,13 +160,13 @@
 }
 
 .review-layout--v2 .review-queue-list-item.crop-list-item--active-news {
-  border-color: color-mix(in srgb, var(--color-primary) 55%, var(--review-border));
-  background: color-mix(in srgb, var(--color-primary) 16%, var(--review-panel-bg));
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  border-color: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 55%, var(--review-border));
+  background: color-mix(in srgb, var(--crop-accent, var(--color-primary)) 16%, var(--review-panel-bg));
+  box-shadow: none;
 }
 
 .review-layout--v2 .review-queue-list-item.crop-list-item--active-news::before {
-  background: var(--color-primary);
+  background: var(--crop-accent, var(--color-primary));
   width: 3px;
 }
 

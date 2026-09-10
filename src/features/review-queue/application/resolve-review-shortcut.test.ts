@@ -7,6 +7,7 @@ function event(
     ctrlKey: boolean
     metaKey: boolean
     altKey: boolean
+    shiftKey: boolean
     typing: boolean
     detailsOpen: boolean
   }> = {},
@@ -16,6 +17,7 @@ function event(
     ctrlKey: false,
     metaKey: false,
     altKey: false,
+    shiftKey: false,
     typing: false,
     detailsOpen: false,
     ...extras,
@@ -52,5 +54,14 @@ describe('resolveReviewShortcut', () => {
   it('ignores letter shortcuts while typing', () => {
     expect(resolveReviewShortcut(event('n', { typing: true }))).toBeNull()
     expect(resolveReviewShortcut(event('F2', { typing: true }))).toBeNull()
+  })
+
+  it('starts add-segment with Ctrl+Q or Cmd+Q, not with Q alone', () => {
+    expect(resolveReviewShortcut(event('q', { ctrlKey: true }))).toBe('addSegment')
+    expect(resolveReviewShortcut(event('Q', { metaKey: true }))).toBe('addSegment')
+    expect(resolveReviewShortcut(event('q'))).toBeNull()
+    expect(resolveReviewShortcut(event('q', { ctrlKey: true, typing: true }))).toBeNull()
+    expect(resolveReviewShortcut(event('q', { ctrlKey: true, detailsOpen: true }))).toBeNull()
+    expect(resolveReviewShortcut(event('s', { ctrlKey: true }))).toBe('approve')
   })
 })

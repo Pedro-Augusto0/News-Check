@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { VehicleEdition } from '@/features/edition-session/model'
 import type { StoredNewsItem } from '@/features/news'
-import type { ApiNewsItemDto } from '../dto'
+import type { ApiNewsItemDto, NewsSearchResultDto } from '../dto'
 import {
   buildCropSeedsFromApiNews,
   buildPageImageMap,
@@ -133,6 +133,103 @@ describe('news API mappers', () => {
         keywords: ['app'],
       },
     ])
+  })
+
+  it('marks client matches when OwnChannel is true', () => {
+    const items = mapApiNewsToStoredItems(edition, [
+      apiNews(1, {
+        searchResults: [
+          {
+            channelId: 1,
+            channelName: 'Impresso',
+            customerId: 10,
+            customerName: 'Banco X',
+            highlights: ['juros'],
+            searchedIds: [],
+            ownChannel: true,
+          },
+          {
+            channelId: 2,
+            channelName: 'Digital',
+            customerId: 10,
+            customerName: 'Banco X',
+            highlights: ['app'],
+            searchedIds: [],
+            ownChannel: false,
+          },
+        ],
+      }),
+    ])
+
+    expect(items[0]?.clientMatches).toEqual([
+      {
+        customerId: 10,
+        customerName: 'Banco X',
+        channelId: 1,
+        channelName: 'Impresso',
+        keywords: ['juros'],
+        ownChannel: true,
+      },
+      {
+        customerId: 10,
+        customerName: 'Banco X',
+        channelId: 2,
+        channelName: 'Digital',
+        keywords: ['app'],
+      },
+    ])
+  })
+
+  it('reads OwnChannel from PascalCase', () => {
+    const items = mapApiNewsToStoredItems(edition, [
+      {
+        ...apiNews(1),
+        searchResults: [
+          {
+            channelId: 1,
+            channelName: 'Impresso',
+            customerId: 10,
+            customerName: 'Banco X',
+            highlights: ['juros'],
+            searchedIds: [],
+            OwnChannel: true,
+          } as NewsSearchResultDto & { OwnChannel: boolean },
+        ],
+      },
+    ])
+
+    expect(items[0]?.clientMatches?.[0]?.ownChannel).toBe(true)
+  })
+
+  it('flags the stored news when any search result is an own channel', () => {
+    const items = mapApiNewsToStoredItems(edition, [
+      apiNews(22605, {
+        title: 'Vokswagen fecha acordo para cortar 50 mil empregos',
+        searchResults: [
+          {
+            channelId: 9204,
+            channelName: 'Carta Capital',
+            customerId: 1356,
+            customerName: 'Compartilhamento Revistas Semanais',
+            highlights: ['industria'],
+            searchedIds: [],
+            ownChannel: false,
+          },
+          {
+            channelId: 15221,
+            channelName: 'Volkswagen',
+            customerId: 2140,
+            customerName: 'Volkswagen Brasil',
+            highlights: ['volkswagen'],
+            searchedIds: [],
+            ownChannel: true,
+          },
+        ],
+      }),
+    ])
+
+    expect(items[0]?.hasOwnChannel).toBe(true)
+    expect(items[0]?.clientMatches?.some((match) => match.ownChannel)).toBe(true)
   })
 
   it('keeps keywords on each customer even when ids are missing or shared', () => {

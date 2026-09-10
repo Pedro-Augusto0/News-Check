@@ -59,6 +59,7 @@ function mergeClientMatches(matches: NewsClientMatch[]): NewsClientMatch[] {
       if (existing.channelId === undefined && match.channelId !== undefined) {
         existing.channelId = match.channelId
       }
+      if (match.ownChannel) existing.ownChannel = true
       continue
     }
 
@@ -90,10 +91,15 @@ function mergeNewsClientFields(items: Record<string, StoredNewsItem>, newsIds: s
     mergedItems.flatMap((item) => item.clientMatches ?? []),
   )
 
+  const hasOwnChannel =
+    mergedItems.some((item) => item.hasOwnChannel) ||
+    clientMatches.some((match) => match.ownChannel)
+
   return {
     ...(clientKeywordsFound.length > 0 ? { clientKeywordsFound } : {}),
     ...(customerNames.length > 0 ? { customerNames } : {}),
     ...(clientMatches.length > 0 ? { clientMatches } : {}),
+    ...(hasOwnChannel ? { hasOwnChannel: true } : {}),
   }
 }
 

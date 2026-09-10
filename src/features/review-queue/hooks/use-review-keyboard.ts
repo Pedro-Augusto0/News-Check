@@ -16,6 +16,7 @@ export interface ReviewKeyboardActions {
   attachInspected: () => void
   clearInspect: () => void
   splitActive: () => void
+  addSegment: () => void
   openDetails: () => void
   closeDetails: () => void
   detailsOpen: boolean
@@ -39,6 +40,7 @@ export function useReviewKeyboard(actions: ReviewKeyboardActions) {
         ctrlKey: event.ctrlKey,
         metaKey: event.metaKey,
         altKey: event.altKey,
+        shiftKey: event.shiftKey,
         typing: isTypingTarget(event.target),
         detailsOpen: current.detailsOpen,
       })
@@ -80,6 +82,9 @@ export function useReviewKeyboard(actions: ReviewKeyboardActions) {
         case 'splitActive':
           current.splitActive()
           break
+        case 'addSegment':
+          current.addSegment()
+          break
         case 'openDetails':
           current.openDetails()
           break
@@ -97,7 +102,7 @@ export function useReviewKeyboard(actions: ReviewKeyboardActions) {
       }
     }
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [])
 }

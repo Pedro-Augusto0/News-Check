@@ -113,6 +113,7 @@ export function ValidatorV2Page() {
     attachInspected: review.attachInspected,
     clearInspect: review.clearInspect,
     splitActive: review.splitActive,
+    addSegment: review.addSegment,
     openDetails: viewCurrentDetails,
     closeDetails: () => setDetailItem(null),
     detailsOpen: !!detailItem,
@@ -153,7 +154,7 @@ export function ValidatorV2Page() {
             focusLocked={review.workMode === 'focus'}
             coverPageNumber={coverPageNumber}
             isOnCover={isOnCover}
-            onAddSegment={() => review.setWorkMode('focus')}
+            onAddSegment={review.addSegment}
             onApprove={review.approve}
             onViewCover={
               coverPageNumber ? () => review.viewPage(coverPageNumber) : undefined

@@ -5,6 +5,8 @@ export interface NewsClientMatch {
   channelId?: number
   channelName: string
   keywords: string[]
+  /** Canal próprio do veículo. */
+  ownChannel?: boolean
 }
 
 export interface NewsItem {
@@ -38,6 +40,8 @@ export interface StoredNewsItem extends NewsItem {
   articleIds?: number[]
   /** Página em que a notícia continua, quando a API informa RelatedPage. */
   relatedPage?: string
+  /** True quando algum searchResult veio com OwnChannel. */
+  hasOwnChannel?: boolean
   /** Notícia já finalizada no backend. */
   done?: boolean
 }

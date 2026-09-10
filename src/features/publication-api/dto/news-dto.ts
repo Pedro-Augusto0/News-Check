@@ -8,6 +8,8 @@ export interface NewsSearchResultDto {
   keyword?: string
   keywords?: string[]
   searchedIds: number[]
+  /** Canal próprio do veículo, quando a API envia OwnChannel. */
+  ownChannel?: boolean
 }
 
 export interface ApiNewsClippingDto {

@@ -264,6 +264,12 @@ export function useReviewSession() {
     [setWorkModeStore],
   )
 
+  const addSegment = useCallback(() => {
+    if (workMode === 'focus') return
+    if (currentItem?.kind !== 'news' || !currentItem.newsId) return
+    setWorkModeStore('focus')
+  }, [workMode, currentItem, setWorkModeStore])
+
   const step = useCallback(
     (direction: 1 | -1) => {
       if (workMode === 'focus') return
@@ -623,6 +629,7 @@ export function useReviewSession() {
     workMode,
     goTo,
     setWorkMode,
+    addSegment,
     viewPage,
     inspectNews,
     clearInspect,

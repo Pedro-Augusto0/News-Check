@@ -17,13 +17,13 @@ export interface ApiNewsCropSeed {
 }
 
 function collectHighlights(item: ApiNewsItemDto): string[] {
-  return uniqueTrimmed((item.searchResults ?? []).flatMap((result) => keywordsFromResult(result)))
+  return uniqueTrimmed(resolveSearchResults(item).flatMap((result) => keywordsFromResult(result)))
 }
 
 function collectCustomerNames(item: ApiNewsItemDto): string[] {
   const seen = new Set<string>()
   const names: string[] = []
-  for (const result of item.searchResults ?? []) {
+  for (const result of resolveSearchResults(item)) {
     const name = result.customerName?.trim()
     if (!name) continue
     const key = name.toLocaleLowerCase('pt-BR')
@@ -83,10 +83,40 @@ function matchKey(result: NewsSearchResultDto): string {
   return `${customerId}|${channelId}|${customerName}|${channelName}`
 }
 
+function resolveSearchResults(item: Pick<ApiNewsItemDto, 'searchResults'>): NewsSearchResultDto[] {
+  const record = item as Record<string, unknown>
+  for (const [key, value] of Object.entries(record)) {
+    if (key.replace(/_/g, '').toLowerCase() === 'searchresults' && Array.isArray(value)) {
+      return value as NewsSearchResultDto[]
+    }
+  }
+  return item.searchResults ?? []
+}
+
+function isOwnChannelFlag(value: unknown): boolean {
+  if (value === true || value === 1) return true
+  if (typeof value === 'string') return value.trim().toLowerCase() === 'true'
+  return false
+}
+
+function resolveOwnChannel(result: NewsSearchResultDto): boolean {
+  const record = result as Record<string, unknown>
+  for (const [key, value] of Object.entries(record)) {
+    if (key.replace(/_/g, '').toLowerCase() === 'ownchannel' && isOwnChannelFlag(value)) {
+      return true
+    }
+  }
+  return isOwnChannelFlag(result.ownChannel)
+}
+
+function newsHasOwnChannel(item: Pick<ApiNewsItemDto, 'searchResults'>): boolean {
+  return resolveSearchResults(item).some((result) => resolveOwnChannel(result))
+}
+
 export function collectClientMatches(item: Pick<ApiNewsItemDto, 'searchResults'>): NewsClientMatch[] {
   const byKey = new Map<string, NewsClientMatch>()
 
-  for (const result of item.searchResults ?? []) {
+  for (const result of resolveSearchResults(item)) {
     const customerName = result.customerName?.trim() ?? ''
     const channelName = result.channelName?.trim() ?? ''
     const keywords = keywordsFromResult(result)
@@ -98,6 +128,7 @@ export function collectClientMatches(item: Pick<ApiNewsItemDto, 'searchResults'>
       existing.keywords = uniqueTrimmed([...existing.keywords, ...keywords])
       if (!existing.customerName && customerName) existing.customerName = customerName
       if (!existing.channelName && channelName) existing.channelName = channelName
+      if (resolveOwnChannel(result)) existing.ownChannel = true
       continue
     }
 
@@ -107,6 +138,7 @@ export function collectClientMatches(item: Pick<ApiNewsItemDto, 'searchResults'>
       channelId: result.channelId,
       channelName,
       keywords,
+      ...(resolveOwnChannel(result) ? { ownChannel: true } : {}),
     })
   }
 
@@ -200,6 +232,7 @@ export function mapApiNewsToStoredItems(
         clientKeywordsFound: collectHighlights(item),
         customerNames: collectCustomerNames(item),
         clientMatches: collectClientMatches(item),
+        hasOwnChannel: newsHasOwnChannel(item) || undefined,
         pdfId,
         pageNumber,
         editionId: edition.id,

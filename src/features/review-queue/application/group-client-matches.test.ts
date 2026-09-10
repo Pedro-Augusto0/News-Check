@@ -49,6 +49,34 @@ describe('groupClientMatches', () => {
       },
     ])
   })
+
+  it('marks a customer as own-channel when any match is own', () => {
+    expect(
+      groupClientMatches([
+        {
+          customerName: 'Acme Ltda',
+          channelName: 'Impresso',
+          keywords: ['obra'],
+          ownChannel: true,
+        },
+        {
+          customerName: 'Banco X',
+          channelName: 'Digital',
+          keywords: ['juros'],
+        },
+      ]),
+    ).toEqual([
+      {
+        customerName: 'Acme Ltda',
+        ownChannel: true,
+        channels: [{ channelName: 'Impresso', keywords: ['obra'] }],
+      },
+      {
+        customerName: 'Banco X',
+        channels: [{ channelName: 'Digital', keywords: ['juros'] }],
+      },
+    ])
+  })
 })
 
 describe('resolveClientMatchGroups', () => {
@@ -110,5 +138,21 @@ describe('resolveClientMatchGroups', () => {
         channels: [{ channelName: '', keywords: ['obra'] }],
       },
     ])
+  })
+
+  it('counts unique customers, not keywords', () => {
+    expect(
+      resolveClientMatchGroups({
+        clientMatches: [
+          {
+            customerName: 'Acme Ltda',
+            channelName: 'Impresso',
+            keywords: ['prefeitura', 'obra', 'licitacao'],
+          },
+        ],
+        clientKeywords: ['prefeitura', 'obra', 'licitacao'],
+        customerNames: ['Acme Ltda'],
+      }),
+    ).toHaveLength(1)
   })
 })

@@ -74,6 +74,8 @@
   --color-client-bg: var(--color-primary-light);
   --color-client-border: rgba(22, 119, 255, 0.28);
   --color-client-ring: rgba(22, 119, 255, 0.2);
+  --color-client-none: #98a2b3;
+  --color-client-own: #e8b423;
 
   /* Pendente — neutro, sem indigo decorativo */
   --color-pending: var(--color-text-muted);

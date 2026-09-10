@@ -8,6 +8,7 @@ import './review-active-news-bar.css'
 const isMac =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
 const APPROVE_SHORTCUT = isMac ? '⌘ + S' : 'Ctrl + S'
+const ADD_SEGMENT_SHORTCUT = isMac ? '⌘ + Q' : 'Ctrl + Q'
 
 interface ReviewActiveNewsBarProps {
   item: ReviewQueueItem | null
@@ -110,10 +111,12 @@ export function ReviewActiveNewsBar({
             disabled={!canAddSegment}
             tabIndex={canAddSegment ? 0 : -1}
             aria-hidden={!canAddSegment}
-            title="Travar esta notícia e buscar outro segmento para juntar"
+            title={`Travar esta notícia e buscar outro segmento para juntar (${ADD_SEGMENT_SHORTCUT})`}
+            aria-label={`Adicionar outro segmento (${ADD_SEGMENT_SHORTCUT})`}
           >
             <Link2 size={14} strokeWidth={2.2} aria-hidden />
             Adicionar outro segmento
+            <kbd>{ADD_SEGMENT_SHORTCUT}</kbd>
           </Button>
         )}
 

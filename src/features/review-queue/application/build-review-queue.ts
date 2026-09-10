@@ -115,6 +115,9 @@ export function buildReviewQueue(input: {
         keywords.length > 0 ||
         (news.customerNames?.length ?? 0) > 0 ||
         (news.clientMatches?.length ?? 0) > 0,
+      hasOwnChannel:
+        news.hasOwnChannel === true ||
+        (news.clientMatches ?? []).some((match) => match.ownChannel === true),
       relatedPage: news.relatedPage,
       suspectReasons: uniqueReasons(suspectReasons),
       sortY: newsCrops[0]?.rect.y ?? 900 + (news.listOrder ?? 0),

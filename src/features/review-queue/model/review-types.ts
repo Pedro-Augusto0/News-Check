@@ -33,6 +33,8 @@ export interface ReviewQueueItem {
   customerNames: string[]
   clientMatches: NewsClientMatch[]
   hasClient: boolean
+  /** True quando algum searchResult veio com OwnChannel. */
+  hasOwnChannel?: boolean
   /** Página da continuação, quando a API envia RelatedPage. */
   relatedPage?: string
   suspectReasons: ReviewSuspectReason[]
