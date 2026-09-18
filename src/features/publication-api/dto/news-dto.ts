@@ -28,9 +28,13 @@ export interface ApiNewsItemDto {
   coordinates?: string | string[]
   clippings?: ApiNewsClippingDto[]
   section: string
+  suggestedSection?: string | null
   filePath?: string | null
   page: string
   relatedPage?: string | null
   searchResults: NewsSearchResultDto[]
   done?: boolean
+  publicationPageId?: number
+  /** Grafia do backend (finished). */
+  fineshed?: boolean
 }

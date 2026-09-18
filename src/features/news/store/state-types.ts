@@ -15,6 +15,7 @@ export interface NewsState {
   isLoadingNews: boolean
   textModalNewsId: string | null
   hydrateFromEdition: (edition: VehicleEdition) => void
+  clearHydratedEdition: () => void
   hydrateFromApiItems: (edition: VehicleEdition, apiItems: StoredNewsItem[]) => void
   setLoadingNews: (loading: boolean) => void
   selectNewsItem: (newsId: string | null) => void
@@ -28,6 +29,8 @@ export interface NewsState {
     editionId: string
     pdfId: string
     pageNumber: string
+    filePath?: string
+    section?: string
     title?: string
   }) => string
   linkCropToNews: (newsId: string, cropId: string) => void

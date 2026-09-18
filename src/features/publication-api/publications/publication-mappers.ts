@@ -1,3 +1,4 @@
+import { emptyPageData } from '@/features/page-navigation/page-key'
 import type { PdfFile, VehicleEdition } from '@/features/edition-session/model'
 import type { PageData } from '@/features/page-navigation'
 import type { PublicationDto } from '../dto'
@@ -19,21 +20,9 @@ export function publicationPdfId(publicationId: number | string): string {
   return `pdf-${publicationId}`
 }
 
-function emptyPage(pageNumber: string): PageData {
-  return {
-    pageNumber,
-    imageUrl: '',
-    hasClient: false,
-    keywordsFound: [],
-    keywordsMissing: [],
-    keywordOccurrences: [],
-    crops: [],
-  }
-}
-
 export function createEditionPdf(
   publication: PublicationDto,
-  pages: PageData[] = [emptyPage('1')],
+  pages: PageData[] = [emptyPageData('1')],
 ): PdfFile {
   return {
     id: publicationPdfId(publication.id),

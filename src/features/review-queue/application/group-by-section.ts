@@ -1,6 +1,20 @@
-import { normalizeKeyword } from './highlight-keywords'
+import {
+  resolveSectionLabel,
+  sectionGroupKey,
+  UNSECTIONED_LABEL,
+} from '@/features/page-navigation/page-key'
 
-export const UNSECTIONED_LABEL = 'Sem seção'
+export {
+  comparePageOccurrences,
+  pageIdOf,
+  pageNumberFromPageId,
+  pageOccurrenceKey,
+  resolvePageId,
+  resolvePageListSection,
+  resolveSectionLabel,
+  sectionGroupKey,
+  UNSECTIONED_LABEL,
+} from '@/features/page-navigation/page-key'
 
 export interface SectionGroup<T> {
   section: string
@@ -8,18 +22,7 @@ export interface SectionGroup<T> {
 }
 
 export function normalizeSectionKey(section: string): string {
-  const normalized = normalizeKeyword(section)
-  return normalized || UNSECTIONED_LABEL
-}
-
-export function resolveSectionLabel(section: string | undefined): string {
-  const trimmed = section?.trim()
-  return trimmed || UNSECTIONED_LABEL
-}
-
-function sectionGroupKey(label: string): string {
-  if (label === UNSECTIONED_LABEL) return UNSECTIONED_LABEL
-  return normalizeSectionKey(label)
+  return sectionGroupKey(resolveSectionLabel(section))
 }
 
 /** Picks the most common named section; falls back to "Sem seção". */

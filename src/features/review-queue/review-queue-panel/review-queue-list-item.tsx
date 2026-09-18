@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Crop, FileText, Lock, ScanEye, Scissors, Trash2, Unlink, Users } from 'lucide-react'
+import { ChevronDown, ChevronRight, Crop, FileText, LoaderCircle, Lock, ScanEye, Scissors, Trash2, Unlink, Users } from 'lucide-react'
 import { useCropsStore, type Crop as CropModel } from '@/features/crops'
 import type { VehicleEdition } from '@/features/edition-session'
 import { resolveClientMatchGroups } from '../application'
@@ -28,6 +28,7 @@ interface ReviewQueueListItemProps {
   onUngroupCrop?: (cropId: string) => void
   onEditCrop?: (cropId: string) => void
   onContextMenu?: (event: React.MouseEvent) => void
+  ocrStatus?: 'idle' | 'running' | 'ready' | 'error'
 }
 
 function ClientBadge({
@@ -122,6 +123,7 @@ export function ReviewQueueListItem({
   onUngroupCrop,
   onEditCrop,
   onContextMenu,
+  ocrStatus,
 }: ReviewQueueListItemProps) {
   const groups = useCropsStore((state) => state.groups)
   const { root, children } = useMemo(() => relatedCropsOf(item, crops, groups), [item, crops, groups])
@@ -138,6 +140,7 @@ export function ReviewQueueListItem({
   const hasOwnChannel =
     item.hasOwnChannel === true ||
     item.clientMatches.some((match) => match.ownChannel === true)
+  const isOcrRunning = ocrStatus === 'running'
 
   useEffect(() => {
     if (children.length > 0) setExpanded(true)
@@ -201,13 +204,23 @@ export function ReviewQueueListItem({
           {mergeModeBase && <MergeModeBadge kind="base" />}
           {mergeModeSegment && <MergeModeBadge kind="segment" />}
           {needsCrop && <NeedsCropBadge />}
+          {isOcrRunning && (
+            <span className="review-queue-list-item__ocr" aria-label="Executando OCR">
+              <LoaderCircle size={12} strokeWidth={2.2} aria-hidden />
+              OCR
+            </span>
+          )}
         </div>
         <span className="crop-list-item__meta">
-          {multiPage && <span className="crop-list-item__cross-page">várias páginas</span>}
-          {hasRelated && !multiPage && `${children.length + 1} cortes`}
-          {needsCrop && !multiPage && !hasRelated && 'Sem recorte'}
-          {needsReview && !needsCrop && !multiPage && !hasRelated && ''}
-          {isDone && !needsCrop && !needsReview && !multiPage && !hasRelated && 'Revisada'}
+          {ocrStatus === 'idle' && (needsCrop ? 'Desenhe a área da notícia' : 'OCR pendente')}
+          {isOcrRunning && 'Executando OCR…'}
+          {ocrStatus === 'ready' && 'OCR concluído'}
+          {ocrStatus === 'error' && 'Falha no OCR · abra para revisar'}
+          {!ocrStatus && multiPage && <span className="crop-list-item__cross-page">várias páginas</span>}
+          {!ocrStatus && hasRelated && !multiPage && `${children.length + 1} cortes`}
+          {!ocrStatus && needsCrop && !multiPage && !hasRelated && 'Sem recorte'}
+          {!ocrStatus && needsReview && !needsCrop && !multiPage && !hasRelated && ''}
+          {!ocrStatus && isDone && !needsCrop && !needsReview && !multiPage && !hasRelated && 'Revisada'}
         </span>
       </div>
 
@@ -220,6 +233,7 @@ export function ReviewQueueListItem({
             className="crop-list-item__action-btn crop-list-item__action-btn--view"
             aria-label="Ver texto da notícia"
             title="Ver texto da notícia (F2)"
+            disabled={isOcrRunning}
             onClick={(event) => {
               event.stopPropagation()
               onViewDetails()

@@ -1,4 +1,5 @@
 import type { VehicleEdition } from '@/features/edition-session'
+import { pageNumberFromPageId } from '@/features/page-navigation/page-key'
 import type { StoredNewsItem } from '../model'
 import type { PersistedNewsState } from './persistence'
 
@@ -24,7 +25,12 @@ export function mergeManualPersistedItems(
   if (!persisted) return items
   const next = { ...items }
   for (const [id, item] of Object.entries(persisted.items)) {
-    if (item.editionId === editionId && !next[id] && item.manual) next[id] = item
+    if (item.editionId === editionId && !next[id] && item.manual) {
+      next[id] = {
+        ...item,
+        pageNumber: pageNumberFromPageId(item.pageNumber),
+      }
+    }
   }
   return next
 }

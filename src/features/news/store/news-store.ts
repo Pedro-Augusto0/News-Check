@@ -42,6 +42,16 @@ export const useNewsStore = create<NewsState>((set, get) => ({
     set({ items, selectedNewsItemId: null, highlightedNewsByPage: {}, textModalNewsId: null })
   },
 
+  clearHydratedEdition: () => {
+    set({
+      items: {},
+      selectedNewsItemId: null,
+      highlightedNewsByPage: {},
+      isLoadingNews: false,
+      textModalNewsId: null,
+    })
+  },
+
   hydrateFromApiItems: (edition, apiItems) => {
     const persisted = loadPersisted(edition.id)
     const items = buildItemsFromApi(edition, apiItems, persisted)
@@ -109,11 +119,11 @@ export const useNewsStore = create<NewsState>((set, get) => ({
     set({ highlightedNewsByPage: setPageHighlights(highlightedNewsByPage, key, {}) })
   },
 
-  addManualNewsItem: ({ editionId, pdfId, pageNumber, title }) => {
-    const item = createManualNewsItem(get().items, { editionId, pdfId, pageNumber, title })
+  addManualNewsItem: (params) => {
+    const item = createManualNewsItem(get().items, params)
     set((state) => {
       const items = { ...state.items, [item.id]: item }
-      savePersisted(editionId, items)
+      savePersisted(params.editionId, items)
       return { items, selectedNewsItemId: item.id }
     })
     return item.id

@@ -1,7 +1,16 @@
 import type { VehicleEdition } from '@/features/edition-session/model'
 import type { NewsClientMatch, StoredNewsItem } from '@/features/news'
 import type { PageData } from '@/features/page-navigation'
-import { comparePageKeys, toProxiedImageUrl } from '@/features/page-navigation/page-key'
+import {
+  comparePageKeys,
+  comparePageOccurrences,
+  emptyPageData,
+  pageIdOf,
+  resolvePageListSection,
+  sectionGroupKey,
+  toProxiedImageUrl,
+  UNSECTIONED_LABEL,
+} from '@/features/page-navigation/page-key'
 import { normalizeApiCoordinateList } from '@/features/crops/api-coordinates'
 import type { ApiNewsClippingDto, ApiNewsItemDto, NewsSearchResultDto } from '../dto'
 
@@ -93,10 +102,14 @@ function resolveSearchResults(item: Pick<ApiNewsItemDto, 'searchResults'>): News
   return item.searchResults ?? []
 }
 
-function isOwnChannelFlag(value: unknown): boolean {
+function isTruthyFlag(value: unknown): boolean {
   if (value === true || value === 1) return true
   if (typeof value === 'string') return value.trim().toLowerCase() === 'true'
   return false
+}
+
+function isOwnChannelFlag(value: unknown): boolean {
+  return isTruthyFlag(value)
 }
 
 function resolveOwnChannel(result: NewsSearchResultDto): boolean {
@@ -164,6 +177,22 @@ function resolveNewsText(item: ApiNewsItemDto): string {
   return text
 }
 
+function resolvePublicationPageId(item: ApiNewsItemDto): number | undefined {
+  const loose = item as ApiNewsItemDto & { PublicationPageId?: number | string }
+  const raw = item.publicationPageId ?? loose.PublicationPageId
+  const value = typeof raw === 'number' ? raw : Number(raw)
+  return Number.isFinite(value) && value > 0 ? value : undefined
+}
+
+function resolvePageFinished(item: ApiNewsItemDto): boolean {
+  const loose = item as ApiNewsItemDto & {
+    Fineshed?: unknown
+    finished?: unknown
+    Finished?: unknown
+  }
+  return isTruthyFlag(item.fineshed ?? loose.Fineshed ?? loose.finished ?? loose.Finished)
+}
+
 function resolveRelatedPage(item: ApiNewsItemDto): string | undefined {
   const loose = item as ApiNewsItemDto & { RelatedPage?: string | number | null }
   const raw = item.relatedPage ?? loose.RelatedPage
@@ -172,22 +201,48 @@ function resolveRelatedPage(item: ApiNewsItemDto): string | undefined {
   return value ? resolvePageKey(value) : undefined
 }
 
+function trimmedApiString(value: unknown): string | undefined {
+  if (value == null) return undefined
+  const trimmed = String(value).trim()
+  return trimmed || undefined
+}
+
+function resolveApiSection(item: ApiNewsItemDto): string | undefined {
+  const loose = item as ApiNewsItemDto & { Section?: string | null }
+  return trimmedApiString(item.section) ?? trimmedApiString(loose.Section)
+}
+
+function resolveSuggestedSection(item: ApiNewsItemDto): string | undefined {
+  const loose = item as ApiNewsItemDto & { SuggestedSection?: string | null }
+  return trimmedApiString(item.suggestedSection) ?? trimmedApiString(loose.SuggestedSection)
+}
+
 function populatedClippings(item: ApiNewsItemDto): ApiNewsClippingDto[] {
   return (item.clippings ?? []).filter((clipping) => clipping.coordinates?.trim())
+}
+
+function newsPageGrouping(item: ApiNewsItemDto) {
+  return {
+    suggestedSection: resolveSuggestedSection(item),
+    section: resolveApiSection(item),
+  }
 }
 
 function pushPageAsset(
   map: Map<string, string>,
   page: string | undefined,
+  grouping: { suggestedSection?: string; section?: string },
   value: string | null | undefined,
   transform: (raw: string) => string,
 ) {
-  const pageKey = resolvePageKey(page ?? '')
-  if (map.has(pageKey) || pageKey === '?') return
+  const pageNumber = resolvePageKey(page ?? '')
+  if (pageNumber === '?') return
   const raw = value?.trim()
   if (!raw) return
+  const pageId = pageIdOf({ pageNumber, filePath: raw, ...grouping })
+  if (map.has(pageId)) return
   const next = transform(raw)
-  if (next) map.set(pageKey, next)
+  if (next) map.set(pageId, next)
 }
 
 function collectPageAssets(
@@ -196,9 +251,16 @@ function collectPageAssets(
 ): Map<string, string> {
   const map = new Map<string, string>()
   for (const item of apiNews) {
-    pushPageAsset(map, item.page, item.filePath, transform)
+    const grouping = newsPageGrouping(item)
+    pushPageAsset(map, item.page, grouping, item.filePath, transform)
     for (const clipping of item.clippings ?? []) {
-      pushPageAsset(map, clipping.page || item.page, clipping.filePath || item.filePath, transform)
+      pushPageAsset(
+        map,
+        clipping.page || item.page,
+        grouping,
+        clipping.filePath || item.filePath,
+        transform,
+      )
     }
   }
   return map
@@ -211,17 +273,25 @@ export function mapApiNewsToStoredItems(
   const pdfId = edition.pdfs[0]?.id
   if (!pdfId) return []
 
-  const byPage = new Map<string, ApiNewsItemDto[]>()
+  const byPage = new Map<string, { pageNumber: string; items: ApiNewsItemDto[] }>()
   for (const item of apiNews) {
     const pageNumber = resolvePageKey(item.page)
-    const list = byPage.get(pageNumber) ?? []
-    list.push(item)
-    byPage.set(pageNumber, list)
+    const pageId = pageIdOf({
+      pageNumber,
+      filePath: trimmedApiString(item.filePath),
+      ...newsPageGrouping(item),
+    })
+    const existing = byPage.get(pageId)
+    if (existing) {
+      existing.items.push(item)
+      continue
+    }
+    byPage.set(pageId, { pageNumber, items: [item] })
   }
 
   const items: StoredNewsItem[] = []
-  for (const [pageNumber, pageItems] of [...byPage.entries()].sort(([a], [b]) =>
-    comparePageKeys(a, b),
+  for (const { pageNumber, items: pageItems } of [...byPage.values()].sort((a, b) =>
+    comparePageKeys(a.pageNumber, b.pageNumber),
   )) {
     pageItems.forEach((item, index) => {
       items.push({
@@ -235,14 +305,18 @@ export function mapApiNewsToStoredItems(
         hasOwnChannel: newsHasOwnChannel(item) || undefined,
         pdfId,
         pageNumber,
+        filePath: trimmedApiString(item.filePath),
         editionId: edition.id,
         listOrder: index,
         author: item.author?.trim() || undefined,
-        section: item.section?.trim() || undefined,
+        section: resolveApiSection(item),
+        suggestedSection: resolveSuggestedSection(item),
         apiPublication: item.publication?.trim() || undefined,
         articleIds: [item.id],
         relatedPage: resolveRelatedPage(item),
         done: item.done === true,
+        publicationPageId: resolvePublicationPageId(item),
+        finished: resolvePageFinished(item) || undefined,
       })
     })
   }
@@ -318,38 +392,68 @@ export function buildPagesFromNews(
   pageImages: Map<string, string> = new Map(),
   pageFilePaths: Map<string, string> = new Map(),
 ): PageData[] {
-  const pageKeys = [
-    ...new Set([...items.map((item) => item.pageNumber), ...pageImages.keys(), ...pageFilePaths.keys()]),
-  ].sort(comparePageKeys)
+  const byId = new Map<
+    string,
+    { pageNumber: string; sections: Map<string, string>; news: StoredNewsItem[] }
+  >()
 
-  if (pageKeys.length === 0) {
-    return [
-      {
-        pageNumber: '1',
-        imageUrl: '',
-        hasClient: false,
-        keywordsFound: [],
+  for (const item of items) {
+    const pageId = pageIdOf(item)
+    const section = resolvePageListSection(item)
+    const existing = byId.get(pageId)
+    if (existing) {
+      existing.news.push(item)
+      const sectionKey = sectionGroupKey(section)
+      if (!existing.sections.has(sectionKey)) existing.sections.set(sectionKey, section)
+      continue
+    }
+    byId.set(pageId, {
+      pageNumber: item.pageNumber,
+      sections: new Map([[sectionGroupKey(section), section]]),
+      news: [item],
+    })
+  }
+
+  for (const pageId of [...pageImages.keys(), ...pageFilePaths.keys()]) {
+    if (byId.has(pageId)) continue
+    const separator = pageId.indexOf('\0')
+    const pageNumber = separator >= 0 ? pageId.slice(0, separator) : pageId
+    if (separator < 0 && [...byId.values()].some((entry) => entry.pageNumber === pageNumber)) {
+      continue
+    }
+    byId.set(pageId, {
+      pageNumber,
+      sections: new Map([[UNSECTIONED_LABEL, UNSECTIONED_LABEL]]),
+      news: [],
+    })
+  }
+
+  if (byId.size === 0) return [emptyPageData('1')]
+
+  return [...byId.entries()]
+    .map(([id, entry]) => ({ id, ...entry }))
+    .map((entry) => ({
+      ...entry,
+      section: [...entry.sections.values()].join(' / '),
+    }))
+    .sort((a, b) => comparePageOccurrences(a, b))
+    .map(({ id, pageNumber, section, news }) => {
+      const keywordsFound = [...new Set(news.flatMap((item) => item.clientKeywordsFound ?? []))]
+      const publicationPageId = news.find((item) => item.publicationPageId != null)?.publicationPageId
+      const finished = news.some((item) => item.finished)
+      return {
+        id,
+        pageNumber,
+        section,
+        imageUrl: pageImages.get(id) ?? pageImages.get(pageNumber) ?? '',
+        filePath: pageFilePaths.get(id) ?? pageFilePaths.get(pageNumber),
+        hasClient: keywordsFound.length > 0,
+        keywordsFound,
         keywordsMissing: [],
         keywordOccurrences: [],
         crops: [],
-      },
-    ]
-  }
-
-  return pageKeys.map((pageNumber) => {
-    const pageNews = items.filter((item) => item.pageNumber === pageNumber)
-    const keywordsFound = [
-      ...new Set(pageNews.flatMap((item) => item.clientKeywordsFound ?? [])),
-    ]
-    return {
-      pageNumber,
-      imageUrl: pageImages.get(pageNumber) ?? '',
-      filePath: pageFilePaths.get(pageNumber),
-      hasClient: keywordsFound.length > 0,
-      keywordsFound,
-      keywordsMissing: [],
-      keywordOccurrences: [],
-      crops: [],
-    }
-  })
+        publicationPageId,
+        finished: finished || undefined,
+      }
+    })
 }

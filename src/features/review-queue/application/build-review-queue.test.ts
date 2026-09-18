@@ -83,6 +83,26 @@ describe('buildReviewQueue', () => {
     expect(items[0]?.hasClient).toBe(true)
   })
 
+  it('marks operator-created news as manual', () => {
+    const items = buildReviewQueue({
+      editionId: 'ed-1',
+      pdfId: 'pdf-1',
+      pages,
+      newsItems: {
+        n1: news({ id: 'n1', pageNumber: '1', title: 'Nova notícia', cropId: 'c1', manual: true }),
+        n2: news({ id: 'n2', pageNumber: '1', title: 'API', cropId: 'c2' }),
+      },
+      crops: {
+        c1: crop({ id: 'c1', pageNumber: '1', newsItemId: 'n1' }),
+        c2: crop({ id: 'c2', pageNumber: '1', newsItemId: 'n2' }),
+      },
+      groups: {},
+    })
+
+    expect(items.find((item) => item.newsId === 'n1')?.manual).toBe(true)
+    expect(items.find((item) => item.newsId === 'n2')?.manual).toBe(false)
+  })
+
   it('does not treat a continuation page as empty when the merged news still has a crop there', () => {
     const items = buildReviewQueue({
       editionId: 'ed-1',
@@ -118,6 +138,35 @@ describe('buildReviewQueue', () => {
     })
 
     expect(items.find((item) => item.newsId === 'n1')?.section).toBe('Cidades')
+  })
+
+  it('copies suggestedSection and filePath from the stored news item', () => {
+    const items = buildReviewQueue({
+      editionId: 'ed-1',
+      pdfId: 'pdf-1',
+      pages,
+      newsItems: {
+        n1: news({
+          id: 'n1',
+          pageNumber: '1',
+          title: 'Normal',
+          cropId: 'c1',
+          section: 'Futebol',
+          suggestedSection: 'Esportes',
+          filePath: 'http://host/jornal/Esportes/1.jpg',
+        }),
+      },
+      crops: {
+        c1: crop({ id: 'c1', pageNumber: '1', newsItemId: 'n1' }),
+      },
+      groups: {},
+    })
+
+    expect(items.find((item) => item.newsId === 'n1')).toMatchObject({
+      section: 'Futebol',
+      suggestedSection: 'Esportes',
+      filePath: 'http://host/jornal/Esportes/1.jpg',
+    })
   })
 
   it('copies relatedPage from the stored news item', () => {

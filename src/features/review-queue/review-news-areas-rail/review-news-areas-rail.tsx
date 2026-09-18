@@ -34,7 +34,7 @@ export function ReviewNewsAreasRail({
       {crops.length === 0 ? (
         <div className="review-areas-rail__empty">
           <Scissors size={16} strokeWidth={2.1} aria-hidden />
-          <p>Sem recortes</p>
+          <p>{edition ? 'Sem recortes' : 'Selecione uma edição'}</p>
         </div>
       ) : (
         <ul className="review-areas-rail__list" role="listbox" aria-label="Recortes da notícia">

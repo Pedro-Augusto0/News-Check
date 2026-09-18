@@ -9,6 +9,7 @@ import { useFilteredPages } from '@/features/page-navigation/hooks'
 import { buildNewsCountByPage } from '@/features/page-navigation/stats'
 import { buildClientCountByPage, countPagesWithClientCrops } from '@/features/crops/client-stats'
 import { isPageFinalizedInState } from '@/features/page-navigation/finalization'
+import { resolvePageId } from '@/features/page-navigation/page-key'
 import type { PageFilter } from '@/features/page-navigation'
 import './page-list.css'
 
@@ -155,7 +156,8 @@ export function PageList() {
 
       <ul className="page-list__items sidebar-panel__body" role="listbox" aria-label="Lista de páginas">
         {visiblePages.map((page) => {
-          const isActive = selectedPageNumber === page.pageNumber
+          const pageId = resolvePageId(page)
+          const isActive = selectedPageNumber === pageId
           const newsCount = newsCountByPage.get(page.pageNumber) ?? 0
           const clientCount = clientCountByPage.get(page.pageNumber) ?? 0
           const pageFinalized = currentPdf
@@ -163,7 +165,7 @@ export function PageList() {
             : false
 
           return (
-            <li key={page.pageNumber} role="none">
+            <li key={pageId} role="none">
               <button
                 type="button"
                 role="option"
@@ -174,7 +176,7 @@ export function PageList() {
                     : `Página ${page.pageNumber} — pendente`
                 }
                 className={cn('page-list__item', isActive && 'page-list__item--active')}
-                onClick={() => selectPage(page.pageNumber)}
+                onClick={() => selectPage(pageId)}
               >
                 <span
                   className={cn(

@@ -3,13 +3,14 @@ import { useCropsStore } from '@/features/crops'
 import { useCurrentPdf } from '@/features/edition-session/hooks'
 import { useSessionStore } from '@/features/edition-session'
 import { filterPagesByClient } from '@/features/crops/client-stats'
+import { findPageBySelection } from '../page-key'
 import type { PageData } from '../model'
 
 export function useCurrentPage(): PageData | undefined {
   const pdf = useCurrentPdf()
   const selectedPageNumber = useSessionStore((state) => state.selectedPageNumber)
   return useMemo(
-    () => pdf?.pages.find((page) => page.pageNumber === selectedPageNumber),
+    () => findPageBySelection(pdf?.pages, selectedPageNumber),
     [pdf, selectedPageNumber],
   )
 }

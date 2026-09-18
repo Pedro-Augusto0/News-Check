@@ -179,6 +179,48 @@ describe('buildCreateNewsRequest', () => {
     ])
   })
 
+  it('creates a manual-news payload with empty article ids and the matching page file', () => {
+    const filePath = 'http://host/jornal/DESTEMPERADOS/1.jpg'
+    const manualNews: StoredNewsItem = {
+      id: 'news-manual',
+      title: 'Título OCR',
+      text: 'Texto OCR',
+      cropId: 'crop-manual',
+      pdfId: 'pdf-1',
+      pageNumber: '1',
+      filePath,
+      editionId: '1',
+      manual: true,
+    }
+    const request = buildCreateNewsRequest({
+      item: queueItem({
+        id: 'news:news-manual',
+        pageNumber: '1',
+        newsId: manualNews.id,
+        cropIds: ['crop-manual'],
+        title: manualNews.title,
+        text: manualNews.text ?? '',
+      }),
+      crops: {
+        'crop-manual': crop('crop-manual', {
+          pageNumber: '1',
+          newsItemId: manualNews.id,
+        }),
+      },
+      newsItems: { [manualNews.id]: manualNews },
+      edition,
+      pages: [
+        { ...pages[0]!, pageNumber: '1', filePath: 'http://host/jornal/-/1.jpg' },
+        { ...pages[0]!, pageNumber: '1', filePath },
+      ],
+    })
+
+    expect(request?.articleIds).toEqual([])
+    expect(request?.clippings).toEqual([
+      expect.objectContaining({ articleId: 0, page: '1', filePath }),
+    ])
+  })
+
   it('skips empty pages and items without crops', () => {
     expect(
       buildCreateNewsRequest({

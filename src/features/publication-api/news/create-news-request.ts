@@ -74,7 +74,12 @@ export function buildCreateNewsRequest(input: {
   if (itemCrops.length === 0) return null
 
   const newsItem = item.newsId ? newsItems[item.newsId] : undefined
-  const pageByNumber = new Map(pages.map((page) => [page.pageNumber, page]))
+  const pageForCrop = (crop: Crop) =>
+    pages.find(
+      (page) =>
+        page.pageNumber === crop.pageNumber &&
+        (!newsItem?.filePath || page.filePath === newsItem.filePath),
+    ) ?? pages.find((page) => page.pageNumber === crop.pageNumber)
 
   return {
     articleIds: resolveArticleIds(newsItem),
@@ -86,7 +91,7 @@ export function buildCreateNewsRequest(input: {
     author: newsItem?.author ?? '',
     hasPhoto: false,
     clippings: itemCrops.map((crop) => {
-      const page = pageByNumber.get(crop.pageNumber)
+      const page = pageForCrop(crop)
       return {
         articleId: resolveClippingArticleId(crop, newsItems, newsItem),
         coordinates: formatCropRectToApiCoordinates(crop.rect),

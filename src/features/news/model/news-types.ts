@@ -28,6 +28,8 @@ export interface StoredNewsItem extends NewsItem {
   pdfId: string
   /** Identificador da página (ex.: "A11", "1"). */
   pageNumber: string
+  /** Caminho da imagem usado como identidade física da página. */
+  filePath?: string
   editionId: string
   manual?: boolean
   /** Ordem fixa na lista da página — não muda ao vincular cortes. */
@@ -35,6 +37,7 @@ export interface StoredNewsItem extends NewsItem {
   /** Metadados originais da API (para persistência). */
   author?: string
   section?: string
+  suggestedSection?: string
   apiPublication?: string
   /** IDs de artigos da API — inclui originais quando notícias são mescladas. */
   articleIds?: number[]
@@ -44,6 +47,10 @@ export interface StoredNewsItem extends NewsItem {
   hasOwnChannel?: boolean
   /** Notícia já finalizada no backend. */
   done?: boolean
+  /** Id da publication_page no backend. */
+  publicationPageId?: number
+  /** Página marcada como finalizada no backend. */
+  finished?: boolean
 }
 
 /** Escopo inicial de notícias/cortes visíveis na sessão. */

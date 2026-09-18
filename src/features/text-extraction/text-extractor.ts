@@ -85,6 +85,10 @@ export interface CropExtractionResult {
   text: string
 }
 
+export function normalizeOcrText(text: string): string {
+  return text.replace(/-\s+(?=\p{L})/gu, '')
+}
+
 let ocrWorker: Tesseract.Worker | null = null
 let ocrWorkerPromise: Promise<Tesseract.Worker> | null = null
 
@@ -105,8 +109,8 @@ async function getOcrWorker(): Promise<Tesseract.Worker> {
 function resultFromLines(lines: TextLineInfo[]): CropExtractionResult {
   const { title, fullText } = detectTitleFromLines(lines)
   return {
-    title,
-    text: fullText,
+    title: normalizeOcrText(title),
+    text: normalizeOcrText(fullText),
   }
 }
 
@@ -137,7 +141,7 @@ async function ocrCropRegion(
     return resultFromLines(sortLinesByColumnReadingOrder(lines))
   }
 
-  return { title: '', text: data.text.trim() }
+  return { title: '', text: normalizeOcrText(data.text.trim()) }
 }
 
 export async function extractCropContent(

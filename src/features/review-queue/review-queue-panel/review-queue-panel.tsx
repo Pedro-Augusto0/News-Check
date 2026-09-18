@@ -7,6 +7,7 @@ import {
   EyeOff,
   FileText,
   Link2,
+  Plus,
   Search,
   X,
 } from 'lucide-react'
@@ -14,7 +15,7 @@ import type { Crop as CropModel } from '@/features/crops'
 import type { VehicleEdition } from '@/features/edition-session'
 import { Button } from '@/shared/ui/button'
 import { cn } from '@/shared/ui/utils/cn'
-import { filterReviewQueueByTitle, groupReviewQueueByPage } from '../application'
+import { filterReviewQueueByTitle, groupReviewQueueByPage, pageGroupTitle } from '../application'
 import { type ReviewQueueItem, type ReviewStatus } from '../model'
 import { ReviewQueueListItem } from './review-queue-list-item'
 import './review-queue-panel.css'
@@ -39,6 +40,11 @@ interface ReviewQueuePanelProps {
   activeCropId?: string | null
   onUngroupCrop?: (cropId: string) => void
   onEditCrop?: (cropId: string) => void
+  onCreateNews?: () => void
+  canCreateNews?: boolean
+  creatingNews?: boolean
+  creationItemId?: string
+  creationOcrStatus?: 'idle' | 'running' | 'ready' | 'error'
 }
 
 function isDoneStatus(status: ReviewStatus | undefined): boolean {
@@ -71,6 +77,11 @@ export function ReviewQueuePanel({
   activeCropId = null,
   onUngroupCrop,
   onEditCrop,
+  onCreateNews,
+  canCreateNews = false,
+  creatingNews = false,
+  creationItemId,
+  creationOcrStatus,
 }: ReviewQueuePanelProps) {
   const inspectId = inspectItem?.id ?? null
   const [search, setSearch] = useState('')
@@ -82,20 +93,19 @@ export function ReviewQueuePanel({
   const pageGroups = useMemo(() => groupReviewQueueByPage(visibleItems), [visibleItems])
 
   const isPageExpanded = useCallback(
-    (pageNumber: string) => {
+    (groupKey: string) => {
       if (isSearching) return true
-      if (pageNumber in collapsedPages) return !collapsedPages[pageNumber]
-      return pageNumber === viewPageNumber
+      if (groupKey in collapsedPages) return !collapsedPages[groupKey]
+      return groupKey === viewPageNumber
     },
     [collapsedPages, viewPageNumber, isSearching],
   )
 
   const togglePage = useCallback(
-    (pageNumber: string) => {
+    (groupKey: string) => {
       setCollapsedPages((prev) => {
-        const currentlyExpanded =
-          pageNumber in prev ? !prev[pageNumber] : pageNumber === viewPageNumber
-        return { ...prev, [pageNumber]: currentlyExpanded }
+        const currentlyExpanded = groupKey in prev ? !prev[groupKey] : groupKey === viewPageNumber
+        return { ...prev, [groupKey]: currentlyExpanded }
       })
     },
     [viewPageNumber],
@@ -167,6 +177,22 @@ export function ReviewQueuePanel({
 
       <div className="review-queue-panel__card review-queue-panel__card--list">
         <p className="review-queue-panel__kicker review-queue-panel__kicker--list">Notícias</p>
+        <Button
+          variant="secondary"
+          className="review-queue-panel__create"
+          onClick={onCreateNews}
+          disabled={!canCreateNews}
+          title={
+            canCreateNews
+              ? 'Criar notícia a partir de uma área da página'
+              : creatingNews
+                ? 'Conclua ou descarte a notícia em criação'
+                : 'Selecione uma página com imagem para criar uma notícia'
+          }
+        >
+          <Plus size={15} strokeWidth={2.2} aria-hidden />
+          {creatingNews ? 'Criando notícia…' : 'Criar notícia'}
+        </Button>
         <label className="search-field review-queue-panel__search">
           <Search size={15} className="search-field__icon" aria-hidden />
           <input
@@ -198,13 +224,17 @@ export function ReviewQueuePanel({
         <div className="review-queue-panel__list">
           {pageGroups.length === 0 && (
             <p className="review-queue-panel__empty">
-              {isSearching ? 'Nenhuma notícia com esse título' : 'Nenhuma notícia nesta edição'}
+              {isSearching
+                ? 'Nenhuma notícia com esse título'
+                : edition
+                  ? 'Nenhuma notícia nesta edição'
+                  : 'Selecione uma edição'}
             </p>
           )}
 
           {pageGroups.map((section) => {
-            const expanded = isPageExpanded(section.pageNumber)
-            const isViewedPage = section.pageNumber === viewPageNumber
+            const expanded = isPageExpanded(section.key)
+            const isViewedPage = section.key === viewPageNumber
             const hasActiveNews = section.items.some(
               (item) => item.id === currentId || item.id === inspectId,
             )
@@ -212,7 +242,7 @@ export function ReviewQueuePanel({
 
             return (
               <section
-                key={section.pageNumber}
+                key={section.key}
                 className={cn(
                   'review-queue-panel__page',
                   isViewedPage && 'review-queue-panel__page--current',
@@ -224,8 +254,8 @@ export function ReviewQueuePanel({
                   type="button"
                   className="review-queue-panel__page-header"
                   onClick={() => {
-                    togglePage(section.pageNumber)
-                    onSelectPage?.(section.pageNumber)
+                    togglePage(section.key)
+                    onSelectPage?.(section.key)
                   }}
                   aria-expanded={expanded}
                 >
@@ -233,7 +263,7 @@ export function ReviewQueuePanel({
                     {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                   </span>
                   <span className="review-queue-panel__page-title">
-                    Página {section.pageNumber}
+                    {pageGroupTitle(section, pageGroups)}
                     {hasActiveNews && <span className="review-queue-panel__page-dot" aria-hidden />}
                   </span>
                   <span className="review-queue-panel__page-badges">
@@ -269,6 +299,9 @@ export function ReviewQueuePanel({
                         onDiscard={() => onDiscard(item.id)}
                         onUngroupCrop={onUngroupCrop}
                         onEditCrop={onEditCrop}
+                        ocrStatus={
+                          item.id === creationItemId ? creationOcrStatus : undefined
+                        }
                         onContextMenu={(event) => {
                           if (item.id === currentId) return
                           event.preventDefault()

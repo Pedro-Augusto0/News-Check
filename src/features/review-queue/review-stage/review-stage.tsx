@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Lock, Maximize2, Minus, Plus } from 'lucide-react'
+import { Maximize2, Minus, Plus } from 'lucide-react'
 import type { Crop } from '@/features/crops'
 import type { CropRect } from '@/features/crops/geometry'
 import { percentToPx } from '@/features/crops/geometry'
@@ -34,7 +34,7 @@ interface ReviewStageProps {
   peekOtherCrops?: boolean
   inspecting?: boolean
   workMode?: ReviewWorkMode
-  onWorkModeChange?: (mode: ReviewWorkMode) => void
+  emptyMessage?: string
 }
 
 export function ReviewStage({
@@ -57,7 +57,7 @@ export function ReviewStage({
   peekOtherCrops = true,
   inspecting = false,
   workMode = 'free',
-  onWorkModeChange,
+  emptyMessage = 'Nenhum item na fila',
 }: ReviewStageProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -138,7 +138,7 @@ export function ReviewStage({
   if (!currentItem) {
     return (
       <div className="review-stage review-stage--empty" ref={stageRef}>
-        <p>Nenhum item na fila</p>
+        <p>{emptyMessage}</p>
       </div>
     )
   }
@@ -147,26 +147,6 @@ export function ReviewStage({
     <div className="review-stage" ref={stageRef}>
       <div className="review-stage__toolbar">
         <div className="review-stage__toolbar-inner">
-          {onWorkModeChange && (
-            <button
-              type="button"
-              className={cn(
-                'review-stage__lock-btn',
-                workMode === 'focus' && 'review-stage__lock-btn--on',
-              )}
-              aria-pressed={workMode === 'focus'}
-              onClick={() => onWorkModeChange(workMode === 'focus' ? 'free' : 'focus')}
-              title={
-                workMode === 'focus'
-                  ? 'Sair do modo foco'
-                  : 'Modo foco nesta notícia — outras só visualizam o recorte'
-              }
-            >
-              <Lock size={11} strokeWidth={2.3} />
-              Travar notícia
-            </button>
-          )}
-
           <div className="review-stage__control-group">
             <button
               type="button"

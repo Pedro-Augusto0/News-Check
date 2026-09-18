@@ -13,6 +13,7 @@ export {
   extractAndSaveCropText,
   extractAndSaveGroupText,
   extractAndSaveModalText,
+  extractAndReplaceNewsContent,
   resolveCropImageUrl,
   resolveCropPdfUrl,
 } from './crop-text-extraction'

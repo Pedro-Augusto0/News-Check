@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { pageOccurrenceKey, UNSECTIONED_LABEL } from '@/features/page-navigation/page-key'
 import type { PublicationDto } from '../dto'
 import {
   createEditionPdf,
@@ -39,7 +40,9 @@ describe('publication mappers', () => {
           url: '',
           pages: [
             {
+              id: pageOccurrenceKey('1'),
               pageNumber: '1',
+              section: UNSECTIONED_LABEL,
               imageUrl: '',
               hasClient: false,
               keywordsFound: [],

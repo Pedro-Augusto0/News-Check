@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { groupBySection, resolvePageSection, UNSECTIONED_LABEL } from './group-by-section'
+import {
+  groupBySection,
+  pageOccurrenceKey,
+  resolvePageListSection,
+  resolvePageSection,
+  UNSECTIONED_LABEL,
+} from './group-by-section'
 
 describe('resolvePageSection', () => {
   it('uses the most common named section', () => {
@@ -16,6 +22,46 @@ describe('resolvePageSection', () => {
 
   it('treats sections with different case or accents as the same', () => {
     expect(resolvePageSection(['Política', 'POLITICA', 'Esportes'])).toBe('Política')
+  })
+})
+
+describe('resolvePageListSection', () => {
+  it('uses the page folder from filePath before news sections', () => {
+    expect(
+      resolvePageListSection({
+        filePath: 'http://host/jornal/DESTEMPERADOS/1.jpg',
+        suggestedSection: 'Capa',
+        section: '-',
+      }),
+    ).toBe('DESTEMPERADOS')
+  })
+
+  it('prefers suggestedSection over section', () => {
+    expect(resolvePageListSection({ suggestedSection: 'Esportes', section: 'Futebol' })).toBe(
+      'Esportes',
+    )
+  })
+
+  it('uses section when suggestedSection is empty', () => {
+    expect(resolvePageListSection({ suggestedSection: '  ', section: 'Gastronomia' })).toBe(
+      'Gastronomia',
+    )
+    expect(resolvePageListSection({ section: 'Colunas' })).toBe('Colunas')
+  })
+
+  it('falls back when both are empty', () => {
+    expect(resolvePageListSection({})).toBe(UNSECTIONED_LABEL)
+  })
+})
+
+describe('pageOccurrenceKey', () => {
+  it('distinguishes the same page number in different sections', () => {
+    expect(pageOccurrenceKey('3', 'Esportes')).not.toBe(pageOccurrenceKey('3', 'Gastronomia'))
+    expect(pageOccurrenceKey('A2', 'Colunas')).not.toBe(pageOccurrenceKey('A2'))
+  })
+
+  it('treats the same section with different case or accents as one occurrence', () => {
+    expect(pageOccurrenceKey('3', 'Política')).toBe(pageOccurrenceKey('3', 'POLITICA'))
   })
 })
 

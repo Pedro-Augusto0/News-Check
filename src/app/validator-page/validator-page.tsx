@@ -7,9 +7,7 @@ import { RightPanel } from '@/features/news-list'
 import { NotificationToast } from '@/shared/ui/notification-toast'
 import { useKeyboardShortcuts } from '@/features/page-viewer'
 import { loadPublicationEditions } from '@/features/publication-api'
-import { hydrateEditionNews } from '@/features/edition-session'
 import { useSessionStore } from '@/features/edition-session'
-import { useCropsStore } from '@/features/crops'
 import './validator-page.css'
 
 export function ValidatorPage() {
@@ -18,7 +16,6 @@ export function ValidatorPage() {
   const setEditions = useSessionStore((s) => s.setEditions)
   const setLoading = useSessionStore((s) => s.setLoading)
   const setError = useSessionStore((s) => s.setError)
-  const hydrateFromEdition = useCropsStore((s) => s.hydrateFromEdition)
 
   useKeyboardShortcuts()
 
@@ -32,11 +29,6 @@ export function ValidatorPage() {
         if (cancelled) return
 
         setEditions(editions)
-        const first = editions[0]
-        if (first) {
-          hydrateFromEdition(first)
-          await hydrateEditionNews(first)
-        }
         if (!cancelled) setLoading(false)
       } catch (err: unknown) {
         if (cancelled) return
@@ -48,7 +40,7 @@ export function ValidatorPage() {
     return () => {
       cancelled = true
     }
-  }, [setEditions, setLoading, setError, hydrateFromEdition])
+  }, [setEditions, setLoading, setError])
 
   if (isLoading) {
     return (

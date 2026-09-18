@@ -24,11 +24,15 @@ export interface ReviewQueueItem {
   editionId: string
   pdfId: string
   pageNumber: string
+  filePath?: string
   newsId: string | null
+  /** True when the operator created this news in the session. */
+  manual?: boolean
   cropIds: string[]
   title: string
   text: string
   section?: string
+  suggestedSection?: string
   clientKeywords: string[]
   customerNames: string[]
   clientMatches: NewsClientMatch[]

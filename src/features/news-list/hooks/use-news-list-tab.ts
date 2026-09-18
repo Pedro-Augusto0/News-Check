@@ -4,6 +4,8 @@ import { useCropsStore } from '@/features/crops'
 import { useCropDragState } from '@/features/crops/hooks'
 import { useNewsStore } from '@/features/news'
 import { useCurrentPdf } from '@/features/edition-session/hooks'
+import { useCurrentPage } from '@/features/page-navigation/hooks'
+import { pageNumberFromPageId } from '@/features/page-navigation/page-key'
 import { useNewsCropsViewModel } from '@/features/news/hooks'
 import { isNewsItemPending, resolveNewsTargetCropId } from '@/features/news/view-model'
 import { canDeleteNewsItem } from '@/features/news/model'
@@ -17,10 +19,12 @@ import {
 
 export function useNewsListTab() {
   const selectedEditionId = useSessionStore((s) => s.selectedEditionId)
-  const selectedPageNumber = useSessionStore((s) => s.selectedPageNumber)
+  const selectedPageId = useSessionStore((s) => s.selectedPageNumber)
   const selectPage = useSessionStore((s) => s.selectPage)
   const newsViewFilter = useSessionStore((s) => s.newsViewFilter)
   const currentPdf = useCurrentPdf()
+  const currentPage = useCurrentPage()
+  const selectedPageNumber = currentPage?.pageNumber ?? pageNumberFromPageId(selectedPageId)
 
   const crops = useCropsStore((s) => s.crops)
   const groups = useCropsStore((s) => s.groups)
@@ -100,7 +104,7 @@ export function useNewsListTab() {
   useEffect(() => {
     if (search.trim()) return
     setCollapsedPages({})
-  }, [selectedPageNumber, currentPdf?.id, search])
+  }, [selectedPageId, currentPdf?.id, search])
 
   const dragSourceInGroup = dragId ? !!crops[dragId]?.groupId : false
 

@@ -1,7 +1,7 @@
 import { useCropsStore } from '@/features/crops'
 import { useNewsStore } from '@/features/news'
-import { extractCropContent, type CropExtractionResult } from '@/features/text-extraction'
-import { isDefaultCropTitle } from '@/features/text-extraction'
+import { extractCropContent, type CropExtractionResult } from './text-extractor'
+import { isDefaultCropTitle } from './detect-title'
 import { comparePageKeys } from '@/features/page-navigation/page-key'
 import type { Crop } from '@/features/crops'
 import type { VehicleEdition } from '@/features/edition-session'
@@ -116,4 +116,44 @@ export async function extractAndSaveGroupText(
     })
 
   await extractAndSaveModalText(groupId, modalCrops, resolveImageUrl)
+}
+
+export async function extractAndReplaceNewsContent(
+  crops: Crop[],
+  resolveImageUrl: (crop: Crop) => string | undefined,
+): Promise<{ title: string; text: string }> {
+  const ordered = [...crops].sort((a, b) => {
+    if (a.pageNumber !== b.pageNumber) return comparePageKeys(a.pageNumber, b.pageNumber)
+    return a.rect.y - b.rect.y
+  })
+
+  const parts: string[] = []
+  let detectedTitle = ''
+
+  for (const crop of ordered) {
+    const imageUrl = resolveImageUrl(crop)
+    if (!imageUrl) continue
+    const result = await extractCropContent(imageUrl, crop.rect)
+    if (result.text.trim()) {
+      parts.push(result.text.trim())
+      useCropsStore.getState().updateCropText(crop.id, result.text)
+    }
+    if (result.title.trim()) {
+      if (!detectedTitle) detectedTitle = result.title.trim()
+      useCropsStore.getState().updateCropTitle(crop.id, result.title)
+    }
+  }
+
+  const combined = parts.join('\n\n')
+  if (!detectedTitle && !combined) {
+    throw new Error('Não foi possível ler o texto dos recortes')
+  }
+
+  const newsId = ordered.find((item) => item.newsItemId)?.newsItemId
+  if (newsId) {
+    if (detectedTitle) useNewsStore.getState().updateNewsItemTitle(newsId, detectedTitle)
+    if (combined) useNewsStore.getState().updateNewsItemText(newsId, combined)
+  }
+
+  return { title: detectedTitle, text: combined }
 }

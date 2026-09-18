@@ -49,6 +49,11 @@
   color: #c2410c;
 }
 
+.review-queue-panel__create {
+  width: 100%;
+  margin-bottom: var(--space-2);
+}
+
 .review-queue-list-item__merge-badge {
   display: inline-flex;
   align-items: center;
@@ -78,6 +83,25 @@
   color: #c2410c;
   background: #fff7ed;
   border: 1px solid color-mix(in srgb, #ea580c 22%, transparent);
+}
+
+.review-queue-list-item__ocr {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.review-queue-list-item__ocr svg {
+  animation: review-queue-ocr-spin 0.8s linear infinite;
+}
+
+@keyframes review-queue-ocr-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .review-queue-list-item--merge-base.crop-list-item--active-news {

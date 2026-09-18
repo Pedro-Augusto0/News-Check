@@ -4,10 +4,12 @@ import type { StoredNewsItem } from '@/features/news'
 import type { ApiNewsItemDto, NewsSearchResultDto } from '../dto'
 import {
   buildCropSeedsFromApiNews,
+  buildPageFilePathMap,
   buildPageImageMap,
   buildPagesFromNews,
   mapApiNewsToStoredItems,
 } from './news-mappers'
+import { pageIdOf, pageOccurrenceKey } from '@/features/page-navigation/page-key'
 
 const edition: VehicleEdition = {
   id: 'edition-1',
@@ -51,7 +53,7 @@ describe('news API mappers', () => {
 
     expect(items.map((item) => [item.id, item.pageNumber, item.listOrder])).toEqual([
       ['2', 'A2', 0],
-      ['3', 'A2', 1],
+      ['3', 'A2', 0],
       ['10', 'A10', 0],
     ])
     expect(items[0]).toMatchObject({
@@ -75,6 +77,30 @@ describe('news API mappers', () => {
     expect(items[1]).toMatchObject({ title: 'Sem título', text: '' })
   })
 
+  it('maps publicationPageId and fineshed from news/list onto items and pages', () => {
+    const items = mapApiNewsToStoredItems(edition, [
+      apiNews(1, { publicationPageId: 44, fineshed: true }),
+      {
+        ...apiNews(2, { page: 'A2' }),
+        PublicationPageId: '45',
+        Fineshed: 'true',
+      } as ApiNewsItemDto & { PublicationPageId: string; Fineshed: string },
+    ])
+
+    expect(items[0]).toMatchObject({ publicationPageId: 44, finished: true })
+    expect(items[1]).toMatchObject({ publicationPageId: 45, finished: true, pageNumber: 'A2' })
+
+    const pages = buildPagesFromNews(items)
+    expect(pages.find((page) => page.pageNumber === '1')).toMatchObject({
+      publicationPageId: 44,
+      finished: true,
+    })
+    expect(pages.find((page) => page.pageNumber === 'A2')).toMatchObject({
+      publicationPageId: 45,
+      finished: true,
+    })
+  })
+
   it('maps relatedPage from camelCase or PascalCase and ignores blanks', () => {
     expect(mapApiNewsToStoredItems(edition, [apiNews(1, { relatedPage: ' A3 ' })])[0]?.relatedPage).toBe(
       'A3',
@@ -88,6 +114,24 @@ describe('news API mappers', () => {
         },
       ])[0]?.relatedPage,
     ).toBe('B4')
+  })
+
+  it('maps suggestedSection from camelCase or PascalCase and trims blanks', () => {
+    expect(
+      mapApiNewsToStoredItems(edition, [
+        apiNews(1, { section: ' Futebol ', suggestedSection: ' Esportes ' }),
+      ])[0],
+    ).toMatchObject({ section: 'Futebol', suggestedSection: 'Esportes' })
+    expect(
+      mapApiNewsToStoredItems(edition, [apiNews(1, { suggestedSection: '   ' })])[0]?.suggestedSection,
+    ).toBeUndefined()
+    expect(
+      mapApiNewsToStoredItems(edition, [
+        { ...apiNews(1), suggestedSection: undefined, SuggestedSection: 'Gastronomia' } as ApiNewsItemDto & {
+          SuggestedSection: string
+        },
+      ])[0]?.suggestedSection,
+    ).toBe('Gastronomia')
   })
 
   it('collects unique customer names from search results', () => {
@@ -291,7 +335,16 @@ describe('news API mappers', () => {
       apiNews(3, { page: '2', filePath: 'https://example.com/later.jpg' }),
     ])
 
-    expect([...map.entries()]).toEqual([['2', '/pages/2.jpg']])
+    expect([...map.entries()]).toEqual([
+      [
+        pageIdOf({ pageNumber: '2', filePath: 'http://170.80.70.78/pages/2.jpg' }),
+        '/pages/2.jpg',
+      ],
+      [
+        pageIdOf({ pageNumber: '2', filePath: 'https://example.com/later.jpg' }),
+        'https://example.com/later.jpg',
+      ],
+    ])
   })
 
   it('creates crop seeds only when coordinates and image are present', () => {
@@ -424,8 +477,14 @@ describe('news API mappers', () => {
     ])
 
     expect([...map.entries()]).toEqual([
-      ['1', '/pages/1.jpg'],
-      ['2', '/pages/2.jpg'],
+      [
+        pageIdOf({ pageNumber: '1', filePath: 'http://170.80.70.78/pages/1.jpg' }),
+        '/pages/1.jpg',
+      ],
+      [
+        pageIdOf({ pageNumber: '2', filePath: 'http://170.80.70.78/pages/2.jpg' }),
+        '/pages/2.jpg',
+      ],
     ])
   })
 
@@ -460,5 +519,89 @@ describe('news API mappers', () => {
     expect(buildPagesFromNews([])).toEqual([
       expect.objectContaining({ pageNumber: '1', imageUrl: '', hasClient: false }),
     ])
+  })
+
+  it('builds a distinct page for the same number in different sections', () => {
+    const stored: StoredNewsItem[] = [
+      {
+        id: '1',
+        title: 'Sport',
+        cropId: null,
+        pdfId: 'pdf-1',
+        pageNumber: '6',
+        editionId: 'edition-1',
+        suggestedSection: 'Esportes',
+      },
+      {
+        id: '2',
+        title: 'Food',
+        cropId: null,
+        pdfId: 'pdf-1',
+        pageNumber: '6',
+        editionId: 'edition-1',
+        suggestedSection: 'Gastronomia',
+      },
+    ]
+    const pages = buildPagesFromNews(
+      stored,
+      new Map([
+        [pageOccurrenceKey('6', 'Esportes'), '/esportes.jpg'],
+        [pageOccurrenceKey('6', 'Gastronomia'), '/gastro.jpg'],
+      ]),
+    )
+
+    expect(pages.map((page) => [page.pageNumber, page.section, page.imageUrl])).toEqual([
+      ['6', 'Esportes', '/esportes.jpg'],
+      ['6', 'Gastronomia', '/gastro.jpg'],
+    ])
+    expect(pages[0]?.id).not.toBe(pages[1]?.id)
+  })
+
+  it('keeps different files separate when they share the same suggested section', () => {
+    const apiItems = [
+      apiNews(1, {
+        page: '1',
+        suggestedSection: 'Capa',
+        section: '-',
+        filePath: 'http://host/jornal/-/1.jpg',
+      }),
+      apiNews(2, {
+        page: '1',
+        suggestedSection: 'Capa',
+        section: 'DESTEMPERADOS',
+        filePath: 'http://host/jornal/DESTEMPERADOS/1.jpg',
+      }),
+    ]
+
+    const pages = buildPagesFromNews(
+      mapApiNewsToStoredItems(edition, apiItems),
+      buildPageImageMap(apiItems),
+      buildPageFilePathMap(apiItems),
+    )
+
+    expect(pages.map((page) => [page.section, page.filePath])).toEqual([
+      ['-', 'http://host/jornal/-/1.jpg'],
+      ['DESTEMPERADOS', 'http://host/jornal/DESTEMPERADOS/1.jpg'],
+    ])
+  })
+
+  it('uses the single page-folder label when the file path is the same', () => {
+    const filePath = 'http://host/jornal/-/6.jpg'
+    const apiItems = [
+      apiNews(1, { page: '6', suggestedSection: '', section: '-', filePath }),
+      apiNews(2, { page: '6', suggestedSection: 'POLÍTICA E PODER', section: '-', filePath }),
+    ]
+
+    const pages = buildPagesFromNews(
+      mapApiNewsToStoredItems(edition, apiItems),
+      buildPageImageMap(apiItems),
+      buildPageFilePathMap(apiItems),
+    )
+
+    expect(pages).toHaveLength(1)
+    expect(pages[0]).toMatchObject({
+      section: '-',
+      filePath,
+    })
   })
 })

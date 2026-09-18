@@ -32,6 +32,13 @@
   font-size: var(--font-size-lg);
 }
 
+.validator-v2-page__confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
 /* ── Review v2 visual theme ── */
 
 .review-layout--v2 {
@@ -240,7 +247,6 @@
   box-shadow: none;
 }
 
-.review-layout--v2 .review-stage__lock-btn,
 .review-layout--v2 .review-stage__control-group {
   border-color: var(--review-border);
 }

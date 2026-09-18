@@ -5,6 +5,7 @@ import { useCropsStore } from '@/features/crops'
 import { useNewsStore } from '@/features/news'
 import { useViewerStore } from '@/features/page-viewer/store'
 import { formatPublicationLabel } from '@/features/publication-api'
+import { findPageBySelection, resolvePageId } from '@/features/page-navigation/page-key'
 import { useCurrentPdf } from '../hooks'
 import { hydrateEditionNews } from '../application'
 import type { VehicleEdition } from '../model'
@@ -41,6 +42,7 @@ export function AppHeader() {
   const resetView = useViewerStore((s) => s.resetView)
 
   const currentPdf = useCurrentPdf()
+  const selectedEdition = editions.find((edition) => edition.id === selectedEditionId)
 
   const zoomPercent = Math.round(zoom * 100)
   const zoomOptions = useMemo(() => {
@@ -67,9 +69,12 @@ export function AppHeader() {
     }
   }
 
+  const currentPage = findPageBySelection(currentPdf?.pages, selectedPageNumber)
   const lastPageLabel = currentPdf?.pages.at(-1)?.pageNumber ?? ''
   const firstPageLabel = currentPdf?.pages[0]?.pageNumber ?? ''
-  const pageIndex = currentPdf?.pages.findIndex((p) => p.pageNumber === selectedPageNumber) ?? -1
+  const pageIndex = currentPage
+    ? (currentPdf?.pages.findIndex((page) => resolvePageId(page) === resolvePageId(currentPage)) ?? -1)
+    : -1
   const isFirstPage = pageIndex <= 0
   const isLastPage = !currentPdf || pageIndex < 0 || pageIndex >= currentPdf.pages.length - 1
 
@@ -95,6 +100,9 @@ export function AppHeader() {
           onChange={(value) => {
             void handleEditionChange(value)
           }}
+          renderValue={() =>
+            selectedEdition ? formatEditionLabel(selectedEdition) : 'Selecionar edição'
+          }
         />
         <span className="app-header__session-divider" aria-hidden />
         <ComboBox
@@ -122,7 +130,7 @@ export function AppHeader() {
             </button>
 
             <span className="app-header__pagination-label">
-              {selectedPageNumber || firstPageLabel} / {lastPageLabel}
+              {currentPage?.pageNumber || selectedPageNumber || firstPageLabel} / {lastPageLabel}
             </span>
 
             <button

@@ -14,6 +14,7 @@ export interface CropsState {
   extractingTextIds: Record<string, true>
 
   hydrateFromEdition: (edition: VehicleEdition) => void
+  clearHydratedEdition: () => void
   addCrop: (params: {
     editionId: string
     pdfId: string

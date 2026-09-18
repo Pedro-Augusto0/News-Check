@@ -7,10 +7,13 @@ import {
   Clock,
   FilePlus2,
   FileText,
+  LoaderCircle,
   Maximize2,
   Minus,
   Newspaper,
+  Pencil,
   Plus,
+  ScanText,
   Scissors,
   Users,
   X,
@@ -25,7 +28,9 @@ import { Button } from '@/shared/ui/button'
 import { Modal } from '@/shared/ui/modal'
 import { cn } from '@/shared/ui/utils/cn'
 import {
+  formatIncompleteNewsTip,
   highlightKeywordSegments,
+  missingApprovalRequirements,
   normalizeKeyword,
   resolveClientMatchGroups,
   stepReviewZoom,
@@ -38,9 +43,6 @@ import './review-news-detail-modal.css'
 const CLIPPING_RENDER_WIDTH = 560
 const CLIPPING_FULLSCREEN_WIDTH = 1600
 const PAGE_RENDER_WIDTH = 720
-const isMac =
-  typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
-const APPROVE_SHORTCUT = isMac ? '⌘S' : 'Ctrl+S'
 
 type DetailTab = 'news' | 'clips'
 
@@ -59,7 +61,12 @@ interface ReviewNewsDetailModalProps {
   status: ReviewStatus | undefined
   open: boolean
   onClose: () => void
-  onApprove?: () => void
+  mode?: 'review' | 'create'
+  ocrStatus?: 'idle' | 'running' | 'ready' | 'error'
+  ocrError?: string | null
+  autoRunOcr?: boolean
+  onRunOcr?: () => void | Promise<void>
+  onApprove?: (content: { title: string; text: string }) => void | Promise<boolean | void>
   onChangeTitle?: (title: string) => void
   onChangeText?: (text: string) => void
 }
@@ -511,6 +518,11 @@ export function ReviewNewsDetailModal({
   status,
   open,
   onClose,
+  mode = 'review',
+  ocrStatus = 'idle',
+  ocrError,
+  autoRunOcr = false,
+  onRunOcr,
   onApprove,
   onChangeTitle,
   onChangeText,
@@ -531,6 +543,13 @@ export function ReviewNewsDetailModal({
   const [paragraphDrafts, setParagraphDrafts] = useState(() => paragraphsFromText(item?.text ?? ''))
   const [editingTitle, setEditingTitle] = useState(false)
   const [editingParagraph, setEditingParagraph] = useState<number | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [ocrRunning, setOcrRunning] = useState(false)
+  const [ocrLocalError, setOcrLocalError] = useState<string | null>(null)
+  const onRunOcrRef = useRef(onRunOcr)
+  onRunOcrRef.current = onRunOcr
+  const autoRunOcrRef = useRef(autoRunOcr)
+  autoRunOcrRef.current = autoRunOcr
   const canEdit = !!onChangeTitle || !!onChangeText
 
   const cropEntries = useMemo(() => {
@@ -583,6 +602,37 @@ export function ReviewNewsDetailModal({
   }, [item?.id, item?.title, item?.text])
 
   useEffect(() => {
+    setOcrRunning(false)
+    setOcrLocalError(null)
+  }, [item?.id])
+
+  useEffect(() => {
+    if (!open || !item) return
+    if (!autoRunOcrRef.current) return
+    if (item.cropIds.length === 0) return
+    const runOcr = onRunOcrRef.current
+    if (!runOcr) return
+
+    let cancelled = false
+    setOcrRunning(true)
+    setOcrLocalError(null)
+    void Promise.resolve(runOcr())
+      .catch((error) => {
+        if (cancelled) return
+        setOcrLocalError(
+          error instanceof Error ? error.message : 'Não foi possível executar o OCR',
+        )
+      })
+      .finally(() => {
+        if (!cancelled) setOcrRunning(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, item?.id, item?.cropIds.length])
+
+  useEffect(() => {
     if (!open) return
 
     const isTypingTarget = (target: EventTarget | null) => {
@@ -619,9 +669,21 @@ export function ReviewNewsDetailModal({
   const vehicleName = edition?.vehicleName ?? 'Edição'
   const editionDate = edition ? formatEditionDate(edition.editionDate) : null
   const showStatus = status && status !== 'pending'
-  const canApprove = !!onApprove && (!status || status === 'pending')
+  const content = {
+    title: titleDraft.trim(),
+    text: joinParagraphs(paragraphDrafts),
+  }
   const clientCount = Math.max(clientGroups.length, item.customerNames.length)
   const clipCount = cropEntries.length
+  const isOcrBusy = ocrRunning || ocrStatus === 'running'
+  const missingRequirements = missingApprovalRequirements({
+    title: content.title,
+    text: content.text,
+    cropCount: clipCount,
+  })
+  const incompleteTip = isOcrBusy ? null : formatIncompleteNewsTip(missingRequirements)
+  const showApprove = !!onApprove && (!status || status === 'pending')
+  const canApprove = showApprove && missingRequirements.length === 0 && !isOcrBusy && !submitting
 
   const commitEdits = () => {
     if (!canEdit) return
@@ -631,15 +693,35 @@ export function ReviewNewsDetailModal({
     if (onChangeText && nextText !== (item.text ?? '')) onChangeText(nextText)
   }
 
+  const handleRunOcr = async () => {
+    if (!onRunOcr || isOcrBusy) return
+    setOcrRunning(true)
+    setOcrLocalError(null)
+    try {
+      await onRunOcr()
+    } catch (error) {
+      setOcrLocalError(
+        error instanceof Error ? error.message : 'Não foi possível executar o OCR',
+      )
+    } finally {
+      setOcrRunning(false)
+    }
+  }
+
   const handleClose = () => {
     commitEdits()
     onClose()
   }
 
-  const handleApprove = () => {
-    if (!onApprove) return
+  const handleApprove = async () => {
+    if (!onApprove || missingRequirements.length > 0 || isOcrBusy) return
     commitEdits()
-    onApprove()
+    setSubmitting(true)
+    try {
+      await onApprove(content)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const selectCrop = (cropId: string) => {
@@ -669,7 +751,12 @@ export function ReviewNewsDetailModal({
             </button>
           </div>
 
-          {canEdit && onChangeTitle && editingTitle ? (
+          {isOcrBusy ? (
+            <div className="review-news-detail-modal__headline-ocr" aria-hidden>
+              <span className="review-news-detail-modal__ocr-line review-news-detail-modal__ocr-line--headline" />
+              <span className="review-news-detail-modal__ocr-line review-news-detail-modal__ocr-line--headline-sub" />
+            </div>
+          ) : canEdit && onChangeTitle && editingTitle ? (
             <textarea
               className="review-news-detail-modal__headline-input"
               value={titleDraft}
@@ -698,18 +785,31 @@ export function ReviewNewsDetailModal({
               aria-label="Título da notícia"
             />
           ) : (
-            <h2
-              className={cn(
-                'review-news-detail-modal__headline',
-                canEdit && onChangeTitle && 'review-news-detail-modal__headline--editable',
+            <div className="review-news-detail-modal__headline-row">
+              <h2
+                className={cn(
+                  'review-news-detail-modal__headline',
+                  canEdit && onChangeTitle && 'review-news-detail-modal__headline--editable',
+                )}
+                onClick={() => {
+                  if (canEdit && onChangeTitle) setEditingTitle(true)
+                }}
+                title={canEdit && onChangeTitle ? 'Clique para editar o título' : undefined}
+              >
+                <HighlightedText text={titleDraft || 'Sem título'} keywords={keywords} />
+              </h2>
+              {canEdit && onChangeTitle && (
+                <button
+                  type="button"
+                  className="review-news-detail-modal__headline-edit"
+                  onClick={() => setEditingTitle(true)}
+                  aria-label="Editar título"
+                  title="Editar título"
+                >
+                  <Pencil size={15} strokeWidth={2.1} aria-hidden />
+                </button>
               )}
-              onClick={() => {
-                if (canEdit && onChangeTitle) setEditingTitle(true)
-              }}
-              title={canEdit && onChangeTitle ? 'Clique para editar o título' : undefined}
-            >
-              <HighlightedText text={titleDraft || 'Sem título'} keywords={keywords} />
-            </h2>
+            </div>
           )}
 
           <ul className="review-news-detail-modal__meta">
@@ -867,7 +967,29 @@ export function ReviewNewsDetailModal({
             </aside>
 
             <section className="review-news-detail-modal__copy" aria-label="Texto extraído">
-              {paragraphDrafts.every((part) => !part.trim()) && !canEdit ? (
+              {isOcrBusy ? (
+                <div
+                  className="review-news-detail-modal__ocr"
+                  role="status"
+                  aria-live="polite"
+                  aria-busy="true"
+                >
+                  <p className="review-news-detail-modal__ocr-label">
+                    <LoaderCircle
+                      className="review-news-detail-modal__ocr-spinner"
+                      size={14}
+                      strokeWidth={2.2}
+                      aria-hidden
+                    />
+                    Lendo o recorte…
+                  </p>
+                  <span className="review-news-detail-modal__ocr-line review-news-detail-modal__ocr-line--title" />
+                  <span className="review-news-detail-modal__ocr-line" />
+                  <span className="review-news-detail-modal__ocr-line" />
+                  <span className="review-news-detail-modal__ocr-line" />
+                  <span className="review-news-detail-modal__ocr-line review-news-detail-modal__ocr-line--short" />
+                </div>
+              ) : paragraphDrafts.every((part) => !part.trim()) && !canEdit ? (
                 <p className="review-news-detail-modal__quiet">Sem texto extraído para esta notícia.</p>
               ) : (
                 paragraphDrafts.map((paragraph, index) => {
@@ -1024,10 +1146,38 @@ export function ReviewNewsDetailModal({
         )}
 
         <footer className="review-news-detail-modal__footer">
-          <p className="review-news-detail-modal__tip">
-            Dica: use as setas para trocar de recorte ou maximize o corte para ver em tela cheia.
-          </p>
+          <div>
+            <p
+              className={cn(
+                'review-news-detail-modal__tip',
+                incompleteTip && 'review-news-detail-modal__tip--warn',
+              )}
+            >
+              {incompleteTip ??
+                (mode === 'create'
+                  ? 'Revise o título e o texto antes de criar a notícia.'
+                  : 'Dica: use as setas para trocar de recorte ou maximize o corte para ver em tela cheia.')}
+            </p>
+            {(ocrLocalError || (ocrStatus === 'error' && ocrError)) && (
+              <p className="review-news-detail-modal__ocr-error">{ocrLocalError || ocrError}</p>
+            )}
+          </div>
           <div className="review-news-detail-modal__footer-actions">
+            {onRunOcr && (
+              <Button
+                variant="secondary"
+                onClick={() => void handleRunOcr()}
+                disabled={isOcrBusy || submitting || clipCount === 0}
+                title={
+                  clipCount === 0
+                    ? 'Adicione um recorte para passar OCR'
+                    : 'Ler o texto dos recortes e substituir título e texto'
+                }
+              >
+                <ScanText size={14} strokeWidth={2.2} aria-hidden />
+                {isOcrBusy ? 'Passando OCR…' : 'Passar OCR'}
+              </Button>
+            )}
             <Button
               variant="secondary"
               className="review-news-detail-modal__dismiss"
@@ -1036,16 +1186,26 @@ export function ReviewNewsDetailModal({
               <kbd>Esc</kbd>
               Fechar
             </Button>
-            {canApprove && (
+            {showApprove && (
               <Button
                 variant="primary"
                 className="review-news-detail-modal__approve"
                 onClick={handleApprove}
-                title={`Aprovar e ir à próxima (${APPROVE_SHORTCUT})`}
+                disabled={!canApprove}
+                title={
+                  incompleteTip
+                    ? incompleteTip
+                    : mode === 'create'
+                      ? 'Criar notícia e ir à próxima'
+                      : 'Confirmar aprovação e ir à próxima'
+                }
               >
                 <Check size={15} strokeWidth={2.5} aria-hidden />
-                Aprovar e próxima
-                <kbd>{APPROVE_SHORTCUT}</kbd>
+                {submitting
+                  ? 'Enviando…'
+                  : mode === 'create'
+                    ? 'Criar notícia'
+                    : 'Aprovar e próxima'}
               </Button>
             )}
           </div>

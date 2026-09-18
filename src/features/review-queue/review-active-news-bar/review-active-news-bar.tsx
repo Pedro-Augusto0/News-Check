@@ -22,6 +22,7 @@ interface ReviewActiveNewsBarProps {
   onApprove: () => void
   onViewCover?: () => void
   onViewDetails: () => void
+  emptyLabel?: string
 }
 
 export function ReviewActiveNewsBar({
@@ -36,6 +37,7 @@ export function ReviewActiveNewsBar({
   onApprove,
   onViewCover,
   onViewDetails,
+  emptyLabel = 'Nenhuma notícia na fila',
 }: ReviewActiveNewsBarProps) {
   const positionLabel = total > 0 ? `${index} de ${total}` : null
   const canAddSegment = !!item && !focusLocked && item.kind === 'news' && !!item.newsId && !!onAddSegment
@@ -83,7 +85,7 @@ export function ReviewActiveNewsBar({
           </p>
         </div>
       ) : (
-        <p className="review-active-news-bar__empty">Nenhuma notícia na fila</p>
+        <p className="review-active-news-bar__empty">{emptyLabel}</p>
       )}
 
       <div className="review-active-news-bar__actions">
@@ -125,10 +127,10 @@ export function ReviewActiveNewsBar({
             variant="primary"
             className="review-active-news-bar__approve"
             onClick={onApprove}
-            title={`Aprovar e ir à próxima (${APPROVE_SHORTCUT})`}
+            title={`Revisar antes de aprovar (${APPROVE_SHORTCUT})`}
           >
             <Check size={15} strokeWidth={2.5} aria-hidden />
-            Aprovar e próxima
+            Revisar e aprovar
             <kbd>{APPROVE_SHORTCUT}</kbd>
           </Button>
         )}

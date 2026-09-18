@@ -9,6 +9,8 @@ export function createManualNewsItem(
     editionId: string
     pdfId: string
     pageNumber: string
+    filePath?: string
+    section?: string
     title?: string
     text?: string
     cropId?: string | null
@@ -22,6 +24,8 @@ export function createManualNewsItem(
     cropId: params.cropId ?? null,
     pdfId: params.pdfId,
     pageNumber: params.pageNumber,
+    filePath: params.filePath,
+    section: params.section,
     editionId: params.editionId,
     manual: true,
     clientKeywordsFound: params.clientKeywordsFound,

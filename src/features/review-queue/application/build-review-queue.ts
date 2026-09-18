@@ -1,6 +1,6 @@
 import type { Crop, CropGroup } from '@/features/crops'
 import type { PageData } from '@/features/page-navigation'
-import { comparePageKeys } from '@/features/page-navigation/page-key'
+import { comparePageKeys, pageIdOf, pageOccurrenceKey, resolvePageId, resolvePageListSection, UNSECTIONED_LABEL } from '@/features/page-navigation/page-key'
 import type { StoredNewsItem } from '@/features/news'
 import type { ReviewQueueItem, ReviewSuspectReason } from '../model'
 import { uniqueKeywords } from './highlight-keywords'
@@ -51,13 +51,15 @@ function pageCropsOf(crops: Record<string, Crop>, pdfId: string, pageNumber: str
   )
 }
 
-function occupiedPagesOf(items: ReviewQueueItem[], crops: Record<string, Crop>): Set<string> {
+function occupiedPageIdsOf(items: ReviewQueueItem[], crops: Record<string, Crop>): Set<string> {
   const pages = new Set<string>()
   for (const item of items) {
-    pages.add(item.pageNumber)
+    pages.add(pageIdOf(item))
     for (const cropId of item.cropIds) {
-      const pageNumber = crops[cropId]?.pageNumber
-      if (pageNumber) pages.add(pageNumber)
+      const crop = crops[cropId]
+      if (!crop) continue
+      pages.add(pageOccurrenceKey(crop.pageNumber, resolvePageListSection(item)))
+      pages.add(pageOccurrenceKey(crop.pageNumber))
     }
   }
   return pages
@@ -103,11 +105,14 @@ export function buildReviewQueue(input: {
       editionId: news.editionId,
       pdfId: news.pdfId,
       pageNumber: news.pageNumber,
+      filePath: news.filePath,
       newsId: news.id,
+      manual: news.manual === true,
       cropIds: newsCrops.map((crop) => crop.id),
       title: news.title || newsCrops[0]?.title || 'Notícia sem título',
       text: news.text || newsCrops[0]?.text || '',
       section: news.section,
+      suggestedSection: news.suggestedSection,
       clientKeywords: keywords,
       customerNames: news.customerNames ?? [],
       clientMatches: news.clientMatches ?? [],
@@ -151,19 +156,24 @@ export function buildReviewQueue(input: {
     })
   }
 
-  const occupiedPages = occupiedPagesOf(items, input.crops)
+  const occupiedPages = occupiedPageIdsOf(items, input.crops)
   for (const page of input.pages) {
-    if (occupiedPages.has(page.pageNumber)) continue
+    const pageId = resolvePageId(page)
+    if (occupiedPages.has(pageId)) continue
+    const section = page.section && page.section !== UNSECTIONED_LABEL ? page.section : undefined
     items.push({
-      id: `empty:${input.pdfId}:${page.pageNumber}`,
+      id: `empty:${input.pdfId}:${pageId}`,
       kind: 'empty-page',
       editionId: input.editionId,
       pdfId: input.pdfId,
       pageNumber: page.pageNumber,
+      filePath: page.filePath,
       newsId: null,
       cropIds: [],
       title: `Página ${page.pageNumber}`,
       text: '',
+      section,
+      suggestedSection: section,
       clientKeywords: [],
       customerNames: [],
       clientMatches: [],

@@ -3,6 +3,7 @@ import type { Crop, CropDisplayNode, CropGroup } from '../model'
 import { generateId } from '@/shared/id'
 import { ensureDisplayIndices, nextDisplayIndex } from '@/features/crops/view-model'
 import { isPageFinalizedInState, pageFinalizationKey } from '@/features/page-navigation/finalization'
+import { pageNumberFromPageId } from '@/features/page-navigation/page-key'
 import { isApiSeededCropId } from '@/features/crops/api-coordinates'
 import {
   closeNewsTextModal,
@@ -45,7 +46,12 @@ export const useCropsStore = create<CropsState>((set, get) => ({
     let finalizedPages: Record<string, true> = {}
 
     if (persisted) {
-      crops = { ...persisted.crops }
+      crops = Object.fromEntries(
+        Object.entries(persisted.crops).map(([id, crop]) => [
+          id,
+          { ...crop, pageNumber: pageNumberFromPageId(crop.pageNumber) },
+        ]),
+      )
       groups = { ...persisted.groups }
       finalizedPages = { ...(persisted.finalizedPages ?? {}) }
 
@@ -69,6 +75,19 @@ export const useCropsStore = create<CropsState>((set, get) => ({
       crops,
       groups,
       finalizedPages,
+      selectedCropId: null,
+      editingCropId: null,
+      expandedGroups: {},
+      textModalCropId: null,
+      extractingTextIds: {},
+    })
+  },
+
+  clearHydratedEdition: () => {
+    set({
+      crops: {},
+      groups: {},
+      finalizedPages: {},
       selectedCropId: null,
       editingCropId: null,
       expandedGroups: {},

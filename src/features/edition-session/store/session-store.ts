@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { PdfFile, VehicleEdition } from '../model'
 import type { NewsViewFilter } from '@/features/news'
 import type { PageData, PageFilter } from '@/features/page-navigation'
+import { findPageBySelection, resolvePageId } from '@/features/page-navigation/page-key'
 import { filterPagesByClient, pageHasClientCrops } from '@/features/crops/client-stats'
 import { useCropsStore } from '@/features/crops/store'
 
@@ -16,7 +17,14 @@ interface SessionState {
   error: string | null
 
   setEditions: (editions: VehicleEdition[]) => void
+  clearEditionSelection: () => void
   updateEditionPages: (editionId: string, pages: PageData[]) => void
+  setPublicationPageFinished: (
+    editionId: string,
+    publicationPageId: number,
+    finished: boolean,
+  ) => void
+  setPublicationFinished: (editionId: string, finished: boolean) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   selectEdition: (id: string) => void
@@ -44,14 +52,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   error: null,
 
   setEditions: (editions) => {
-    const first = editions[0]
-    const firstPdf = first?.pdfs[0]
+    const { selectedEditionId, selectedPdfId, selectedPageNumber } = get()
+    const current = editions.find((edition) => edition.id === selectedEditionId)
+    const currentPdf =
+      current?.pdfs.find((pdf) => pdf.id === selectedPdfId) ?? current?.pdfs[0] ?? null
     set({
       editions,
-      selectedEditionId: first?.id ?? null,
-      selectedPdfId: firstPdf?.id ?? null,
-      selectedPageNumber: firstPdf?.pages[0]?.pageNumber ?? '',
+      selectedEditionId: current?.id ?? null,
+      selectedPdfId: currentPdf?.id ?? null,
+      selectedPageNumber: current ? selectedPageNumber : '',
       error: null,
+    })
+  },
+
+  clearEditionSelection: () => {
+    set({
+      selectedEditionId: null,
+      selectedPdfId: null,
+      selectedPageNumber: '',
     })
   },
 
@@ -68,13 +86,46 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     })
 
     const current = nextEditions.find((e) => e.id === editionId)
-    const firstPage = current?.pdfs[0]?.pages[0]?.pageNumber ?? ''
-    const pageExists = current?.pdfs[0]?.pages.some((p) => p.pageNumber === selectedPageNumber)
+    const firstPage = current?.pdfs[0]?.pages[0]
+    const selectedPage = findPageBySelection(current?.pdfs[0]?.pages, selectedPageNumber)
 
     set({
       editions: nextEditions,
       selectedPageNumber:
-        selectedEditionId === editionId && pageExists ? selectedPageNumber : firstPage,
+        selectedEditionId !== editionId
+          ? selectedPageNumber
+          : selectedPage
+            ? resolvePageId(selectedPage)
+            : firstPage
+              ? resolvePageId(firstPage)
+              : '',
+    })
+  },
+
+  setPublicationPageFinished: (editionId, publicationPageId, finished) => {
+    const { editions } = get()
+    set({
+      editions: editions.map((edition) => {
+        if (edition.id !== editionId) return edition
+        return {
+          ...edition,
+          pdfs: edition.pdfs.map((pdf) => ({
+            ...pdf,
+            pages: pdf.pages.map((page) =>
+              page.publicationPageId === publicationPageId ? { ...page, finished } : page,
+            ),
+          })),
+        }
+      }),
+    })
+  },
+
+  setPublicationFinished: (editionId, finished) => {
+    const { editions } = get()
+    set({
+      editions: editions.map((edition) =>
+        edition.id === editionId ? { ...edition, finished } : edition,
+      ),
     })
   },
 
@@ -85,7 +136,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const edition = get().editions.find((e) => e.id === id)
     const firstPdf = edition?.pdfs[0]
     const { newsViewFilter } = get()
-    let selectedPageNumber = firstPdf?.pages[0]?.pageNumber ?? ''
+    let selectedPageNumber = firstPdf?.pages[0] ? resolvePageId(firstPdf.pages[0]) : ''
 
     if (newsViewFilter === 'withClient' && firstPdf) {
       const crops = useCropsStore.getState().crops
@@ -93,7 +144,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         pageHasClientCrops(crops, firstPdf.id, page.pageNumber),
       )
       if (firstPageWithClient) {
-        selectedPageNumber = firstPageWithClient.pageNumber
+        selectedPageNumber = resolvePageId(firstPageWithClient)
       }
     }
 
@@ -108,7 +159,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   selectPdf: (id) => {
     const pdf = get().getCurrentEdition()?.pdfs.find((p) => p.id === id)
     const { newsViewFilter } = get()
-    let selectedPageNumber = pdf?.pages[0]?.pageNumber ?? ''
+    let selectedPageNumber = pdf?.pages[0] ? resolvePageId(pdf.pages[0]) : ''
 
     if (newsViewFilter === 'withClient' && pdf) {
       const crops = useCropsStore.getState().crops
@@ -116,7 +167,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         pageHasClientCrops(crops, pdf.id, page.pageNumber),
       )
       if (firstPageWithClient) {
-        selectedPageNumber = firstPageWithClient.pageNumber
+        selectedPageNumber = resolvePageId(firstPageWithClient)
       }
     }
 
@@ -127,7 +178,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     })
   },
 
-  selectPage: (pageNumber) => set({ selectedPageNumber: pageNumber }),
+  selectPage: (pageIdOrNumber) => {
+    const page = findPageBySelection(get().getCurrentPdf()?.pages, pageIdOrNumber)
+    set({ selectedPageNumber: page ? resolvePageId(page) : pageIdOrNumber })
+  },
   setPageFilter: (pageFilter) => set({ pageFilter }),
 
   setNewsViewFilter: (newsViewFilter) => {
@@ -141,7 +195,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         pageHasClientCrops(crops, pdf.id, page.pageNumber),
       )
       if (firstPageWithClient) {
-        selectedPageNumber = firstPageWithClient.pageNumber
+        selectedPageNumber = resolvePageId(firstPageWithClient)
       }
     }
 
@@ -150,19 +204,19 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   nextPage: () => {
     const pages = get().getFilteredPages()
-    const current = get().selectedPageNumber
-    const idx = pages.findIndex((p) => p.pageNumber === current)
+    const current = findPageBySelection(pages, get().selectedPageNumber)
+    const idx = current ? pages.findIndex((page) => resolvePageId(page) === resolvePageId(current)) : -1
     if (idx >= 0 && idx < pages.length - 1) {
-      set({ selectedPageNumber: pages[idx + 1].pageNumber })
+      set({ selectedPageNumber: resolvePageId(pages[idx + 1]) })
     }
   },
 
   prevPage: () => {
     const pages = get().getFilteredPages()
-    const current = get().selectedPageNumber
-    const idx = pages.findIndex((p) => p.pageNumber === current)
+    const current = findPageBySelection(pages, get().selectedPageNumber)
+    const idx = current ? pages.findIndex((page) => resolvePageId(page) === resolvePageId(current)) : -1
     if (idx > 0) {
-      set({ selectedPageNumber: pages[idx - 1].pageNumber })
+      set({ selectedPageNumber: resolvePageId(pages[idx - 1]) })
     }
   },
 
@@ -178,9 +232,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   getCurrentPage: () => {
-    const pdf = get().getCurrentPdf()
-    const { selectedPageNumber } = get()
-    return pdf?.pages.find((p) => p.pageNumber === selectedPageNumber)
+    return findPageBySelection(get().getCurrentPdf()?.pages, get().selectedPageNumber)
   },
 
   getFilteredPages: () => {

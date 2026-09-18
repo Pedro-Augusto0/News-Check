@@ -14,7 +14,7 @@ import {
   resolveImageInteraction,
   shouldUseMultiNewsSelection,
 } from '@/features/crop-news-linking'
-import { pageScopeKey } from '@/features/page-navigation/page-key'
+import { pageNumberFromPageId, pageScopeKey } from '@/features/page-navigation/page-key'
 import { useCropDrawing } from './use-crop-drawing'
 import { usePageImageRenderer } from './use-page-image-renderer'
 import { usePageViewerPan } from './use-page-viewer-pan'
@@ -24,7 +24,8 @@ export function usePageViewer() {
   const currentPdf = useCurrentPdf()
   const currentPage = useCurrentPage()
   const selectedEditionId = useSessionStore((s) => s.selectedEditionId)
-  const selectedPageNumber = useSessionStore((s) => s.selectedPageNumber)
+  const selectedPageId = useSessionStore((s) => s.selectedPageNumber)
+  const selectedPageNumber = currentPage?.pageNumber ?? pageNumberFromPageId(selectedPageId)
 
   const isNewsItemFinalized = useCropsStore((s) => s.isNewsItemFinalized)
   const newsCropsViewModel = useNewsCropsViewModel({

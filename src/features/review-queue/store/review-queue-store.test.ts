@@ -34,4 +34,26 @@ describe('useReviewQueueStore.seedDoneFromApi', () => {
       'news:99': true,
     })
   })
+
+  it('clears the working edition without touching persisted statuses', () => {
+    useReviewQueueStore.getState().seedDoneFromApi(EDITION_ID, ['42'])
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      statuses: { 'news:42': 'approved' },
+      savedIds: { 'news:42': true },
+    }))
+
+    useReviewQueueStore.getState().clearEdition()
+
+    expect(useReviewQueueStore.getState()).toMatchObject({
+      editionId: null,
+      currentId: null,
+      inspectId: null,
+      statuses: {},
+      savedIds: {},
+    })
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')).toEqual({
+      statuses: { 'news:42': 'approved' },
+      savedIds: { 'news:42': true },
+    })
+  })
 })

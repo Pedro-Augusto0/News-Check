@@ -1,38 +1,34 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, FileText, ListFilter, Search, UserRound, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, FileText, ListFilter, Newspaper, RotateCcw, Search, UserRound, X } from 'lucide-react'
 import { ComboBox } from '@/shared/ui/combo-box'
 import { formatPublicationLabel } from '@/features/publication-api'
 import type { VehicleEdition } from '@/features/edition-session'
 import { cn } from '@/shared/ui/utils/cn'
-import { groupBySection, UNSECTIONED_LABEL } from '../application'
+import { groupBySection, pageOccurrenceKey, UNSECTIONED_LABEL, type ReviewPageStat } from '../application'
 import './review-page-rail.css'
 
 type PageFilter = 'all' | 'pending' | 'clients'
 
-interface PageStat {
-  pageNumber: string
-  total: number
-  pending: number
-  newsCount: number
-  clientCount: number
-  clientNewsCount: number
-  hasClient: boolean
-  hasSuspect: boolean
-  reviewed: boolean
-  section: string
-  itemCount: number
-}
-
 interface ReviewPageRailProps {
-  pages: PageStat[]
+  pages: ReviewPageStat[]
   currentPageNumber: string
+  currentSection?: string
+  currentPageId?: string
   done: number
   total: number
   lastUpdated?: string
   editions: VehicleEdition[]
   selectedEditionId: string | null
   onEditionChange: (id: string) => void
-  onSelectPage: (pageNumber: string) => void
+  onSelectPage: (pageId: string) => void
+  pageFinished?: boolean
+  canFinishPage?: boolean
+  finishingPage?: boolean
+  onTogglePageFinished?: () => void
+  publicationFinished?: boolean
+  canFinishPublication?: boolean
+  finishingPublication?: boolean
+  onFinishPublication?: () => void
 }
 
 function formatEditionDateShort(iso: string): string {
@@ -52,9 +48,9 @@ function PageRow({
   isActive,
   onSelectPage,
 }: {
-  page: PageStat
+  page: ReviewPageStat
   isActive: boolean
-  onSelectPage: (pageNumber: string) => void
+  onSelectPage: (pageId: string) => void
 }) {
   const newsCount = page.itemCount > 0 ? page.itemCount : page.newsCount
   const statusLabel = page.reviewed ? 'revisada' : 'pendente'
@@ -71,7 +67,7 @@ function PageRow({
           isActive && 'review-page-rail__item--active',
           page.reviewed && 'review-page-rail__item--reviewed',
         )}
-        onClick={() => onSelectPage(page.pageNumber)}
+        onClick={() => onSelectPage(page.key)}
       >
         <span
           className={cn(
@@ -116,10 +112,20 @@ function PageRow({
 export function ReviewPageRail({
   pages,
   currentPageNumber,
+  currentSection,
+  currentPageId,
   editions,
   selectedEditionId,
   onEditionChange,
   onSelectPage,
+  pageFinished = false,
+  canFinishPage = false,
+  finishingPage = false,
+  onTogglePageFinished,
+  publicationFinished = false,
+  canFinishPublication = false,
+  finishingPublication = false,
+  onFinishPublication,
 }: ReviewPageRailProps) {
   const [pageFilter, setPageFilter] = useState<PageFilter>('all')
   const [pageQuery, setPageQuery] = useState('')
@@ -287,20 +293,29 @@ export function ReviewPageRail({
 
       <div className="review-page-rail__list" role="listbox" aria-label="Lista de páginas">
         {sectionGroups.length === 0 ? (
-          <p className="review-page-rail__empty">Nenhuma página</p>
+          <p className="review-page-rail__empty">
+            {selectedEditionId ? 'Nenhuma página' : 'Selecione uma edição'}
+          </p>
         ) : (
           sectionGroups.map((group) => {
           const showHeader =
             sectionGroups.length > 1 || group.section !== UNSECTIONED_LABEL
           const expanded = Boolean(pageQuery) || !showHeader || !collapsedSections[group.section]
-          const isCurrentSection = group.items.some((page) => page.pageNumber === currentPageNumber)
+          const activePageId =
+            currentPageId ||
+            (currentSection
+              ? pageOccurrenceKey(currentPageNumber, currentSection)
+              : undefined)
+          const isCurrentSection = group.items.some((page) =>
+            activePageId ? page.key === activePageId : page.pageNumber === currentPageNumber,
+          )
           const sectionPages = (
             <ul className="review-page-rail__section-pages">
               {group.items.map((page) => (
                 <PageRow
-                  key={page.pageNumber}
+                  key={page.key}
                   page={page}
-                  isActive={page.pageNumber === currentPageNumber}
+                  isActive={activePageId ? page.key === activePageId : page.pageNumber === currentPageNumber}
                   onSelectPage={onSelectPage}
                 />
               ))}
@@ -336,6 +351,61 @@ export function ReviewPageRail({
         })
         )}
       </div>
+
+      {(onTogglePageFinished || onFinishPublication) && (
+        <div className="review-page-rail__footer">
+          {onTogglePageFinished && (
+            <button
+              type="button"
+              className={cn(
+                'review-page-rail__finish-btn',
+                pageFinished && 'review-page-rail__finish-btn--done',
+              )}
+              disabled={!canFinishPage || finishingPage}
+              onClick={onTogglePageFinished}
+              title={
+                !canFinishPage
+                  ? 'Esta página ainda não tem id de publication_page'
+                  : pageFinished
+                    ? 'Desmarcar página como finalizada'
+                    : 'Marcar página como finalizada'
+              }
+            >
+              {pageFinished ? (
+                <RotateCcw size={13} strokeWidth={2.2} aria-hidden />
+              ) : (
+                <Check size={14} strokeWidth={2.4} aria-hidden />
+              )}
+              {finishingPage ? 'Salvando…' : pageFinished ? 'Reabrir página' : 'Finalizar página'}
+            </button>
+          )}
+          {onFinishPublication && (
+            <button
+              type="button"
+              className={cn(
+                'review-page-rail__finish-btn',
+                publicationFinished && 'review-page-rail__finish-btn--done',
+              )}
+              disabled={!canFinishPublication || finishingPublication || publicationFinished}
+              onClick={onFinishPublication}
+              title={
+                !canFinishPublication
+                  ? 'Esta edição ainda não tem id de publication'
+                  : publicationFinished
+                    ? 'Jornal já finalizado'
+                    : 'Marcar jornal como finalizado'
+              }
+            >
+              <Newspaper size={14} strokeWidth={2.2} aria-hidden />
+              {finishingPublication
+                ? 'Salvando…'
+                : publicationFinished
+                  ? 'Jornal finalizado'
+                  : 'Finalizar jornal'}
+            </button>
+          )}
+        </div>
+      )}
     </nav>
   )
 }

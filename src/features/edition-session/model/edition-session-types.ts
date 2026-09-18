@@ -15,6 +15,7 @@ export interface VehicleEdition {
   label: string
   clientKeywords: string[]
   pdfs: PdfFile[]
+  finished?: boolean
 }
 
 export interface SessionPayload {

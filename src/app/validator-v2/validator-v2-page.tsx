@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Button } from '@/shared/ui/button'
+import { Modal } from '@/shared/ui/modal'
 import { NotificationToast } from '@/shared/ui/notification-toast'
 import { loadPublicationEditions } from '@/features/publication-api'
 import { hydrateEditionNews, useSessionStore } from '@/features/edition-session'
@@ -20,6 +22,12 @@ import {
   useReviewSession,
 } from '@/features/review-queue'
 import type { ReviewQueueItem } from '@/features/review-queue'
+import {
+  isCreationSessionLocked,
+  shouldAutoRunCreatedNewsOcr,
+  shouldConfirmDiscardCreationDraft,
+} from '@/features/review-queue/application'
+import { pageIdOf, resolvePageId } from '@/features/page-navigation/page-key'
 import './validator-v2-page.css'
 
 export function ValidatorV2Page() {
@@ -37,17 +45,67 @@ export function ValidatorV2Page() {
   const crops = useCropsStore((state) => state.crops)
   const review = useReviewSession()
   const [detailItem, setDetailItem] = useState<ReviewQueueItem | null>(null)
+  const [confirmDiscardDraft, setConfirmDiscardDraft] = useState(false)
+  const [confirmFinishPublication, setConfirmFinishPublication] = useState(false)
+  const resolvedDetailItem = detailItem
+    ? (review.queue.find((item) => item.id === detailItem.id) ?? detailItem)
+    : null
+  const isCreationDetail = !!resolvedDetailItem && review.creationDraft?.itemId === resolvedDetailItem.id
+  const activeNewsOcr =
+    review.newsOcr && resolvedDetailItem && review.newsOcr.itemId === resolvedDetailItem.id
+      ? review.newsOcr
+      : null
+  const detailOcrStatus = activeNewsOcr?.status ?? (isCreationDetail ? review.creationDraft?.ocrStatus : 'idle')
+  const detailOcrError = activeNewsOcr?.error ?? (isCreationDetail ? review.creationDraft?.ocrError : null)
   const activeNewsIndex = Math.max(
     0,
     review.queue.findIndex((item) => item.id === review.currentItem?.id),
   )
   const activeNewsPosition = review.currentItem ? activeNewsIndex + 1 : 0
   const coverPageNumber = review.pdf?.pages[0]?.pageNumber ?? null
-  const isOnCover = !!coverPageNumber && review.selectedPageNumber === coverPageNumber
+  const viewedPageNumber = review.currentPage?.pageNumber ?? ''
+  const currentPageId = review.currentPage
+    ? resolvePageId(review.currentPage)
+    : review.currentItem
+      ? pageIdOf(review.currentItem)
+      : review.selectedPageNumber
+  const isOnCover = !!coverPageNumber && viewedPageNumber === coverPageNumber
+
+  const openNewsDetails = useCallback(
+    (item: ReviewQueueItem) => {
+      setDetailItem(item)
+      if (shouldAutoRunCreatedNewsOcr({ open: true, item })) {
+        void review.runNewsOcr(item).catch(() => undefined)
+      }
+    },
+    [review],
+  )
 
   const viewCurrentDetails = useCallback(() => {
-    if (review.currentItem) setDetailItem(review.currentItem)
-  }, [review.currentItem])
+    if (review.currentItem) openNewsDetails(review.currentItem)
+  }, [review.currentItem, openNewsDetails])
+
+  const requestCloseDetails = useCallback(() => {
+    setDetailItem(null)
+  }, [])
+
+  const setReviewDrawMode = useCallback(
+    (mode: Parameters<typeof review.setDrawMode>[0]) => {
+      if (
+        mode === 'off' &&
+        shouldConfirmDiscardCreationDraft({
+          reason: 'cancel-incomplete-draw',
+          isCreationDraft: !!review.creationDraft,
+          hasCrop: !!review.creationDraft?.cropId,
+        })
+      ) {
+        setConfirmDiscardDraft(true)
+        return
+      }
+      review.setDrawMode(mode)
+    },
+    [review],
+  )
 
   useEffect(() => {
     if (editions.length > 0) {
@@ -63,11 +121,6 @@ export function ValidatorV2Page() {
         const loaded = await loadPublicationEditions()
         if (cancelled) return
         setEditions(loaded)
-        const first = loaded[0]
-        if (first) {
-          hydrateFromEdition(first)
-          await hydrateEditionNews(first)
-        }
         if (!cancelled) setLoading(false)
       } catch (err: unknown) {
         if (cancelled) return
@@ -79,7 +132,7 @@ export function ValidatorV2Page() {
     return () => {
       cancelled = true
     }
-  }, [editions.length, setEditions, setLoading, setError, hydrateFromEdition])
+  }, [editions.length, setEditions, setLoading, setError])
 
   const handleEditionChange = useCallback(
     async (id: string) => {
@@ -100,13 +153,13 @@ export function ValidatorV2Page() {
   )
 
   useReviewKeyboard({
-    approve: review.approve,
+    approve: viewCurrentDetails,
     reject: review.reject,
     next: review.next,
     prev: review.prev,
     undo: review.undo,
     toggleClientOnly: review.toggleClientOnly,
-    setDrawMode: review.setDrawMode,
+    setDrawMode: setReviewDrawMode,
     drawMode: review.drawMode,
     cycleCrop: review.cycleCrop,
     mergeSuggested: review.mergeSuggested,
@@ -115,7 +168,7 @@ export function ValidatorV2Page() {
     splitActive: review.splitActive,
     addSegment: review.addSegment,
     openDetails: viewCurrentDetails,
-    closeDetails: () => setDetailItem(null),
+    closeDetails: requestCloseDetails,
     detailsOpen: !!detailItem,
   })
 
@@ -155,11 +208,14 @@ export function ValidatorV2Page() {
             coverPageNumber={coverPageNumber}
             isOnCover={isOnCover}
             onAddSegment={review.addSegment}
-            onApprove={review.approve}
+            onApprove={viewCurrentDetails}
             onViewCover={
               coverPageNumber ? () => review.viewPage(coverPageNumber) : undefined
             }
             onViewDetails={viewCurrentDetails}
+            emptyLabel={
+              selectedEditionId ? 'Nenhuma notícia na fila' : 'Selecione uma edição para começar'
+            }
           />
         }
         banner={
@@ -168,8 +224,8 @@ export function ValidatorV2Page() {
               open={review.workMode === 'focus'}
               baseTitle={review.currentItem.title}
               segmentTitle={review.inspectItem?.title ?? null}
+              currentPageNumber={viewedPageNumber}
               relatedPage={review.currentItem.relatedPage}
-              currentPageNumber={review.selectedPageNumber}
               onGoToRelatedPage={() => {
                 const relatedPage = review.currentItem?.relatedPage
                 if (relatedPage) review.viewPage(relatedPage)
@@ -183,7 +239,8 @@ export function ValidatorV2Page() {
             pages={
               <ReviewPageRail
                 pages={review.pageStats}
-                currentPageNumber={review.selectedPageNumber}
+                currentPageNumber={viewedPageNumber}
+                currentPageId={currentPageId}
                 done={review.progress.done}
                 total={review.progress.total}
                 lastUpdated={review.edition?.editionDate}
@@ -191,6 +248,14 @@ export function ValidatorV2Page() {
                 selectedEditionId={selectedEditionId}
                 onEditionChange={(id) => void handleEditionChange(id)}
                 onSelectPage={review.viewPage}
+                pageFinished={review.pageFinished}
+                canFinishPage={review.canFinishPage}
+                finishingPage={review.finishingPage}
+                onTogglePageFinished={() => void review.togglePageFinished()}
+                publicationFinished={review.publicationFinished}
+                canFinishPublication={review.canFinishPublication}
+                finishingPublication={review.finishingPublication}
+                onFinishPublication={() => setConfirmFinishPublication(true)}
               />
             }
             areas={
@@ -211,7 +276,7 @@ export function ValidatorV2Page() {
         stage={
           <ReviewStage
             imageUrl={review.currentPage?.imageUrl}
-            viewedPageNumber={review.selectedPageNumber}
+            viewedPageNumber={viewedPageNumber}
             drawMode={review.drawMode}
             needsCrop={review.needsCrop}
             currentItem={review.currentItem}
@@ -229,7 +294,9 @@ export function ValidatorV2Page() {
             peekOtherCrops
             inspecting={!!review.inspectItem}
             workMode={review.workMode}
-            onWorkModeChange={review.setWorkMode}
+            emptyMessage={
+              selectedEditionId ? 'Nenhum item na fila' : 'Selecione uma edição para começar'
+            }
           />
         }
         queue={
@@ -237,14 +304,27 @@ export function ValidatorV2Page() {
             items={review.queue}
             currentId={review.currentItem?.id ?? null}
             inspectItem={review.inspectItem}
-            viewPageNumber={review.selectedPageNumber}
+            viewPageNumber={currentPageId}
             canAttach={review.canAttach}
             statuses={review.statuses}
             crops={crops}
             edition={review.edition}
             onSelect={review.goTo}
-            onDiscard={review.rejectItem}
-            onViewDetails={setDetailItem}
+            onDiscard={(itemId) => {
+              if (
+                shouldConfirmDiscardCreationDraft({
+                  reason: 'discard-item',
+                  isCreationDraft:
+                    isCreationSessionLocked(review.creationDraft) &&
+                    review.creationDraft?.itemId === itemId,
+                })
+              ) {
+                setConfirmDiscardDraft(true)
+                return
+              }
+              review.rejectItem(itemId)
+            }}
+            onViewDetails={openNewsDetails}
             onInspect={review.inspectNews}
             onAttach={review.attachInspected}
             onClearInspect={review.clearInspect}
@@ -253,35 +333,108 @@ export function ValidatorV2Page() {
             activeCropId={review.inspectCrop?.id ?? review.activeCrop?.id ?? null}
             onUngroupCrop={review.ungroupRelatedCrop}
             onEditCrop={review.editRelatedCrop}
+            onCreateNews={review.startNewsCreation}
+            canCreateNews={review.canStartNewsCreation}
+            creatingNews={isCreationSessionLocked(review.creationDraft)}
+            creationItemId={review.creationDraft?.itemId}
+            creationOcrStatus={review.creationDraft?.ocrStatus}
           />
         }
       />
       <ReviewNewsDetailModal
-        item={detailItem}
+        item={resolvedDetailItem}
         crops={crops}
         edition={review.edition}
-        status={detailItem ? review.statuses[detailItem.id] : undefined}
-        open={!!detailItem}
-        onClose={() => setDetailItem(null)}
+        status={resolvedDetailItem ? review.statuses[resolvedDetailItem.id] : undefined}
+        open={!!resolvedDetailItem}
+        onClose={requestCloseDetails}
+        mode={isCreationDetail ? 'create' : 'review'}
+        ocrStatus={detailOcrStatus ?? 'idle'}
+        ocrError={detailOcrError}
+        autoRunOcr={shouldAutoRunCreatedNewsOcr({
+          open: !!resolvedDetailItem,
+          item: resolvedDetailItem,
+        })}
+        onRunOcr={
+          resolvedDetailItem ? () => review.runNewsOcr(resolvedDetailItem) : undefined
+        }
         onApprove={
-          detailItem && (!review.statuses[detailItem.id] || review.statuses[detailItem.id] === 'pending')
-            ? () => {
-                review.approveItem(detailItem.id)
-                setDetailItem(null)
+          resolvedDetailItem &&
+          (!review.statuses[resolvedDetailItem.id] ||
+            review.statuses[resolvedDetailItem.id] === 'pending')
+            ? async (content) => {
+                review.updateItemContent(resolvedDetailItem, content)
+                const saved = await review.approveItem(resolvedDetailItem.id, content)
+                if (saved) {
+                  if (review.creationDraft?.itemId === resolvedDetailItem.id) {
+                    review.finishCreationDraft()
+                  }
+                  setDetailItem(null)
+                }
+                return saved
               }
             : undefined
         }
         onChangeTitle={(title) => {
-          if (!detailItem) return
-          review.updateItemContent(detailItem, { title })
-          setDetailItem({ ...detailItem, title })
+          if (!resolvedDetailItem) return
+          review.updateItemContent(resolvedDetailItem, { title })
+          setDetailItem({ ...resolvedDetailItem, title })
         }}
         onChangeText={(text) => {
-          if (!detailItem) return
-          review.updateItemContent(detailItem, { text })
-          setDetailItem({ ...detailItem, text })
+          if (!resolvedDetailItem) return
+          review.updateItemContent(resolvedDetailItem, { text })
+          setDetailItem({ ...resolvedDetailItem, text })
         }}
       />
+      <Modal
+        open={confirmDiscardDraft}
+        title="Descartar nova notícia?"
+        onClose={() => setConfirmDiscardDraft(false)}
+        size="md"
+      >
+        <p>O recorte e o texto deste rascunho serão removidos.</p>
+        <div className="validator-v2-page__confirm-actions">
+          <Button variant="secondary" onClick={() => setConfirmDiscardDraft(false)}>
+            Continuar editando
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              review.discardCreationDraft()
+              setConfirmDiscardDraft(false)
+              setDetailItem(null)
+            }}
+          >
+            Descartar
+          </Button>
+        </div>
+      </Modal>
+      <Modal
+        open={confirmFinishPublication}
+        title="Finalizar jornal?"
+        onClose={() => setConfirmFinishPublication(false)}
+        size="md"
+      >
+        <p>Tem certeza que deseja finalizar este jornal? Essa ação não pode ser desfeita.</p>
+        <div className="validator-v2-page__confirm-actions">
+          <Button variant="secondary" onClick={() => setConfirmFinishPublication(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            disabled={review.finishingPublication}
+            onClick={() => {
+              void review.finishPublication().then((saved) => {
+                if (!saved) return
+                setConfirmFinishPublication(false)
+                setDetailItem(null)
+              })
+            }}
+          >
+            {review.finishingPublication ? 'Finalizando…' : 'Finalizar jornal'}
+          </Button>
+        </div>
+      </Modal>
       <NotificationToast />
     </>
   )

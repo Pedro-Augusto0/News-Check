@@ -58,6 +58,7 @@ interface ReviewQueueState {
   undoStack: UndoEntry[]
 
   hydrateEdition: (editionId: string) => void
+  clearEdition: () => void
   setCurrentId: (id: string | null) => void
   setInspectId: (id: string | null) => void
   setClientOnly: (value: boolean) => void
@@ -93,6 +94,20 @@ export const useReviewQueueStore = create<ReviewQueueState>((set, get) => ({
       savedIds: persisted.savedIds,
       currentId: null,
       inspectId: null,
+      workMode: 'free',
+      drawMode: 'off',
+      activeCropIndex: 0,
+      undoStack: [],
+    })
+  },
+
+  clearEdition: () => {
+    set({
+      editionId: null,
+      currentId: null,
+      inspectId: null,
+      statuses: {},
+      savedIds: {},
       workMode: 'free',
       drawMode: 'off',
       activeCropIndex: 0,
