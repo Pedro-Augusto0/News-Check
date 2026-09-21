@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, FileText, ListFilter, Newspaper, RotateCcw, Search, UserRound, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, ListFilter, Newspaper, RotateCcw, Search, X } from 'lucide-react'
 import { ComboBox } from '@/shared/ui/combo-box'
 import { formatPublicationLabel } from '@/features/publication-api'
 import type { VehicleEdition } from '@/features/edition-session'
@@ -53,6 +53,8 @@ function PageRow({
   onSelectPage: (pageId: string) => void
 }) {
   const newsCount = page.itemCount > 0 ? page.itemCount : page.newsCount
+  const clientCount = page.clientNewsCount || (page.hasOwnChannel ? 1 : 0)
+  const showClient = clientCount > 0
   const statusLabel = page.reviewed ? 'revisada' : 'pendente'
 
   return (
@@ -61,7 +63,7 @@ function PageRow({
         type="button"
         role="option"
         aria-selected={isActive}
-        aria-label={`Página ${page.pageNumber} — ${statusLabel}, ${newsCount} notícia${newsCount === 1 ? '' : 's'}${page.clientNewsCount > 0 ? `, ${page.clientNewsCount} com cliente` : ''}`}
+        aria-label={`Página ${page.pageNumber} — ${statusLabel}, ${newsCount} notícia${newsCount === 1 ? '' : 's'}${page.hasOwnChannel ? ', com cliente próprio' : page.clientNewsCount > 0 ? `, ${page.clientNewsCount} com cliente` : ''}`}
         className={cn(
           'review-page-rail__item',
           isActive && 'review-page-rail__item--active',
@@ -84,25 +86,31 @@ function PageRow({
         <span className="review-page-rail__page-number">{page.pageNumber}</span>
 
         <span className="review-page-rail__stats">
-          {newsCount > 0 && (
-            <span
-              className="review-page-rail__stat review-page-rail__stat--news"
-              title={`${newsCount} notícia${newsCount === 1 ? '' : 's'}`}
-            >
-              <FileText size={11} strokeWidth={2.2} aria-hidden />
-              {newsCount}
-            </span>
-          )}
-
-          {page.clientNewsCount > 0 && (
-            <span
-              className="review-page-rail__stat review-page-rail__stat--client"
-              title={`${page.clientNewsCount} notícia${page.clientNewsCount === 1 ? '' : 's'} com cliente`}
-            >
-              <UserRound size={11} strokeWidth={2.3} aria-hidden />
-              {page.clientNewsCount}
-            </span>
-          )}
+          <span
+            className={cn(
+              'review-page-rail__stat review-page-rail__stat--news',
+              newsCount === 0 && 'review-page-rail__stat--empty',
+            )}
+            title={newsCount > 0 ? `${newsCount} notícia${newsCount === 1 ? '' : 's'}` : undefined}
+          >
+            {newsCount > 0 ? `${newsCount} notícias` : '\u00a0'}
+          </span>
+          <span
+            className={cn(
+              'review-page-rail__stat review-page-rail__stat--client',
+              page.hasOwnChannel && 'review-page-rail__stat--own-channel',
+              !showClient && 'review-page-rail__stat--empty',
+            )}
+            title={
+              !showClient
+                ? undefined
+                : page.hasOwnChannel
+                  ? `${clientCount} notícia${clientCount === 1 ? '' : 's'} com cliente próprio`
+                  : `${clientCount} notícia${clientCount === 1 ? '' : 's'} com cliente`
+            }
+          >
+            {showClient ? `${clientCount} clientes` : '\u00a0'}
+          </span>
         </span>
       </button>
     </li>

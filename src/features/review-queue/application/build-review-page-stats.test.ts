@@ -134,6 +134,48 @@ describe('buildReviewPageStats', () => {
     expect(stats[0]?.clientNewsCount).toBe(1)
   })
 
+  it('marks a page with own-channel news even when other items have no client', () => {
+    const stats = buildReviewPageStats({
+      pages: [page('1'), page('2'), page('3')],
+      statuses: {},
+      queue: [
+        item('plain', '1'),
+        item('client', '2', { hasClient: true }),
+        item('own', '3', {
+          hasClient: true,
+          hasOwnChannel: true,
+          clientMatches: [
+            { customerName: 'Acme', channelName: 'Impresso', keywords: ['obra'], ownChannel: true },
+          ],
+        }),
+      ],
+    })
+
+    expect(stats.map((entry) => [entry.pageNumber, entry.hasOwnChannel])).toEqual([
+      ['1', false],
+      ['2', false],
+      ['3', true],
+    ])
+  })
+
+  it('treats a page as own-channel when any news match has ownChannel', () => {
+    const stats = buildReviewPageStats({
+      pages: [page('4')],
+      statuses: {},
+      queue: [
+        item('plain', '4'),
+        item('own', '4', {
+          hasClient: true,
+          clientMatches: [
+            { customerName: 'Beta', channelName: 'Site', keywords: ['licitacao'], ownChannel: true },
+          ],
+        }),
+      ],
+    })
+
+    expect(stats[0]?.hasOwnChannel).toBe(true)
+  })
+
   it('marks a page as reviewed only when the backend finished flag is set', () => {
     const pending = buildReviewPageStats({
       pages: [page('3', 'Esportes')],

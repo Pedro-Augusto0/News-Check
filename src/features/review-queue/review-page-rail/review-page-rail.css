@@ -549,16 +549,18 @@
 }
 
 .review-page-rail__stats {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: max-content minmax(4.25rem, max-content);
+  justify-content: end;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
+  column-gap: 6px;
   flex-shrink: 0;
 }
 
 .review-page-rail__stat {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   min-width: 0;
   height: 22px;
@@ -568,6 +570,16 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  white-space: nowrap;
+}
+
+.review-page-rail__stat--news,
+.review-page-rail__stat--client {
+  justify-self: end;
+}
+
+.review-page-rail__stat--empty {
+  visibility: hidden;
 }
 
 .review-page-rail__stat--news {
@@ -577,11 +589,6 @@
 
 .review-page-rail__stat--news svg {
   color: #b0bac7;
-}
-
-.review-page-rail__item--active .review-page-rail__stat--news {
-  color: var(--color-primary-hover);
-  background: #dbeafe;
 }
 
 .review-page-rail__item--active .review-page-rail__stat--news svg {
@@ -595,9 +602,18 @@
 }
 
 .review-page-rail__item--active .review-page-rail__stat--client {
-  color: var(--color-primary-hover);
-  background: var(--review-panel-bg, #ffffff);
   border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+
+.review-page-rail__stat--own-channel,
+.review-page-rail__item--active .review-page-rail__stat--own-channel {
+  color:  #7b7157;
+  background: color-mix(in srgb, var(--color-client-own) 12%, #fff);
+  border-color: color-mix(in srgb, var(--color-client-own) 22%, transparent);
+}
+
+.review-page-rail__stat--own-channel svg {
+  color: var(--color-client-own);
 }
 
 .combobox--rail.combobox--edition .combobox__menu {

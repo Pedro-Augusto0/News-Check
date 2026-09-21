@@ -18,6 +18,7 @@ export interface ReviewPageStat {
   clientCount: number
   clientNewsCount: number
   hasClient: boolean
+  hasOwnChannel: boolean
   hasSuspect: boolean
   reviewed: boolean
   publicationPageId?: number
@@ -27,6 +28,14 @@ export interface ReviewPageStat {
 
 function isPending(status: ReviewStatus | undefined): boolean {
   return status !== 'approved' && status !== 'rejected'
+}
+
+function newsHasOwnChannel(item: ReviewQueueItem): boolean {
+  if (item.kind !== 'news') return false
+  return (
+    item.hasOwnChannel === true ||
+    item.clientMatches.some((match) => match.ownChannel === true)
+  )
 }
 
 function toStat(
@@ -40,6 +49,7 @@ function toStat(
   const pendingItems = pageItems.filter((item) => isPending(statuses[item.id]))
   const clientNewsCount = pageItems.filter((item) => item.hasClient).length
   const newsCount = pageItems.filter((item) => item.kind === 'news').length
+  const hasOwnChannel = pageItems.some(newsHasOwnChannel)
 
   return {
     key,
@@ -51,6 +61,7 @@ function toStat(
     clientCount: clientNewsCount,
     clientNewsCount,
     hasClient: clientNewsCount > 0,
+    hasOwnChannel,
     hasSuspect: pendingItems.some((item) => item.suspectReasons.length > 0),
     reviewed: pageMeta.finished === true,
     publicationPageId: pageMeta.publicationPageId,
