@@ -174,8 +174,16 @@ describe('buildCreateNewsRequest', () => {
     })
 
     expect(request?.clippings).toEqual([
-      expect.objectContaining({ articleId: 42, page: 'A1' }),
-      expect.objectContaining({ articleId: 99, page: 'A2' }),
+      expect.objectContaining({
+        articleId: 42,
+        page: 'A1',
+        filePath: 'http://170.80.70.78/images/a1.jpg',
+      }),
+      expect.objectContaining({
+        articleId: 99,
+        page: 'A2',
+        filePath: 'http://170.80.70.78/images/a2.jpg',
+      }),
     ])
   })
 

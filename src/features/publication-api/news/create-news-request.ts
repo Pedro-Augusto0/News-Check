@@ -74,12 +74,14 @@ export function buildCreateNewsRequest(input: {
   if (itemCrops.length === 0) return null
 
   const newsItem = item.newsId ? newsItems[item.newsId] : undefined
-  const pageForCrop = (crop: Crop) =>
-    pages.find(
-      (page) =>
-        page.pageNumber === crop.pageNumber &&
-        (!newsItem?.filePath || page.filePath === newsItem.filePath),
-    ) ?? pages.find((page) => page.pageNumber === crop.pageNumber)
+  const pageForCrop = (crop: Crop) => {
+    const matches = pages.filter((page) => page.pageNumber === crop.pageNumber)
+    if (matches.length === 1) return matches[0]
+    if (newsItem?.filePath && newsItem.pageNumber === crop.pageNumber) {
+      return matches.find((page) => page.filePath === newsItem.filePath) ?? matches[0]
+    }
+    return matches[0]
+  }
 
   return {
     articleIds: resolveArticleIds(newsItem),

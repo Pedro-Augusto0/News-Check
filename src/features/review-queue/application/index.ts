@@ -11,6 +11,7 @@ export {
   firstPendingId,
   rankQueueForReview,
 } from './build-review-queue'
+export { cropBelongsOnViewedPage, resolveCropPageId } from './crop-on-viewed-page'
 export { filterReviewQueueByTitle } from './filter-review-queue-by-title'
 export {
   formatIncompleteNewsTip,

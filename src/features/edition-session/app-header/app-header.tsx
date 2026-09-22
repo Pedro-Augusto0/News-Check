@@ -93,10 +93,12 @@ export function AppHeader() {
           searchPlaceholder="Buscar veículo..."
           className="combobox--edition"
           value={selectedEditionId ?? ''}
-          options={editions.map((e) => ({
-            value: e.id,
-            label: formatEditionLabel(e),
-          }))}
+          options={editions
+            .filter((edition) => !edition.finished)
+            .map((e) => ({
+              value: e.id,
+              label: formatEditionLabel(e),
+            }))}
           onChange={(value) => {
             void handleEditionChange(value)
           }}

@@ -46,12 +46,12 @@ export function computeReviewPageDisplaySize(
   }
 }
 
-export function clampReviewZoom(zoom: number): number {
-  return Math.min(REVIEW_MAX_ZOOM, Math.max(REVIEW_MIN_ZOOM, Number(zoom.toFixed(2))))
+export function clampReviewZoom(zoom: number, max = REVIEW_MAX_ZOOM): number {
+  return Math.min(max, Math.max(REVIEW_MIN_ZOOM, Number(zoom.toFixed(2))))
 }
 
-export function stepReviewZoom(zoom: number, direction: 1 | -1): number {
-  return clampReviewZoom(zoom + direction * REVIEW_ZOOM_STEP)
+export function stepReviewZoom(zoom: number, direction: 1 | -1, max = REVIEW_MAX_ZOOM): number {
+  return clampReviewZoom(zoom + direction * REVIEW_ZOOM_STEP, max)
 }
 
 interface ReviewPageScaleInput {

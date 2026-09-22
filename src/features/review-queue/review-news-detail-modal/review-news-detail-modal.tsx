@@ -21,6 +21,11 @@ import {
 import type { Crop as CropModel } from '@/features/crops'
 import { cropColor } from '@/features/crops/colors'
 import type { VehicleEdition } from '@/features/edition-session'
+import {
+  resolvePageListSection,
+  sectionGroupKey,
+  UNSECTIONED_LABEL,
+} from '@/features/page-navigation/page-key'
 import { toDateOnly } from '@/features/publication-api'
 import { resolveCropImageUrl } from '@/features/text-extraction'
 import { loadPageImage, renderImageRegionToCanvas, renderImageToCanvas } from '@/shared/image/page-image-cache'
@@ -33,7 +38,7 @@ import {
   missingApprovalRequirements,
   normalizeKeyword,
   resolveClientMatchGroups,
-  stepReviewZoom,
+  clampReviewZoom,
   uniqueKeywords,
 } from '../application'
 import type { GroupedClientMatch } from '../application'
@@ -42,7 +47,13 @@ import './review-news-detail-modal.css'
 
 const CLIPPING_RENDER_WIDTH = 560
 const CLIPPING_FULLSCREEN_WIDTH = 1600
-const PAGE_RENDER_WIDTH = 720
+const PAGE_RENDER_WIDTH = 1100
+const MODAL_MAX_ZOOM = 4
+const MODAL_ZOOM_STEP = 0.2
+
+function stepModalZoom(zoom: number, direction: 1 | -1): number {
+  return clampReviewZoom(zoom + direction * MODAL_ZOOM_STEP, MODAL_MAX_ZOOM)
+}
 
 type DetailTab = 'news' | 'clips'
 
@@ -51,7 +62,6 @@ interface CropEntry {
   imageUrl: string | undefined
   accentColor: string
   label: string
-  column: number
 }
 
 interface ReviewNewsDetailModalProps {
@@ -87,13 +97,6 @@ function formatEditionDate(iso: string): string {
   })
 }
 
-function inferColumnNumber(rect: { x: number; width: number }): number {
-  const center = rect.x + rect.width / 2
-  if (center < 34) return 1
-  if (center < 67) return 2
-  return 3
-}
-
 function splitParagraphs(text: string): string[] {
   const trimmed = text.trim()
   if (!trimmed) return []
@@ -110,6 +113,43 @@ function joinParagraphs(parts: string[]): string {
 function paragraphsFromText(text: string): string[] {
   const parts = splitParagraphs(text)
   return parts.length > 0 ? parts : ['']
+}
+
+function namedSection(label: string): string | null {
+  return label === UNSECTIONED_LABEL ? null : label
+}
+
+function sectionForCropPage(crop: CropModel, edition: VehicleEdition | undefined): string | null {
+  const pdf = edition?.pdfs.find((item) => item.id === crop.pdfId)
+  const page = pdf?.pages.find((item) => item.pageNumber === crop.pageNumber)
+  if (!page) return null
+  return namedSection(resolvePageListSection(page))
+}
+
+interface NewsSectionChoice {
+  key: string
+  label: string
+  cropId: string
+}
+
+function collectNewsSections(
+  item: ReviewQueueItem,
+  edition: VehicleEdition | undefined,
+  crops: CropModel[],
+): NewsSectionChoice[] {
+  const choices: NewsSectionChoice[] = []
+  const seen = new Set<string>()
+  const add = (label: string | null, cropId: string) => {
+    if (!label) return
+    const key = sectionGroupKey(label)
+    if (seen.has(key)) return
+    seen.add(key)
+    choices.push({ key, label, cropId })
+  }
+
+  add(namedSection(resolvePageListSection(item)), crops[0]?.id ?? '')
+  for (const crop of crops) add(sectionForCropPage(crop, edition), crop.id)
+  return choices
 }
 
 function AutosizeTextarea({
@@ -227,12 +267,74 @@ function ModalPagePreview({
   onMaximize?: () => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const zoomAnchorRef = useRef<{
+    x: number
+    y: number
+    prev: number
+    next: number
+    clientX: number
+    clientY: number
+  } | null>(null)
+  const panRef = useRef<{
+    pointerId: number
+    x: number
+    y: number
+    left: number
+    top: number
+    moved: boolean
+  } | null>(null)
   const [ready, setReady] = useState(false)
   const [zoom, setZoom] = useState(1)
+  const [panning, setPanning] = useState(false)
 
   useEffect(() => {
     setZoom(1)
   }, [imageUrl])
+
+  useEffect(() => {
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return
+      const stage = stageRef.current
+      const scroll = scrollRef.current
+      if (!stage || !scroll) return
+      if (!(event.target instanceof Node) || !stage.contains(event.target)) return
+
+      event.preventDefault()
+      event.stopPropagation()
+      const rect = scroll.getBoundingClientRect()
+      const x = event.clientX - rect.left + scroll.scrollLeft
+      const y = event.clientY - rect.top + scroll.scrollTop
+      const direction = event.deltaY < 0 ? 1 : -1
+      setZoom((value) => {
+        const next = stepModalZoom(value, direction)
+        zoomAnchorRef.current = {
+          x,
+          y,
+          prev: value,
+          next,
+          clientX: event.clientX,
+          clientY: event.clientY,
+        }
+        return next
+      })
+    }
+
+    window.addEventListener('wheel', onWheel, { capture: true, passive: false })
+    return () => window.removeEventListener('wheel', onWheel, { capture: true })
+  }, [])
+
+  useLayoutEffect(() => {
+    const anchor = zoomAnchorRef.current
+    const scroll = scrollRef.current
+    zoomAnchorRef.current = null
+    if (!anchor || !scroll || anchor.prev <= 0 || anchor.prev === anchor.next) return
+    const ratio = anchor.next / anchor.prev
+    const rect = scroll.getBoundingClientRect()
+    scroll.scrollLeft = anchor.x * ratio - (anchor.clientX - rect.left)
+    scroll.scrollTop = anchor.y * ratio - (anchor.clientY - rect.top)
+  }, [zoom])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -259,26 +361,74 @@ function ModalPagePreview({
     }
   }, [imageUrl])
 
+  const endPan = (event: React.PointerEvent<HTMLDivElement>) => {
+    const pan = panRef.current
+    if (!pan || pan.pointerId !== event.pointerId) return
+    panRef.current = null
+    setPanning(false)
+    if (scrollRef.current?.hasPointerCapture(event.pointerId)) {
+      scrollRef.current.releasePointerCapture(event.pointerId)
+    }
+    if (!pan.moved) return
+    const stopClick = (clickEvent: MouseEvent) => {
+      clickEvent.preventDefault()
+      clickEvent.stopPropagation()
+      window.removeEventListener('click', stopClick, true)
+    }
+    window.addEventListener('click', stopClick, true)
+  }
+
+  const onPanPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (zoom <= 1 || event.button !== 0) return
+    const scroll = scrollRef.current
+    if (!scroll) return
+    panRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      left: scroll.scrollLeft,
+      top: scroll.scrollTop,
+      moved: false,
+    }
+    setPanning(true)
+    scroll.setPointerCapture(event.pointerId)
+  }
+
+  const onPanPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const pan = panRef.current
+    const scroll = scrollRef.current
+    if (!pan || !scroll || pan.pointerId !== event.pointerId) return
+    const dx = event.clientX - pan.x
+    const dy = event.clientY - pan.y
+    if (!pan.moved && Math.hypot(dx, dy) < 4) return
+    pan.moved = true
+    scroll.scrollLeft = pan.left - dx
+    scroll.scrollTop = pan.top - dy
+  }
+
   if (!imageUrl) {
     return <div className="review-news-detail-modal__clipping-missing">Prévia indisponível</div>
   }
 
   return (
-    <div className="review-news-detail-modal__page-stage">
+    <div className="review-news-detail-modal__page-stage" ref={stageRef}>
       <div
+        ref={scrollRef}
         className={cn(
           'review-news-detail-modal__page-scroll',
           zoom > 1 && 'review-news-detail-modal__page-scroll--zoomed',
+          panning && 'review-news-detail-modal__page-scroll--panning',
         )}
+        onPointerDown={onPanPointerDown}
+        onPointerMove={onPanPointerMove}
+        onPointerUp={endPan}
+        onPointerCancel={endPan}
       >
-        <div
-          className={cn(
-            'review-news-detail-modal__page',
-            zoom > 1 && 'review-news-detail-modal__page--zoomed',
-          )}
-          style={{ ['--page-zoom' as string]: String(zoom) }}
-        >
-          <div className="review-news-detail-modal__page-sheet">
+        <div className="review-news-detail-modal__page">
+          <div
+            className="review-news-detail-modal__page-sheet"
+            style={{ ['--page-zoom' as string]: String(zoom) }}
+          >
             {!ready && <span className="review-news-detail-modal__clipping-skeleton" aria-hidden />}
             <canvas
               ref={canvasRef}
@@ -340,7 +490,7 @@ function ModalPagePreview({
         <button
           type="button"
           className="review-news-detail-modal__zoom-btn"
-          onClick={() => setZoom((value) => stepReviewZoom(value, -1))}
+          onClick={() => setZoom((value) => stepModalZoom(value, -1))}
           aria-label="Diminuir zoom"
         >
           <Minus size={12} strokeWidth={2.2} />
@@ -349,7 +499,7 @@ function ModalPagePreview({
         <button
           type="button"
           className="review-news-detail-modal__zoom-btn"
-          onClick={() => setZoom((value) => stepReviewZoom(value, 1))}
+          onClick={() => setZoom((value) => stepModalZoom(value, 1))}
           aria-label="Aumentar zoom"
         >
           <Plus size={12} strokeWidth={2.2} />
@@ -550,6 +700,7 @@ export function ReviewNewsDetailModal({
   onRunOcrRef.current = onRunOcr
   const autoRunOcrRef = useRef(autoRunOcr)
   autoRunOcrRef.current = autoRunOcr
+  const approveShortcutRef = useRef<() => void>(() => {})
   const canEdit = !!onChangeTitle || !!onChangeText
 
   const cropEntries = useMemo(() => {
@@ -563,7 +714,6 @@ export function ReviewNewsDetailModal({
         imageUrl: edition ? resolveCropImageUrl(crop, [edition]) : undefined,
         accentColor: cropColor(index),
         label: String(index + 1),
-        column: inferColumnNumber(crop.rect),
       })
     })
     return entries
@@ -642,6 +792,17 @@ export function ReviewNewsDetailModal({
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === 's'
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+        approveShortcutRef.current()
+        return
+      }
       if (event.key === 'Escape' && cropFullscreen) {
         event.preventDefault()
         event.stopPropagation()
@@ -666,6 +827,16 @@ export function ReviewNewsDetailModal({
 
   if (!item) return null
 
+  const sectionChoices = collectNewsSections(
+    item,
+    edition,
+    cropEntries.map((entry) => entry.crop),
+  )
+  const activeSectionKey = sectionGroupKey(
+    (activeEntry ? sectionForCropPage(activeEntry.crop, edition) : null) ??
+      sectionChoices[0]?.label ??
+      UNSECTIONED_LABEL,
+  )
   const vehicleName = edition?.vehicleName ?? 'Edição'
   const editionDate = edition ? formatEditionDate(edition.editionDate) : null
   const showStatus = status && status !== 'pending'
@@ -714,14 +885,23 @@ export function ReviewNewsDetailModal({
   }
 
   const handleApprove = async () => {
-    if (!onApprove || missingRequirements.length > 0 || isOcrBusy) return
+    if (!onApprove || missingRequirements.length > 0 || isOcrBusy || submitting) return
     commitEdits()
+    setEditingTitle(false)
+    setEditingParagraph(null)
     setSubmitting(true)
     try {
       await onApprove(content)
     } finally {
       setSubmitting(false)
     }
+  }
+
+  approveShortcutRef.current = () => {
+    commitEdits()
+    setEditingTitle(false)
+    setEditingParagraph(null)
+    void handleApprove()
   }
 
   const selectCrop = (cropId: string) => {
@@ -750,6 +930,30 @@ export function ReviewNewsDetailModal({
               <X size={14} strokeWidth={2.2} />
             </button>
           </div>
+
+          {sectionChoices.length === 1 ? (
+            <p className="review-news-detail-modal__section">{sectionChoices[0]?.label}</p>
+          ) : sectionChoices.length > 1 ? (
+            <div className="review-news-detail-modal__sections" aria-label="Seções da notícia">
+              {sectionChoices.map((section) => (
+                <button
+                  key={section.key}
+                  type="button"
+                  className={cn(
+                    'review-news-detail-modal__section-chip',
+                    section.key === activeSectionKey &&
+                      'review-news-detail-modal__section-chip--active',
+                  )}
+                  onClick={() => {
+                    if (section.cropId) setActiveCropId(section.cropId)
+                    setActiveTab('news')
+                  }}
+                >
+                  {section.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           {isOcrBusy ? (
             <div className="review-news-detail-modal__headline-ocr" aria-hidden>
@@ -997,6 +1201,10 @@ export function ReviewNewsDetailModal({
                   const editing = canEdit && onChangeText && editingParagraph === index
                   const hasText = paragraph.trim().length > 0
                   const isActive = !!entry && entry.crop.id === activeEntry?.crop.id
+                  const sectionLabel = entry
+                    ? (sectionForCropPage(entry.crop, edition) ??
+                      namedSection(resolvePageListSection(item)))
+                    : null
 
                   return (
                     <article
@@ -1015,7 +1223,8 @@ export function ReviewNewsDetailModal({
                         {entry ? (
                           <>
                             <span className="review-news-detail-modal__crop-copy-index">{entry.label}</span>
-                            Recorte {entry.label} - Pág. {entry.crop.pageNumber} - Coluna {entry.column}
+                            Recorte {entry.label} - Pág. {entry.crop.pageNumber}
+                            {sectionLabel ? ` - ${sectionLabel}` : ''}
                           </>
                         ) : paragraphDrafts.length > 1 ? (
                           `Trecho ${index + 1}`
@@ -1206,6 +1415,7 @@ export function ReviewNewsDetailModal({
                   : mode === 'create'
                     ? 'Criar notícia'
                     : 'Aprovar e próxima'}
+                <kbd>Ctrl+S</kbd>
               </Button>
             )}
           </div>
