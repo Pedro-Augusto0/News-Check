@@ -15,12 +15,13 @@ import {
   buildReviewQueue,
   canAttachNews,
   collectApprovedCropIds,
+  cropBelongsOnViewedPage,
   filterActiveReviewItems,
   findMergeCandidate,
   firstPendingId,
   pageIdOf,
   rankQueueForReview,
-  resolvePageId,
+  resolveCropPageId,
   resolveReviewItemClick,
   saveApprovedNews,
   commitDiscardNews,
@@ -184,15 +185,14 @@ export function useReviewSession() {
 
   const pageCrops = useMemo(() => {
     if (!pdf || !currentPage) return []
-    const currentPageId = resolvePageId(currentPage)
-    return Object.values(crops).filter((crop) => {
-      if (crop.pdfId !== pdf.id || crop.pageNumber !== currentPage.pageNumber) return false
-      if (crop.newsItemId) {
-        const news = newsItems[crop.newsItemId]
-        if (news) return pageIdOf(news) === currentPageId
-      }
-      return true
-    })
+    return Object.values(crops).filter((crop) =>
+      cropBelongsOnViewedPage({
+        crop,
+        pdfId: pdf.id,
+        page: currentPage,
+        newsItems,
+      }),
+    )
   }, [crops, pdf, currentPage, newsItems])
 
   useEffect(() => {
@@ -448,10 +448,15 @@ export function useReviewSession() {
     const nextCrop = currentCrops[nextIndex]
     setActiveCropIndex(nextIndex)
     if (nextCrop && nextCrop.pageNumber !== currentPage?.pageNumber) {
-      const owner = listItems.find((item) => item.cropIds.includes(nextCrop.id))
-      selectPage(owner ? pageIdOf(owner) : nextCrop.pageNumber)
+      selectPage(
+        resolveCropPageId(
+          nextCrop,
+          pdf?.pages,
+          nextCrop.newsItemId ? newsItems[nextCrop.newsItemId] : undefined,
+        ),
+      )
     }
-  }, [currentCrops, activeCropIndex, setActiveCropIndex, currentPage, selectPage, listItems])
+  }, [currentCrops, activeCropIndex, setActiveCropIndex, currentPage, selectPage, pdf?.pages, newsItems])
 
   const selectCrop = useCallback(
     (cropId: string) => {
@@ -460,15 +465,20 @@ export function useReviewSession() {
         setActiveCropIndex(currentIndex)
         const crop = currentCrops[currentIndex]
         if (crop && crop.pageNumber !== currentPage?.pageNumber) {
-          const owner = listItems.find((item) => item.cropIds.includes(crop.id))
-          selectPage(owner ? pageIdOf(owner) : crop.pageNumber)
+          selectPage(
+            resolveCropPageId(
+              crop,
+              pdf?.pages,
+              crop.newsItemId ? newsItems[crop.newsItemId] : undefined,
+            ),
+          )
         }
         return
       }
       const owner = listItems.find((item) => item.cropIds.includes(cropId))
       if (owner) goTo(owner.id, cropId)
     },
-    [currentCrops, setActiveCropIndex, currentPage, selectPage, listItems, goTo],
+    [currentCrops, setActiveCropIndex, currentPage, selectPage, listItems, goTo, pdf?.pages, newsItems],
   )
 
   const attachInspected = useCallback(() => {

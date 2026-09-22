@@ -197,10 +197,12 @@ export function ReviewPageRail({
           searchPlaceholder="Buscar veículo..."
           className="combobox--edition combobox--rail"
           value={selectedEditionId ?? ''}
-          options={editions.map((edition) => ({
-            value: edition.id,
-            label: formatPublicationLabel(edition.vehicleName, edition.editionDate),
-          }))}
+          options={editions
+            .filter((edition) => !edition.finished)
+            .map((edition) => ({
+              value: edition.id,
+              label: formatPublicationLabel(edition.vehicleName, edition.editionDate),
+            }))}
           onChange={onEditionChange}
           renderValue={() => (
             <span className="review-page-rail__edition-value">
