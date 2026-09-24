@@ -1,6 +1,7 @@
 import type { ReviewQueueItem } from '../model'
 import {
   comparePageOccurrences,
+  groupBySection,
   pageIdOf,
   pageNumberFromPageId,
   resolvePageListSection,
@@ -38,7 +39,7 @@ export function groupReviewQueueByPage(items: ReviewQueueItem[]): ReviewPageGrou
     }
   }
 
-  return [...map.entries()]
+  const byPage = [...map.entries()]
     .map(([key, pageItems]) => {
       const entry = meta.get(key)!
       return {
@@ -49,6 +50,8 @@ export function groupReviewQueueByPage(items: ReviewQueueItem[]): ReviewPageGrou
       }
     })
     .sort((a, b) => comparePageOccurrences(a, b))
+
+  return groupBySection(byPage, (group) => group.section).flatMap((section) => section.items)
 }
 
 export function pageGroupTitle(group: ReviewPageGroup, groups: ReviewPageGroup[]): string {

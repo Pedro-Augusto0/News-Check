@@ -5,6 +5,7 @@ import { useCropsStore } from '@/features/crops'
 import { useNewsStore } from '@/features/news'
 import { useViewerStore } from '@/features/page-viewer/store'
 import { formatPublicationLabel } from '@/features/publication-api'
+import { PublicationOptionTags } from '../publication-option/publication-option-tags'
 import { findPageBySelection, resolvePageId } from '@/features/page-navigation/page-key'
 import { useCurrentPdf } from '../hooks'
 import { hydrateEditionNews } from '../application'
@@ -95,15 +96,24 @@ export function AppHeader() {
           value={selectedEditionId ?? ''}
           options={editions
             .filter((edition) => !edition.finished)
-            .map((e) => ({
-              value: e.id,
-              label: formatEditionLabel(e),
+            .map((edition) => ({
+              value: edition.id,
+              label: formatEditionLabel(edition),
+              disabled: edition.hasSourceMapping === false,
+              trailing: <PublicationOptionTags edition={edition} placement="option" />,
             }))}
           onChange={(value) => {
             void handleEditionChange(value)
           }}
           renderValue={() =>
-            selectedEdition ? formatEditionLabel(selectedEdition) : 'Selecionar edição'
+            selectedEdition ? (
+              <span className="app-header__edition-value">
+                <span className="combobox__value">{formatEditionLabel(selectedEdition)}</span>
+                <PublicationOptionTags edition={selectedEdition} placement="selected" />
+              </span>
+            ) : (
+              'Selecionar edição'
+            )
           }
         />
         <span className="app-header__session-divider" aria-hidden />

@@ -111,8 +111,24 @@ describe('groupReviewQueueByPage', () => {
 
     expect(groups.map((group) => [group.pageNumber, group.section, group.items.length])).toEqual([
       ['1', '-', 1],
-      ['1', 'DESTEMPERADOS', 1],
       ['6', '-', 2],
+      ['1', 'DESTEMPERADOS', 1],
+    ])
+  })
+
+  it('keeps every page of a section together before the next section', () => {
+    const groups = groupReviewQueueByPage([
+      item('p3', '3', 'Política'),
+      item('a1', '1', 'Arte'),
+      item('a2', '2', 'Arte'),
+      item('p1', '1', 'Política'),
+    ])
+
+    expect(groups.map((group) => [group.pageNumber, group.section])).toEqual([
+      ['1', 'Arte'],
+      ['2', 'Arte'],
+      ['1', 'Política'],
+      ['3', 'Política'],
     ])
   })
 

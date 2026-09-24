@@ -134,7 +134,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   selectEdition: (id) => {
     const edition = get().editions.find((e) => e.id === id)
-    const firstPdf = edition?.pdfs[0]
+    if (!edition || edition.hasSourceMapping === false) return
+    const firstPdf = edition.pdfs[0]
     const { newsViewFilter } = get()
     let selectedPageNumber = firstPdf?.pages[0] ? resolvePageId(firstPdf.pages[0]) : ''
 

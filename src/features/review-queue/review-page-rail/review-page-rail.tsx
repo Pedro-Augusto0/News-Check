@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronDown, ChevronRight, ListFilter, Newspaper, RotateCcw, Search, X } from 'lucide-react'
 import { ComboBox } from '@/shared/ui/combo-box'
 import { formatPublicationLabel } from '@/features/publication-api'
-import type { VehicleEdition } from '@/features/edition-session'
+import { PublicationOptionTags, type VehicleEdition } from '@/features/edition-session'
 import { cn } from '@/shared/ui/utils/cn'
 import { groupBySection, pageOccurrenceKey, UNSECTIONED_LABEL, type ReviewPageStat } from '../application'
 import './review-page-rail.css'
@@ -202,6 +202,8 @@ export function ReviewPageRail({
             .map((edition) => ({
               value: edition.id,
               label: formatPublicationLabel(edition.vehicleName, edition.editionDate),
+              disabled: edition.hasSourceMapping === false,
+              trailing: <PublicationOptionTags edition={edition} placement="option" />,
             }))}
           onChange={onEditionChange}
           renderValue={() => (
@@ -210,8 +212,11 @@ export function ReviewPageRail({
                 {selectedEdition?.vehicleName ?? 'Selecionar edição'}
               </span>
               {selectedEdition && (
-                <span className="review-page-rail__edition-date">
-                  {formatEditionDateShort(selectedEdition.editionDate)}
+                <span className="review-page-rail__edition-meta">
+                  <span className="review-page-rail__edition-date">
+                    {formatEditionDateShort(selectedEdition.editionDate)}
+                  </span>
+                  <PublicationOptionTags edition={selectedEdition} placement="selected" />
                 </span>
               )}
             </span>

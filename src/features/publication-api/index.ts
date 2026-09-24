@@ -36,6 +36,7 @@ export {
   fetchPublications,
   formatPublicationLabel,
   loadPublicationEditions,
+  readTypeLabel,
   mapPublicationToEdition,
   publicationEditionId,
   publicationPdfId,

@@ -2,6 +2,7 @@ export {
   createEditionPdf,
   formatPublicationLabel,
   mapPublicationToEdition,
+  readTypeLabel,
   publicationEditionId,
   publicationPdfId,
   toDateOnly,

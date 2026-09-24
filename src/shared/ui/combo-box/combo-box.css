@@ -253,7 +253,17 @@
 }
 
 .combobox--edition .combobox__menu {
-  min-width: 280px;
+  min-width: 320px;
+  max-width: min(520px, 90vw);
+}
+
+.combobox__option--disabled,
+.combobox__option--disabled:hover,
+.combobox__option--disabled.combobox__option--highlighted {
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  opacity: 0.72;
 }
 
 .combobox--news .combobox__menu {

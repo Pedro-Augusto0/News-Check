@@ -102,30 +102,37 @@ export function ComboBox({
       requestAnimationFrame(() => searchRef.current?.focus())
     }
 
-    const currentIndex = filteredOptions.findIndex((opt) => opt.value === value)
-    setHighlightIndex(currentIndex >= 0 ? currentIndex : filteredOptions.length > 0 ? 0 : -1)
+    const currentIndex = filteredOptions.findIndex((opt) => opt.value === value && !opt.disabled)
+    const fallback = filteredOptions.findIndex((opt) => !opt.disabled)
+    setHighlightIndex(currentIndex >= 0 ? currentIndex : fallback)
   }, [open, showSearch])
 
   useEffect(() => {
     if (!open) return
 
-    const currentIndex = filteredOptions.findIndex((opt) => opt.value === value)
-    setHighlightIndex(currentIndex >= 0 ? currentIndex : filteredOptions.length > 0 ? 0 : -1)
+    const currentIndex = filteredOptions.findIndex((opt) => opt.value === value && !opt.disabled)
+    const fallback = filteredOptions.findIndex((opt) => !opt.disabled)
+    setHighlightIndex(currentIndex >= 0 ? currentIndex : fallback)
   }, [filteredOptions, open, value])
 
   const selectOption = (optionValue: string) => {
+    const option = filteredOptions.find((item) => item.value === optionValue)
+    if (!option || option.disabled) return
     onChange(optionValue)
     setOpen(false)
   }
 
+  const nextSelectableIndex = (from: number, direction: 1 | -1) => {
+    if (filteredOptions.length === 0) return -1
+    for (let step = 1; step <= filteredOptions.length; step += 1) {
+      const index = (from + direction * step + filteredOptions.length) % filteredOptions.length
+      if (!filteredOptions[index]?.disabled) return index
+    }
+    return -1
+  }
+
   const moveHighlight = (direction: 1 | -1) => {
-    if (filteredOptions.length === 0) return
-    setHighlightIndex((index) => {
-      const next = index + direction
-      if (next < 0) return filteredOptions.length - 1
-      if (next >= filteredOptions.length) return 0
-      return next
-    })
+    setHighlightIndex((index) => nextSelectableIndex(index, direction))
   }
 
   const handleTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -232,15 +239,21 @@ export function ComboBox({
                   type="button"
                   role="option"
                   aria-selected={isSelected}
+                  aria-disabled={opt.disabled || undefined}
+                  disabled={opt.disabled}
                   className={cn(
                     'combobox__option',
                     isSelected && 'combobox__option--selected',
                     isHighlighted && 'combobox__option--highlighted',
+                    opt.disabled && 'combobox__option--disabled',
                   )}
-                  onMouseEnter={() => setHighlightIndex(index)}
+                  onMouseEnter={() => {
+                    if (!opt.disabled) setHighlightIndex(index)
+                  }}
                   onClick={() => selectOption(opt.value)}
                 >
                   <span className="combobox__option-label">{opt.label}</span>
+                  {opt.trailing}
                   {isSelected && (
                     <Check className="combobox__option-check" size={14} strokeWidth={2.5} aria-hidden />
                   )}

@@ -113,6 +113,13 @@
   color: var(--color-text);
 }
 
+.review-page-rail__edition-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .review-page-rail__edition-date {
   overflow: hidden;
   text-overflow: ellipsis;
