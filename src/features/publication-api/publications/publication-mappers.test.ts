@@ -33,6 +33,8 @@ describe('publication mappers', () => {
       editionDate: '2026-08-18',
       label: 'Gazeta - 2026-08-18',
       clientKeywords: [],
+      hasSourceMapping: true,
+      readType: undefined,
       pdfs: [
         {
           id: 'pdf-42',
@@ -53,6 +55,30 @@ describe('publication mappers', () => {
           ],
         },
       ],
+    })
+  })
+
+  it('keeps publications without source mapping and exposes the read type', () => {
+    expect(
+      mapPublicationToEdition({
+        ...publication,
+        hasSourceMapping: false,
+        readType: 1,
+      }),
+    ).toMatchObject({
+      hasSourceMapping: false,
+      readType: 1,
+    })
+
+    expect(
+      mapPublicationToEdition({
+        ...publication,
+        HasSourceMapping: false,
+        ReadType: 0,
+      } as PublicationDto),
+    ).toMatchObject({
+      hasSourceMapping: false,
+      readType: 0,
     })
   })
 

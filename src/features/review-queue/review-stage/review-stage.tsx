@@ -66,7 +66,11 @@ export function ReviewStage({
   const sessionKeyRef = useRef('')
   const [viewport, setViewport] = useState({ width: 0, height: 0 })
   const [zoom, setZoom] = useState(REVIEW_DEFAULT_ZOOM)
-  const redrawing = drawMode === 'redraw' && activeCrop?.pageNumber === viewedPageNumber
+  const cropIsOnViewedPage = (crop: Crop | undefined) =>
+    !!crop && pageCrops.some((entry) => entry.id === crop.id)
+  const activeOnPage = cropIsOnViewedPage(activeCrop)
+  const inspectOnPage = cropIsOnViewedPage(inspectCrop)
+  const redrawing = drawMode === 'redraw' && activeOnPage
   const canDraw = !!currentItem?.newsId
   const sessionKey = `${currentItem?.id ?? ''}:${imageUrl ?? ''}`
   if (sessionKeyRef.current !== sessionKey) {
@@ -117,11 +121,11 @@ export function ReviewStage({
   useEffect(() => {
     if (redrawing) return
     const frame = window.requestAnimationFrame(() => {
-      const target = inspectCrop?.pageNumber === viewedPageNumber ? inspectRef.current : activeRef.current
+      const target = inspectOnPage ? inspectRef.current : activeOnPage ? activeRef.current : null
       target?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [currentItem?.id, inspectCrop?.id, zoom, redrawing, viewedPageNumber])
+  }, [currentItem?.id, inspectCrop?.id, zoom, redrawing, viewedPageNumber, activeOnPage, inspectOnPage])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -289,7 +293,7 @@ export function ReviewStage({
             )
           })}
 
-          {activeCrop && !redrawing && activeCrop.pageNumber === viewedPageNumber && (
+          {activeCrop && !redrawing && activeOnPage && (
             <ReviewActiveCrop
               crop={activeCrop}
               label={`${Math.max(1, currentCropIds.indexOf(activeCrop.id) + 1)}/${Math.max(1, currentCropIds.length)}`}
@@ -302,7 +306,7 @@ export function ReviewStage({
             />
           )}
 
-          {inspectCrop && !redrawing && inspectCrop.pageNumber === viewedPageNumber && (
+          {inspectCrop && !redrawing && inspectOnPage && (
             <ReviewActiveCrop
               crop={inspectCrop}
               label={`Visualizando ${inspectCrop.pageNumber}`}

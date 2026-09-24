@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 export interface ComboBoxOption {
   value: string
   label: string
+  disabled?: boolean
+  trailing?: ReactNode
 }
 
 export interface ComboBoxProps {

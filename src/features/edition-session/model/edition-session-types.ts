@@ -16,6 +16,10 @@ export interface VehicleEdition {
   clientKeywords: string[]
   pdfs: PdfFile[]
   finished?: boolean
+  /** `false` impede a seleção da edição no combo de publicações. */
+  hasSourceMapping?: boolean
+  /** 0 = leitura total, 1 = leitura parcial. */
+  readType?: 0 | 1
 }
 
 export interface SessionPayload {

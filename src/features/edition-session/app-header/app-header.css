@@ -37,6 +37,18 @@
   min-width: 0;
 }
 
+.app-header__edition-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 420px;
+}
+
+.app-header__edition-value .combobox__value {
+  flex: 1;
+}
+
 .app-header__session-divider {
   width: 1px;
   height: 18px;

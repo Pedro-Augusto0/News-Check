@@ -63,6 +63,16 @@ describe('useSessionStore editions', () => {
     expect(useSessionStore.getState().selectedPdfId).toBe('pdf-b')
   })
 
+  it('does not select an edition without source mapping', () => {
+    useSessionStore.getState().setEditions([
+      editionA,
+      { ...editionB, hasSourceMapping: false },
+    ])
+    useSessionStore.getState().selectEdition(editionB.id)
+
+    expect(useSessionStore.getState().selectedEditionId).toBeNull()
+  })
+
   it('clears the current edition', () => {
     useSessionStore.getState().setEditions([editionA])
     useSessionStore.getState().selectEdition(editionA.id)
