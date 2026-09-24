@@ -27,7 +27,6 @@ import {
   UNSECTIONED_LABEL,
 } from '@/features/page-navigation/page-key'
 import { toDateOnly } from '@/features/publication-api'
-import { resolveCropImageUrl } from '@/features/text-extraction'
 import { loadPageImage, renderImageRegionToCanvas, renderImageToCanvas } from '@/shared/image/page-image-cache'
 import { Button } from '@/shared/ui/button'
 import { Modal } from '@/shared/ui/modal'
@@ -38,6 +37,8 @@ import {
   missingApprovalRequirements,
   normalizeKeyword,
   resolveClientMatchGroups,
+  resolveCropPageId,
+  resolvePageId,
   clampReviewZoom,
   uniqueKeywords,
 } from '../application'
@@ -119,9 +120,23 @@ function namedSection(label: string): string | null {
   return label === UNSECTIONED_LABEL ? null : label
 }
 
-function sectionForCropPage(crop: CropModel, edition: VehicleEdition | undefined): string | null {
-  const pdf = edition?.pdfs.find((item) => item.id === crop.pdfId)
-  const page = pdf?.pages.find((item) => item.pageNumber === crop.pageNumber)
+function findCropPage(
+  crop: CropModel,
+  edition: VehicleEdition | undefined,
+  item: Pick<ReviewQueueItem, 'pageNumber' | 'filePath' | 'section' | 'suggestedSection'>,
+) {
+  const pdf = edition?.pdfs.find((entry) => entry.id === crop.pdfId)
+  if (!pdf) return undefined
+  const pageId = resolveCropPageId(crop, pdf.pages, item)
+  return pdf.pages.find((page) => resolvePageId(page) === pageId)
+}
+
+function sectionForCropPage(
+  crop: CropModel,
+  edition: VehicleEdition | undefined,
+  item: Pick<ReviewQueueItem, 'pageNumber' | 'filePath' | 'section' | 'suggestedSection'>,
+): string | null {
+  const page = findCropPage(crop, edition, item)
   if (!page) return null
   return namedSection(resolvePageListSection(page))
 }
@@ -148,7 +163,7 @@ function collectNewsSections(
   }
 
   add(namedSection(resolvePageListSection(item)), crops[0]?.id ?? '')
-  for (const crop of crops) add(sectionForCropPage(crop, edition), crop.id)
+  for (const crop of crops) add(sectionForCropPage(crop, edition, item), crop.id)
   return choices
 }
 
@@ -711,7 +726,7 @@ export function ReviewNewsDetailModal({
       if (!crop) return
       entries.push({
         crop,
-        imageUrl: edition ? resolveCropImageUrl(crop, [edition]) : undefined,
+        imageUrl: findCropPage(crop, edition, item)?.imageUrl,
         accentColor: cropColor(index),
         label: String(index + 1),
       })
@@ -833,7 +848,7 @@ export function ReviewNewsDetailModal({
     cropEntries.map((entry) => entry.crop),
   )
   const activeSectionKey = sectionGroupKey(
-    (activeEntry ? sectionForCropPage(activeEntry.crop, edition) : null) ??
+    (activeEntry ? sectionForCropPage(activeEntry.crop, edition, item) : null) ??
       sectionChoices[0]?.label ??
       UNSECTIONED_LABEL,
   )
@@ -1202,7 +1217,7 @@ export function ReviewNewsDetailModal({
                   const hasText = paragraph.trim().length > 0
                   const isActive = !!entry && entry.crop.id === activeEntry?.crop.id
                   const sectionLabel = entry
-                    ? (sectionForCropPage(entry.crop, edition) ??
+                    ? (sectionForCropPage(entry.crop, edition, item) ??
                       namedSection(resolvePageListSection(item)))
                     : null
 
