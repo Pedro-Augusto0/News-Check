@@ -6,11 +6,11 @@ export function cropStorageKey(editionId: string) {
 
 export function loadPersistedCrops(editionId: string): PersistedCropState | null {
   try {
-    const raw = localStorage.getItem(cropStorageKey(editionId))
-    return raw ? (JSON.parse(raw) as PersistedCropState) : null
+    localStorage.removeItem(cropStorageKey(editionId))
   } catch {
-    return null
+    // ignore quota / private mode
   }
+  return null
 }
 
 export function savePersistedCrops(
@@ -19,14 +19,12 @@ export function savePersistedCrops(
   groups: Record<string, CropGroup>,
   finalizedPages: Record<string, true>,
 ) {
-  const editionCrops = Object.fromEntries(
-    Object.entries(crops).filter(([, crop]) => crop.editionId === editionId),
-  )
-  const editionGroups = Object.fromEntries(
-    Object.entries(groups).filter(([, group]) => group.editionId === editionId),
-  )
-  localStorage.setItem(
-    cropStorageKey(editionId),
-    JSON.stringify({ crops: editionCrops, groups: editionGroups, finalizedPages }),
-  )
+  void crops
+  void groups
+  void finalizedPages
+  try {
+    localStorage.removeItem(cropStorageKey(editionId))
+  } catch {
+    // ignore quota / private mode
+  }
 }

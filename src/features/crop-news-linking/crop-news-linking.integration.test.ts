@@ -51,7 +51,7 @@ describe('store persistence and integration', () => {
     resetStores()
   })
 
-  it('persists crops under the edition key and restores them on hydrate', () => {
+  it('keeps crops in memory for the session and does not write localStorage', () => {
     useCropsStore.getState().addCrop({
       id: 'crop-1',
       editionId: edition.id,
@@ -63,31 +63,19 @@ describe('store persistence and integration', () => {
     })
     useCropsStore.getState().finalizePage(edition.id, 'pdf-1', 'A2')
 
-    const persisted = JSON.parse(
-      localStorage.getItem('feature-crops-state-edition-1') ?? 'null',
-    )
-    expect(persisted).toEqual({
-      crops: {
-        'crop-1': expect.objectContaining({
-          id: 'crop-1',
-          title: 'Persisted crop',
-          displayIndex: 1,
-          finalized: true,
-        }),
-      },
-      groups: {},
-      finalizedPages: { 'pdf-1:A2': true },
-    })
-
-    resetStores()
-    useCropsStore.getState().hydrateFromEdition(edition)
-
+    expect(localStorage.getItem('feature-crops-state-edition-1')).toBeNull()
     expect(useCropsStore.getState().crops['crop-1']).toMatchObject({
       title: 'Persisted crop',
       text: 'Persisted text',
       finalized: true,
     })
-    expect(useCropsStore.getState().finalizedPages).toEqual({ 'pdf-1:A2': true })
+
+    resetStores()
+    localStorage.setItem('feature-crops-state-edition-1', JSON.stringify({ crops: { 'crop-1': {} } }))
+    useCropsStore.getState().hydrateFromEdition(edition)
+
+    expect(useCropsStore.getState().crops['crop-1']).toBeUndefined()
+    expect(localStorage.getItem('feature-crops-state-edition-1')).toBeNull()
   })
 
   it('restores manual news while hydrating an edition', () => {
@@ -98,26 +86,16 @@ describe('store persistence and integration', () => {
       title: 'Manual news',
     })
 
-    expect(
-      JSON.parse(localStorage.getItem('feature-crops-news-edition-1') ?? 'null'),
-    ).toEqual({
-      items: {
-        [newsId]: expect.objectContaining({
-          id: newsId,
-          manual: true,
-          title: 'Manual news',
-        }),
-      },
+    expect(localStorage.getItem('feature-crops-news-edition-1')).toBeNull()
+    expect(useNewsStore.getState().items[newsId]).toMatchObject({
+      manual: true,
+      title: 'Manual news',
     })
 
     resetStores()
     useNewsStore.getState().hydrateFromEdition(edition)
 
-    expect(useNewsStore.getState().items[newsId]).toMatchObject({
-      manual: true,
-      title: 'Manual news',
-      cropId: null,
-    })
+    expect(useNewsStore.getState().items[newsId]).toBeUndefined()
   })
 
   it('links both stores when a crop is added to an existing news item', () => {
@@ -139,11 +117,7 @@ describe('store persistence and integration', () => {
       clientKeywordsFound: apiNews.clientKeywordsFound,
     })
     expect(useNewsStore.getState().items[apiNews.id].cropId).toBe(cropId)
-
-    const persistedNews = JSON.parse(
-      localStorage.getItem('feature-crops-news-edition-1') ?? 'null',
-    )
-    expect(persistedNews.items[apiNews.id].cropId).toBe(cropId)
+    expect(localStorage.getItem('feature-crops-news-edition-1')).toBeNull()
   })
 
   it('merges crops, consolidates news and preserves combined text', () => {

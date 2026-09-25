@@ -35,12 +35,10 @@ describe('useReviewQueueStore.seedDoneFromApi', () => {
     })
   })
 
-  it('clears the working edition without touching persisted statuses', () => {
+  it('does not keep review status in localStorage', () => {
     useReviewQueueStore.getState().seedDoneFromApi(EDITION_ID, ['42'])
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      statuses: { 'news:42': 'approved' },
-      savedIds: { 'news:42': true },
-    }))
+
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
 
     useReviewQueueStore.getState().clearEdition()
 
@@ -51,9 +49,6 @@ describe('useReviewQueueStore.seedDoneFromApi', () => {
       statuses: {},
       savedIds: {},
     })
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')).toEqual({
-      statuses: { 'news:42': 'approved' },
-      savedIds: { 'news:42': true },
-    })
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 })
