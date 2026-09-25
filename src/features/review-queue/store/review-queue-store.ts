@@ -12,16 +12,11 @@ function loadPersisted(editionId: string): {
   savedIds: Record<string, true>
 } {
   try {
-    const raw = localStorage.getItem(storageKey(editionId))
-    if (!raw) return { statuses: {}, savedIds: {} }
-    const parsed = JSON.parse(raw) as {
-      statuses?: Record<string, ReviewStatus>
-      savedIds?: Record<string, true>
-    }
-    return { statuses: parsed.statuses ?? {}, savedIds: parsed.savedIds ?? {} }
+    localStorage.removeItem(storageKey(editionId))
   } catch {
-    return { statuses: {}, savedIds: {} }
+    // ignore quota / private mode
   }
+  return { statuses: {}, savedIds: {} }
 }
 
 function savePersisted(
@@ -29,8 +24,10 @@ function savePersisted(
   statuses: Record<string, ReviewStatus>,
   savedIds: Record<string, true>,
 ) {
+  void statuses
+  void savedIds
   try {
-    localStorage.setItem(storageKey(editionId), JSON.stringify({ statuses, savedIds }))
+    localStorage.removeItem(storageKey(editionId))
   } catch {
     // ignore quota / private mode
   }

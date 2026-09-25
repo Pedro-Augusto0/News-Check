@@ -10,19 +10,21 @@ export function newsStorageKey(editionId: string) {
 
 export function loadPersistedNews(editionId: string): PersistedNewsState | null {
   try {
-    const raw = localStorage.getItem(newsStorageKey(editionId))
-    return raw ? (JSON.parse(raw) as PersistedNewsState) : null
+    localStorage.removeItem(newsStorageKey(editionId))
   } catch {
-    return null
+    // ignore quota / private mode
   }
+  return null
 }
 
 export function savePersistedNews(
   editionId: string,
   items: Record<string, StoredNewsItem>,
 ) {
-  const editionItems = Object.fromEntries(
-    Object.entries(items).filter(([, item]) => item.editionId === editionId),
-  )
-  localStorage.setItem(newsStorageKey(editionId), JSON.stringify({ items: editionItems }))
+  void items
+  try {
+    localStorage.removeItem(newsStorageKey(editionId))
+  } catch {
+    // ignore quota / private mode
+  }
 }
